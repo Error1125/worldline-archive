@@ -1,0 +1,100 @@
+---
+/**
+ * SceneModeCard.astro —— 昼夜模式切换卡。
+ *
+ * - 整卡是 <button>，点击在 night ⇄ day 间切换；
+ * - 通过 html[data-scene-mode] 驱动全站配色 / 背景 / 星空⇄落樱（见 global.css 与两个特效岛）；
+ * - localStorage 记忆（键 wl-scene-mode）；无闪烁初始化脚本在 SiteLayout <head>；
+ * - 文案随模式切换（纯 CSS，依据 html[data-scene-mode] 显隐 night/day 两组内容）。
+ */
+interface Props {
+  class?: string;
+}
+const { class: className = "" } = Astro.props;
+---
+
+<button
+  type="button"
+  data-scene-toggle
+  aria-label="切换昼夜模式"
+  class:list={["scene-mode-card glass-card corner-ticks clickable group", className]}
+>
+  <div class="flex items-center justify-between gap-3">
+    <span class="eyebrow flex items-center gap-2">
+      <span class="scene-dot" aria-hidden="true"></span>
+      SCENE MODE
+    </span>
+    <span class="mono text-[10px] tracking-[0.16em] text-[var(--ia-mist)] opacity-70">TAP TO SWITCH</span>
+  </div>
+
+  <div class="mt-3 flex items-center gap-4">
+    <!-- 昼夜切换的视觉圆盘：夜=月，昼=日 -->
+    <span class="scene-orb" aria-hidden="true">
+      <span class="scene-orb-night">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M20 14.5A8 8 0 019.5 4 7 7 0 1020 14.5z" />
+        </svg>
+      </span>
+      <span class="scene-orb-day">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="4.2" fill="currentColor" stroke="none" />
+          <path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5 5l1.9 1.9M17.1 17.1L19 19M19 5l-1.9 1.9M6.9 17.1L5 19" />
+        </svg>
+      </span>
+    </span>
+
+    <div class="min-w-0">
+      <div class="scene-title font-bold text-[var(--ia-ink)]">
+        <span data-when="night">夜间模式</span>
+        <span data-when="day">日间模式</span>
+      </div>
+      <p class="scene-sub text-[var(--ia-mist)]">
+        <span data-when="night">星轨观测的深夜</span>
+        <span data-when="day">落樱漫舞的清晨</span>
+      </p>
+    </div>
+
+    <!-- 右侧滑轨开关 -->
+    <span class="scene-switch ml-auto shrink-0" aria-hidden="true">
+      <span class="scene-knob"></span>
+    </span>
+  </div>
+</button>
+
+<script>
+  // 昼夜切换：写 html[data-scene-mode] + localStorage，并广播事件给特效岛。
+  // 用事件委托绑定，兼容 View Transitions 的 DOM 替换。
+  const KEY = "wl-scene-mode";
+
+  function applyMode(mode: "night" | "day") {
+    document.documentElement.dataset.sceneMode = mode;
+    try {
+      localStorage.setItem(KEY, mode);
+    } catch {}
+    document
+      .querySelectorAll<HTMLElement>("[data-scene-toggle]")
+      .forEach((b) => b.setAttribute("aria-pressed", mode === "day" ? "true" : "false"));
+    window.dispatchEvent(new CustomEvent("scene-mode-change", { detail: { mode } }));
+  }
+
+  function current(): "night" | "day" {
+    return document.documentElement.dataset.sceneMode === "day" ? "day" : "night";
+  }
+
+  // 初始把按钮 aria-pressed 对齐当前模式
+  function syncButtons() {
+    const mode = current();
+    document
+      .querySelectorAll<HTMLElement>("[data-scene-toggle]")
+      .forEach((b) => b.setAttribute("aria-pressed", mode === "day" ? "true" : "false"));
+  }
+
+  document.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement | null)?.closest?.("[data-scene-toggle]");
+    if (!btn) return;
+    applyMode(current() === "day" ? "night" : "day");
+  });
+
+  syncButtons();
+  document.addEventListener("astro:page-load", syncButtons);
+</script>

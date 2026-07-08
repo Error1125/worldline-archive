@@ -6,9 +6,11 @@ import { withBase } from "@/lib/paths";
 
 import Header from "@/components/layout/Header.astro";
 import MobileNav from "@/components/layout/MobileNav.astro";
+import MobileRadialMenu from "@/components/layout/MobileRadialMenu.tsx";
 import Footer from "@/components/layout/Footer.astro";
 
 import Starfield from "@/components/effects/Starfield.tsx";
+import SakuraPetals from "@/components/effects/SakuraPetals.tsx";
 import SceneBackground from "@/components/effects/SceneBackground.tsx";
 import WorldlineLoader from "@/components/effects/WorldlineLoader.tsx";
 import DanmakuBackground from "@/components/effects/DanmakuBackground.tsx";
@@ -39,6 +41,17 @@ const pageDesc = description ?? siteConfig.description;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline>
+      // 无闪烁昼夜模式：paint 前依据 localStorage 设定 html[data-scene-mode]（默认 night）。
+      (function () {
+        try {
+          var m = localStorage.getItem("wl-scene-mode");
+          document.documentElement.dataset.sceneMode = m === "day" ? "day" : "night";
+        } catch (e) {
+          document.documentElement.dataset.sceneMode = "night";
+        }
+      })();
+    </script>
     <link rel="icon" href={withBase("/favicon.svg")} type="image/svg+xml" />
     <title>{pageTitle}</title>
     <meta name="description" content={pageDesc} />
@@ -59,6 +72,7 @@ const pageDesc = description ?? siteConfig.description;
 
     <!-- 特效岛：全部 client:only（避免 SSR window 报错）+ 持久化 -->
     <Starfield client:only="react" transition:persist="starfield" />
+    <SakuraPetals client:only="react" transition:persist="sakura" />
     <DanmakuBackground client:only="react" transition:persist="danmaku" />
     <CustomCursor client:only="react" transition:persist="cursor" />
     <ClickSpark client:only="react" transition:persist="spark" />
@@ -70,7 +84,7 @@ const pageDesc = description ?? siteConfig.description;
     <!-- 路由进场扫光条（由 PageEnter 触发 .run） -->
     <div class="page-sweep" aria-hidden="true"></div>
 
-    <Header />
+    <Header home={home} />
 
     <main
       class:list={[
@@ -86,6 +100,9 @@ const pageDesc = description ?? siteConfig.description;
     {!home && <Footer />}
 
     <MobileNav />
+
+    <!-- 移动端「全部入口」放射菜单（桌面隐藏；持久化避免路由闪烁） -->
+    <MobileRadialMenu client:only="react" transition:persist="radial" />
 
     <!--
       SSR-safe 的两段客户端增强脚本：

@@ -11,22 +11,38 @@ export interface NavItem {
   description?: string;
 }
 
-/** 桌面顶部主导航 */
+/** 桌面顶部主导航（v2.2：Topbar 作为全站主索引） */
 export const mainNav: NavItem[] = [
   { label: "首页", labelEn: "HOME", href: "/", icon: "home" },
   { label: "时间线", labelEn: "TIMELINE", href: "/timeline", icon: "timeline" },
   { label: "文章", labelEn: "POSTS", href: "/posts", icon: "post" },
+  { label: "项目", labelEn: "PROJECTS", href: "/projects", icon: "project" },
+  { label: "归档", labelEn: "ARCHIVE", href: "/archive", icon: "archive" },
+  { label: "照片", labelEn: "PHOTOS", href: "/photos", icon: "photo" },
+  { label: "音乐", labelEn: "MUSIC", href: "/music", icon: "music" },
   { label: "说说", labelEn: "MOMENTS", href: "/moments", icon: "moment" },
-  { label: "档案", labelEn: "ARCHIVE", href: "/archive", icon: "archive" },
   { label: "关于", labelEn: "ABOUT", href: "/about", icon: "about" },
 ];
 
-/** 移动端底部 TabBar */
+/** 移动端底部 TabBar（常用入口，全量入口交给 MobileRadialMenu / /archive） */
 export const mobileNav: NavItem[] = [
   { label: "首页", labelEn: "HOME", href: "/", icon: "home" },
   { label: "时间线", labelEn: "TIMELINE", href: "/timeline", icon: "timeline" },
   { label: "文章", labelEn: "POSTS", href: "/posts", icon: "post" },
   { label: "档案", labelEn: "ARCHIVE", href: "/archive", icon: "archive" },
+  { label: "关于", labelEn: "ABOUT", href: "/about", icon: "about" },
+];
+
+/** 移动端径向菜单「全部入口」（MobileRadialMenu 使用） */
+export const fullNav: NavItem[] = [
+  { label: "首页", labelEn: "HOME", href: "/", icon: "home" },
+  { label: "时间线", labelEn: "TIMELINE", href: "/timeline", icon: "timeline" },
+  { label: "文章", labelEn: "POSTS", href: "/posts", icon: "post" },
+  { label: "项目", labelEn: "PROJECTS", href: "/projects", icon: "project" },
+  { label: "归档", labelEn: "ARCHIVE", href: "/archive", icon: "archive" },
+  { label: "照片", labelEn: "PHOTOS", href: "/photos", icon: "photo" },
+  { label: "音乐", labelEn: "MUSIC", href: "/music", icon: "music" },
+  { label: "说说", labelEn: "MOMENTS", href: "/moments", icon: "moment" },
   { label: "关于", labelEn: "ABOUT", href: "/about", icon: "about" },
 ];
 

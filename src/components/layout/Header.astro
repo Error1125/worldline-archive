@@ -6,7 +6,14 @@ import { withBase } from "@/lib/paths";
 
 /**
  * Header.astro —— 桌面端 sticky 毛玻璃头部。移动端隐藏（md 以下）。
+ * v2.2：Topbar 作为全站主索引（更多入口、字号略大、active 更明显）；
+ * 首页（home）不再显示右侧搜索 icon —— 搜索交给首页 HeroSearch。
  */
+interface Props {
+  home?: boolean;
+}
+const { home = false } = Astro.props;
+
 const path = Astro.url.pathname;
 const search = utilityNav.find((n) => n.href === "/search");
 
@@ -18,19 +25,19 @@ function isActive(href: string): boolean {
 
 <header class="sticky top-0 z-40 hidden md:block">
   <div class="glass border-b border-[var(--ia-line)]">
-    <div class="mx-auto flex h-16 max-w-6xl items-center gap-6 px-6">
+    <div class="mx-auto flex h-16 max-w-[1240px] items-center gap-5 px-6">
       <!-- 站点标识 -->
-      <a href={withBase("/")} class="clickable group flex items-baseline gap-2">
-        <span class="text-base font-semibold tracking-wide text-[var(--ia-ink)]">
+      <a href={withBase("/")} class="clickable group flex shrink-0 items-baseline gap-2">
+        <span class="text-[17px] font-semibold tracking-wide text-[var(--ia-ink)]">
           {siteConfig.title}
         </span>
-        <span class="mono text-[11px] text-[var(--ia-mist)] transition-colors group-hover:text-[var(--ia-neon)]">
+        <span class="mono hidden text-[11px] text-[var(--ia-mist)] transition-colors group-hover:text-[var(--ia-neon)] lg:inline">
           {siteConfig.subtitle}
         </span>
       </a>
 
-      <!-- 主导航 -->
-      <nav class="ml-auto flex items-center gap-1" aria-label="主导航">
+      <!-- 主导航（全站主索引） -->
+      <nav class="ml-auto flex items-center gap-0.5" aria-label="主导航">
         {
           mainNav.map((item) => {
             const active = isActive(item.href);
@@ -39,10 +46,10 @@ function isActive(href: string): boolean {
                 href={withBase(item.href)}
                 aria-current={active ? "page" : undefined}
                 class:list={[
-                  "clickable group relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors",
+                  "clickable group relative flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[14px] transition-colors",
                   active
-                    ? "text-[var(--ia-ink)]"
-                    : "text-[var(--ia-mist)] hover:text-[var(--ia-ink)]",
+                    ? "font-semibold text-[var(--ia-ink)] bg-[color-mix(in_srgb,var(--ia-neon)_10%,transparent)]"
+                    : "text-[var(--ia-mist)] hover:text-[var(--ia-ink)] hover:bg-[color-mix(in_srgb,var(--ia-star)_7%,transparent)]",
                 ]}
               >
                 <Icon
@@ -52,7 +59,7 @@ function isActive(href: string): boolean {
                 />
                 <span>{item.label}</span>
                 {active && (
-                  <span class="pointer-events-none absolute inset-x-2 -bottom-px h-px bg-[var(--ia-neon)] shadow-[0_0_10px_var(--ia-neon)]" />
+                  <span class="pointer-events-none absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-[var(--ia-neon)] shadow-[0_0_10px_var(--ia-neon)]" />
                 )}
               </a>
             );
@@ -60,13 +67,13 @@ function isActive(href: string): boolean {
         }
       </nav>
 
-      <!-- 搜索入口 -->
+      <!-- 搜索入口：首页隐藏（由 HeroSearch 承担），内页保留 -->
       {
-        search && (
+        !home && search && (
           <a
             href={withBase(search.href)}
             aria-label="搜索"
-            class="clickable grid size-9 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-neon)] hover:text-[var(--ia-neon)]"
+            class="clickable grid size-9 shrink-0 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-neon)] hover:text-[var(--ia-neon)]"
           >
             <Icon name="search" size={16} />
           </a>

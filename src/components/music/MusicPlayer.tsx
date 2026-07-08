@@ -34,7 +34,7 @@ export default function MusicPlayer({
   return (
     <div className="flex items-center gap-4 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] p-4">
       {/* 封面 */}
-      <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-[var(--ia-line)]">
+      <div className="relative size-16 shrink-0 overflow-hidden rounded-lg border border-[var(--ia-line)]">
         {t.artworkUrl ? (
           <img src={withBase(t.artworkUrl)} alt={t.title} className="size-full object-cover" />
         ) : (
@@ -58,8 +58,8 @@ export default function MusicPlayer({
             <i /><i /><i /><i />
           </span>
         </div>
-        <div className="mt-0.5 truncate text-sm font-semibold text-[var(--ia-ink)]">{t.title}</div>
-        <div className="truncate text-xs text-[var(--ia-mist)]">
+        <div className="mt-0.5 truncate text-base font-semibold text-[var(--ia-ink)]">{t.title}</div>
+        <div className="truncate text-[13px] text-[var(--ia-mist)]">
           {t.artist}
           {t.album ? ` · ${t.album}` : ""}
         </div>

@@ -1,0 +1,54 @@
+---
+import Icon from "@/components/common/Icon.astro";
+import { withBase } from "@/lib/paths";
+
+/**
+ * AnimeHomeCard.astro —— 番剧观测状态入口（增强个人感，不展开完整列表）。
+ * 显示当前观测状态 + 最新 / 在看番剧 + 总数，整卡点击进入 /anime。
+ */
+interface Props {
+  count: number;
+  latestTitle?: string;
+  statusLabel?: string; // 如「观测中」「已看完」
+  cover?: string; // 已带 base
+  class?: string;
+}
+const { count, latestTitle, statusLabel = "正在观测", cover, class: className = "" } = Astro.props;
+---
+
+<a
+  href={withBase("/anime")}
+  class:list={["anime-card glass-card clickable group flex flex-col", className]}
+  style={cover ? `--anime-cover:url('${cover}')` : undefined}
+  data-has-cover={cover ? "true" : "false"}
+  aria-label={`番剧观测，共 ${count} 部，点击查看`}
+>
+  <div class="anime-card-inner flex flex-col">
+    <div class="flex items-center justify-between gap-3">
+      <span class="eyebrow flex items-center gap-2">
+        <Icon name="anime" size={14} class="text-[var(--ia-nebula)]" />
+        ANIME SIGNAL
+      </span>
+      <span class="anime-pulse mono flex items-center gap-1.5 text-[10px] tracking-[0.12em] text-[var(--ia-mist)]">
+        <span class="anime-dot" aria-hidden="true"></span>{statusLabel}
+      </span>
+    </div>
+
+    <div class="mt-3 min-w-0">
+      <div class="mono text-[10px] tracking-[0.18em] text-[var(--ia-mist)] opacity-70">NOW WATCHING</div>
+      <div class="anime-title mt-0.5 line-clamp-2 font-bold text-[var(--ia-ink)]">
+        {latestTitle ?? "观测名单待更新"}
+      </div>
+    </div>
+
+    <div class="mt-auto flex items-center justify-between gap-3 pt-3">
+      <span class="text-[13px] text-[var(--ia-mist)]">
+        <b class="mono text-[var(--ia-star)]">{count}</b> records
+      </span>
+      <span class="flex items-center gap-1.5 text-[13px] font-medium text-[var(--ia-ink)] transition-colors group-hover:text-[var(--ia-nebula)]">
+        进入番剧观测
+        <Icon name="arrow" size={15} class="transition-transform group-hover:translate-x-0.5" />
+      </span>
+    </div>
+  </div>
+</a>

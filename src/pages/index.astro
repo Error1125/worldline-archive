@@ -5,11 +5,12 @@ import HeroSearch from "@/components/home/HeroSearch.astro";
 import ProfileCard from "@/components/home/ProfileCard.astro";
 import FeaturedDeck from "@/components/home/FeaturedDeck.tsx";
 import type { DeckItem } from "@/components/home/FeaturedDeck.tsx";
-import WorldlineMeter from "@/components/home/WorldlineMeter.astro";
-import QuickArchiveIndex from "@/components/home/QuickArchiveIndex.astro";
-import MiniTerminal from "@/components/home/MiniTerminal.astro";
-import HomeStatusStrip from "@/components/home/HomeStatusStrip.astro";
 import NowPlayingCard from "@/components/home/NowPlayingCard.astro";
+import TimelineTeaserCard from "@/components/home/TimelineTeaserCard.astro";
+import AnimeHomeCard from "@/components/home/AnimeHomeCard.astro";
+import SceneModeCard from "@/components/home/SceneModeCard.astro";
+import WorldlineMini from "@/components/home/WorldlineMini.astro";
+import HomeStatusStrip from "@/components/home/HomeStatusStrip.astro";
 
 import {
   getPosts,
@@ -24,18 +25,16 @@ import {
 } from "@/lib/content";
 import { withBase } from "@/lib/paths";
 import { formatDate } from "@/lib/format";
-import { mockNowPlaying } from "@/lib/apple-music/mock";
 
 /**
- * index.astro —— 首页「世界线观测室」。
+ * index.astro —— 首页「世界线观测室」v2.2（去索引化）。
  *
- * 构建期聚合所有集合：
- * - counts：喂给 ProfileCard / QuickArchiveIndex；
- * - deckItems：精选大卡数据（href / image 已带 base，日期已格式化）；
- * - startDate：最早一条存档日期，用于底部状态条 running days。
+ * 首页只保留高价值内容卡：Profile / Music / FeaturedDeck / TimelineTeaser /
+ * Anime / SceneMode（+ 桌面底部 StatusStrip / 移动端 WorldlineMini）。
+ * 分类索引交给 Topbar / MobileNav / MobileRadialMenu / /archive —— 首页不再堆 QuickArchiveIndex。
  *
- * 桌面（lg+）一屏网格：左列 Profile / Meter / Terminal，右列 Deck / QuickIndex；
- * 移动端用 order-* 重排为单列沉浸流。
+ * 桌面（lg+）一屏：HeroSearch → [左:Profile/FeaturedDeck  右:Music/(Timeline+Anime+Scene)] → StatusStrip。
+ * 移动端单列纵向滚动，用 order-* 重排。
  */
 
 const [posts, projects, anime, music, photos, bugs, moments] = await Promise.all([
@@ -48,17 +47,15 @@ const [posts, projects, anime, music, photos, bugs, moments] = await Promise.all
   getMoments(),
 ]);
 
+const totalArchives =
+  posts.length + projects.length + bugs.length + anime.length + music.length + photos.length + moments.length;
+
 const counts = {
   posts: posts.length,
   projects: projects.length,
-  bugs: bugs.length,
-  anime: anime.length,
-  music: music.length,
+  archives: totalArchives,
   photos: photos.length,
-  moments: moments.length,
 };
-const totalArchives =
-  counts.posts + counts.projects + counts.bugs + counts.anime + counts.music + counts.photos + counts.moments;
 
 const label = (t: ContentType) => `${TYPE_META[t].labelEn} // ${TYPE_META[t].labelZh}`;
 
@@ -72,6 +69,7 @@ const ACCENT: Record<ContentType, string> = {
   moment: "var(--ia-star)",
 };
 
+// ---- FeaturedDeck：最新世界线记录轮播（跨模块精选） ----
 const deckItems: DeckItem[] = [];
 
 for (const p of posts.filter((x) => x.data.featured).slice(0, 2)) {
@@ -118,26 +116,26 @@ if (latestPhoto) {
   });
 }
 
-const latestAnime = anime[0];
-if (latestAnime) {
+const latestAnimeEntry = anime[0];
+if (latestAnimeEntry) {
   deckItems.push({
     type: "anime",
     typeLabel: label("anime"),
-    title: latestAnime.data.title,
+    title: latestAnimeEntry.data.title,
     summary:
-      latestAnime.data.thoughts ??
-      (latestAnime.data.score != null ? `观测评分 ${latestAnime.data.score}/10` : "观测名单上的一条世界线。"),
-    date: formatDate(latestAnime.data.date),
+      latestAnimeEntry.data.thoughts ??
+      (latestAnimeEntry.data.score != null ? `观测评分 ${latestAnimeEntry.data.score}/10` : "观测名单上的一条世界线。"),
+    date: formatDate(latestAnimeEntry.data.date),
     href: withBase("/anime"),
     accent: ACCENT.anime,
-    image: latestAnime.data.cover ? withBase(latestAnime.data.cover) : undefined,
-    imageAlt: latestAnime.data.title,
+    image: latestAnimeEntry.data.cover ? withBase(latestAnimeEntry.data.cover) : undefined,
+    imageAlt: latestAnimeEntry.data.title,
   });
 }
 
-const latestMusic = music[0];
-if (latestMusic) {
-  const m = latestMusic.data;
+const latestMusicEntry = music[0];
+if (latestMusicEntry) {
+  const m = latestMusicEntry.data;
   deckItems.push({
     type: "music",
     typeLabel: label("music"),
@@ -151,66 +149,85 @@ if (latestMusic) {
   });
 }
 
-// 最早存档日期（各集合均按日期倒序，取每个集合末尾比较）
+// ---- TimelineTeaser：总数 / 最新 / 最近 2 条 ----
+type Recent = { date: Date; title: string; type: ContentType };
+const recentAll: Recent[] = [
+  ...posts.map((e) => ({ date: e.data.date, title: e.data.title, type: "post" as const })),
+  ...projects.map((e) => ({ date: e.data.date, title: e.data.title, type: "project" as const })),
+  ...anime.map((e) => ({ date: e.data.date, title: e.data.title, type: "anime" as const })),
+  ...music.map((e) => ({ date: e.data.date, title: e.data.title, type: "music" as const })),
+  ...photos.map((e) => ({ date: e.data.date, title: e.data.title, type: "photo" as const })),
+  ...bugs.map((e) => ({ date: e.data.date, title: e.data.title, type: "bug" as const })),
+  ...moments.map((e) => ({
+    date: e.data.date,
+    title: e.data.content.split("\n")[0].slice(0, 42),
+    type: "moment" as const,
+  })),
+];
+recentAll.sort((a, b) => b.date.getTime() - a.date.getTime());
+const timelineLatest = recentAll[0] ? formatDate(recentAll[0].date) : undefined;
+const timelineRecent = recentAll.slice(0, 2).map((r) => ({ title: r.title, typeLabel: label(r.type) }));
+
+// ---- AnimeHomeCard ----
+const ANIME_STATUS: Record<string, string> = {
+  watching: "观测中",
+  completed: "已看完",
+  planned: "想看",
+  paused: "暂停",
+  dropped: "弃番",
+};
+const topAnime = anime[0];
+const animeStatus = topAnime ? (ANIME_STATUS[topAnime.data.status] ?? "正在观测") : "正在观测";
+const animeCover = topAnime?.data.cover ? withBase(topAnime.data.cover) : undefined;
+
+// ---- running days 起点：最早存档日期 ----
 const earliest = [posts, projects, anime, music, photos, bugs, moments]
   .map((list) => list.at(-1)?.data.date)
   .filter((d): d is Date => d instanceof Date)
   .reduce((min, d) => (d < min ? d : min), new Date());
 const startDate = earliest.toISOString();
-
-const npTrack = mockNowPlaying.track;
 ---
 
 <SiteLayout home>
-  <div class="flex flex-col gap-4 sm:gap-5 lg:h-full lg:min-h-0">
+  <div class="flex flex-col gap-4 lg:h-full lg:min-h-0 lg:gap-5">
     <!-- 顶部：站点身份（移动端）+ 大搜索框 -->
     <section class="reveal shrink-0">
       <HeroSearch />
     </section>
 
-    <!-- 主网格：桌面 5:8 双列三行；移动端 order-* 单列 -->
+    <!-- 主网格：桌面 左7:右5 两列两行；移动端 order-* 单列 -->
     <div
-      class="grid min-h-0 grid-cols-1 gap-4 sm:gap-5 lg:flex-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,8fr)] lg:grid-rows-[auto_minmax(0,1fr)_auto]"
+      class="grid min-h-0 grid-cols-1 gap-4 lg:flex-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:grid-rows-[auto_minmax(0,1fr)] lg:gap-5"
     >
       <!-- 档案员 -->
       <div class="reveal order-1 min-w-0 lg:order-none lg:col-start-1 lg:row-start-1">
-        <ProfileCard
-          counts={{ posts: counts.posts, projects: counts.projects, archives: totalArchives, photos: counts.photos }}
-        />
+        <ProfileCard counts={counts} />
       </div>
 
-      <!-- 正在播放：仅移动端在此显示大卡（桌面收进底部状态条） -->
-      <div class="reveal order-2 min-w-0 lg:hidden">
+      <!-- 正在收听（首页核心卡，桌面 + 移动都在） -->
+      <div class="reveal order-2 min-w-0 lg:order-none lg:col-start-2 lg:row-start-1">
         <NowPlayingCard />
       </div>
 
-      <!-- 精选翻页大卡：右列跨两行 -->
-      <div class="reveal order-3 min-h-0 min-w-0 lg:order-none lg:col-start-2 lg:row-start-1 lg:row-span-2">
+      <!-- 精选内容轮播：桌面左列跨到底 -->
+      <div class="reveal order-3 min-h-0 min-w-0 lg:order-none lg:col-start-1 lg:row-start-2">
         <FeaturedDeck client:visible items={deckItems} className="h-full" />
       </div>
 
-      <!-- 快速档案索引 -->
-      <div class="reveal order-4 min-w-0 lg:order-none lg:col-start-2 lg:row-start-3">
-        <QuickArchiveIndex counts={{ ...counts, timeline: totalArchives }} />
+      <!-- 右列小卡堆：时间线入口 / 番剧入口 / 昼夜模式 -->
+      <div class="order-4 flex min-h-0 min-w-0 flex-col gap-4 lg:order-none lg:col-start-2 lg:row-start-2 lg:gap-5">
+        <div class="reveal min-h-0 lg:flex-1"><TimelineTeaserCard count={totalArchives} latest={timelineLatest} recent={timelineRecent} class="h-full" /></div>
+        <div class="reveal min-h-0 lg:flex-1"><AnimeHomeCard count={anime.length} latestTitle={topAnime?.data.title} statusLabel={animeStatus} cover={animeCover} class="h-full" /></div>
+        <div class="reveal min-h-0 lg:flex-1"><SceneModeCard class="h-full" /></div>
       </div>
 
-      <!-- 世界线观测仪 -->
-      <div class="reveal order-5 min-h-0 min-w-0 lg:order-none lg:col-start-1 lg:row-start-2">
-        <WorldlineMeter class="h-full" />
-      </div>
-
-      <!-- 迷你终端 -->
-      <div class="reveal order-6 min-w-0 lg:order-none lg:col-start-1 lg:row-start-3">
-        <MiniTerminal class="h-full" />
+      <!-- 世界线状态（移动端极简条；桌面由底部状态栏承担） -->
+      <div class="reveal order-5 min-w-0 lg:hidden">
+        <WorldlineMini />
       </div>
     </div>
 
-    <!-- 底部状态条（仅桌面） -->
-    <HomeStatusStrip
-      startDate={startDate}
-      trackTitle={npTrack?.title}
-      trackArtist={npTrack?.artist}
-      class="shrink-0"
-    />
+    <!-- 底部状态条（仅桌面，放大 + 远离底边） -->
+    <HomeStatusStrip startDate={startDate} class="shrink-0" />
   </div>
 </SiteLayout>

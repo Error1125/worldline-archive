@@ -223,6 +223,7 @@ export default function Starfield() {
   return (
     <canvas
       ref={canvasRef}
+      className="starfield-canvas"
       aria-hidden="true"
       style={{
         position: "fixed",

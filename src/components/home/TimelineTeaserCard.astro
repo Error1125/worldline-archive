@@ -1,0 +1,54 @@
+---
+import Icon from "@/components/common/Icon.astro";
+import { withBase } from "@/lib/paths";
+
+/**
+ * TimelineTeaserCard.astro —— /timeline 的清晰入口（不展开完整时间线）。
+ * 显示总条数 + 最新日期 + 最近 2 条极简动态，整卡点击进入时间线。
+ */
+interface Props {
+  count: number;
+  latest?: string; // 已格式化日期
+  recent?: { title: string; typeLabel: string }[];
+  class?: string;
+}
+const { count, latest, recent = [], class: className = "" } = Astro.props;
+---
+
+<a
+  href={withBase("/timeline")}
+  class:list={["teaser-card glass-card corner-ticks clickable group flex flex-col", className]}
+  aria-label={`时间线，共 ${count} 条记录，点击查看`}
+>
+  <div class="flex items-center justify-between gap-3">
+    <span class="eyebrow flex items-center gap-2">
+      <Icon name="timeline" size={14} class="text-[var(--ia-neon)]" />
+      TIMELINE
+    </span>
+    <span class="mono text-[10px] tracking-[0.16em] text-[var(--ia-mist)] opacity-70">OBSERVATION</span>
+  </div>
+
+  <div class="mt-2 flex items-baseline gap-2">
+    <b class="teaser-count mono font-bold text-[var(--ia-star)]">{count}</b>
+    <span class="text-sm text-[var(--ia-mist)]">records</span>
+    {latest && <span class="mono ml-auto text-[11px] text-[var(--ia-mist)] opacity-80">latest {latest}</span>}
+  </div>
+
+  {
+    recent.length > 0 && (
+      <ul class="mt-2.5 flex flex-col gap-1.5">
+        {recent.slice(0, 2).map((r) => (
+          <li class="flex items-center gap-2 text-[13px] text-[var(--ia-mist)]">
+            <span class="mono shrink-0 text-[10px] text-[var(--ia-neon)] opacity-80">{r.typeLabel.split(" // ")[0]}</span>
+            <span class="truncate">{r.title}</span>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  <span class="mt-auto flex items-center gap-1.5 pt-3 text-[13px] font-medium text-[var(--ia-ink)] transition-colors group-hover:text-[var(--ia-neon)]">
+    查看世界线动态
+    <Icon name="arrow" size={15} class="transition-transform group-hover:translate-x-0.5" />
+  </span>
+</a>
