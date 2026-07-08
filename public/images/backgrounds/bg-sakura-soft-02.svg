@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1125" viewBox="0 0 1800 1125" role="img" aria-label="soft sakura afternoon background">
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f5f0ff"/>
+      <stop offset="0.48" stop-color="#f7eef8"/>
+      <stop offset="1" stop-color="#edf7ff"/>
+    </linearGradient>
+    <filter id="bloom">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+    <linearGradient id="ray" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1800" height="1125" fill="url(#base)"/>
+  <g filter="url(#bloom)">
+    <circle cx="335" cy="230" r="210" fill="#ffa2cf" opacity="0.42"/>
+    <circle cx="1055" cy="185" r="260" fill="#b8a7ff" opacity="0.34"/>
+    <circle cx="1510" cy="620" r="270" fill="#9ecbff" opacity="0.28"/>
+    <circle cx="720" cy="850" r="320" fill="#ffd0e4" opacity="0.32"/>
+  </g>
+  <g opacity="0.32">
+    <path d="M-80 170 L1880 650 L1880 720 L-80 250 Z" fill="url(#ray)"/>
+    <path d="M-80 360 L1880 130 L1880 205 L-80 438 Z" fill="url(#ray)"/>
+  </g>
+  <g opacity="0.42">
+    <path d="M0 760 C180 704 310 790 510 740 C745 680 865 745 1055 710 C1330 660 1505 700 1800 640 L1800 1125 L0 1125 Z" fill="#ffffff"/>
+    <path d="M0 830 C265 770 405 895 695 820 C995 742 1190 855 1450 790 C1590 755 1700 760 1800 800 L1800 1125 L0 1125 Z" fill="#e8f5ff" opacity="0.88"/>
+  </g>
+  <g opacity="0.30" fill="#ff75b7">
+    <circle cx="158" cy="340" r="4"/>
+    <circle cx="508" cy="250" r="3"/>
+    <circle cx="815" cy="305" r="5"/>
+    <circle cx="1190" cy="276" r="3"/>
+    <circle cx="1418" cy="420" r="4"/>
+    <circle cx="1640" cy="230" r="3"/>
+  </g>
+</svg>

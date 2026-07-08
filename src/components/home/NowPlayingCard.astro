@@ -5,12 +5,12 @@ import MusicPlayer from "@/components/music/MusicPlayer.tsx";
 import AppleMusicBadge from "@/components/music/AppleMusicBadge.astro";
 ---
 
-<GlassCard ticks class="flex flex-col gap-4 p-5">
+<GlassCard ticks class="music-card flex flex-col gap-4 p-5">
   <SectionTitle labelEn="NOW PLAYING" title="正在播放" icon="music" href="/music" hrefLabel="MUSIC" />
 
   <MusicPlayer client:visible />
 
-  <div class="flex items-center justify-between gap-3 border-t border-[var(--ia-line)] pt-3">
+  <div class="music-card-footer flex items-center justify-between gap-3 border-t border-[var(--ia-line)] pt-3">
     <p class="mono text-[11px] leading-relaxed text-[var(--ia-mist)]">
       // Apple Music 连接即将上线
     </p>

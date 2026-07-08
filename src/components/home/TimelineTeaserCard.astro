@@ -8,6 +8,7 @@ interface Props {
   recent?: { title: string; typeLabel: string }[];
   class?: string;
 }
+
 const { count, latest, recent = [], class: className = "" } = Astro.props;
 ---
 
@@ -16,37 +17,38 @@ const { count, latest, recent = [], class: className = "" } = Astro.props;
   class:list={["teaser-card glass-card corner-ticks clickable group flex flex-col", className]}
   aria-label={`查看世界线动态，共 ${count} 条记录`}
 >
+  <div class="teaser-scan" aria-hidden="true"></div>
+
   <div class="flex items-center justify-between gap-3">
     <span class="eyebrow flex items-center gap-2">
       <Icon name="timeline" size={14} class="text-[var(--ia-neon)]" />
       WORLDLINE LOG
     </span>
-    <span class="mono text-[10px] tracking-[0.16em] text-[var(--ia-mist)] opacity-70">OBSERVATION</span>
+    <span class="teaser-state mono">OBSERVATION</span>
   </div>
 
   <div class="teaser-metrics">
-    <div>
-      <b class="teaser-count mono font-bold text-[var(--ia-star)]">{count}</b>
-      <span class="ml-2 text-sm text-[var(--ia-mist)]">records</span>
+    <div class="teaser-count-block">
+      <b class="teaser-count mono">{count}</b>
+      <span>records</span>
     </div>
-    {latest && <span class="teaser-latest mono">latest signal: {latest}</span>}
+    {latest && <span class="teaser-latest mono">latest signal {latest}</span>}
   </div>
 
-  {
-    recent.length > 0 && (
-      <ul class="teaser-recent">
-        {recent.slice(0, 2).map((r) => (
-          <li>
-            <span class="teaser-type mono">{r.typeLabel.split(" // ")[0]}</span>
-            <span class="truncate">{r.title}</span>
-          </li>
-        ))}
-      </ul>
-    )
-  }
+  <ul class="teaser-recent" aria-label="最近记录">
+    {
+      recent.slice(0, 2).map((r) => (
+        <li>
+          <span class="signal-dot" aria-hidden="true"></span>
+          <span class="teaser-type mono">{r.typeLabel.split(" // ")[0]}</span>
+          <span class="truncate">{r.title}</span>
+        </li>
+      ))
+    }
+  </ul>
 
-  <span class="mt-auto flex items-center gap-1.5 pt-3 text-[13px] font-medium text-[var(--ia-ink)] transition-colors group-hover:text-[var(--ia-neon)]">
-    查看时间线
+  <span class="teaser-cta">
+    查看世界线动态
     <Icon name="arrow" size={15} class="transition-transform group-hover:translate-x-0.5" />
   </span>
 </a>

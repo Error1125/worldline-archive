@@ -2,6 +2,7 @@
 interface Props {
   class?: string;
 }
+
 const { class: className = "" } = Astro.props;
 ---
 
@@ -25,12 +26,12 @@ const { class: className = "" } = Astro.props;
   <div class="scene-mode-main">
     <span class="scene-orb" aria-hidden="true">
       <span class="scene-orb-night">
-        <svg width="25" height="25" viewBox="0 0 24 24" fill="currentColor">
+        <svg width="31" height="31" viewBox="0 0 24 24" fill="currentColor">
           <path d="M20 14.5A8 8 0 019.5 4 7 7 0 1020 14.5z" />
         </svg>
       </span>
       <span class="scene-orb-day">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <circle cx="12" cy="12" r="4.2" fill="currentColor" stroke="none" />
           <path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5 5l1.9 1.9M17.1 17.1L19 19M19 5l-1.9 1.9M6.9 17.1L5 19" />
         </svg>
@@ -51,6 +52,11 @@ const { class: className = "" } = Astro.props;
     <span class="scene-switch shrink-0" aria-hidden="true">
       <span class="scene-knob"></span>
     </span>
+  </div>
+
+  <div class="scene-mode-footer mono">
+    <span>tap to switch</span>
+    <span>local memory on</span>
   </div>
 </button>
 

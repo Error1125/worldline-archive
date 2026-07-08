@@ -1,36 +1,36 @@
 import { useEffect, useMemo, useState } from "react";
-import { sceneBackgrounds, SCENE_CYCLE_MS } from "@/config/backgrounds";
+import { daySceneBackgrounds, sceneBackgrounds, SCENE_CYCLE_MS } from "@/config/backgrounds";
 import { withBase } from "@/lib/paths";
 
-/**
- * SceneBackground —— 背景图轮播层（星空的下层）。
- *
- * 层级（自下而上）：
- *   .ia-nebula (z-0) → SceneBackground (z-0, DOM 靠后) → Starfield (z-1)
- *   → Danmaku (z-2) → 正文 (z-10)
- *
- * 行为：
- * - 预加载配置里的图片，加载失败的直接剔除；
- * - 一张都没有 / 全部失败 → 渲染 null，自动回退到现有星云 + 星空兜底；
- * - 每 SCENE_CYCLE_MS 淡入淡出切换（blur + scale 慢漂移）；
- * - 标签页隐藏时暂停计时；
- * - prefers-reduced-motion：只显示第一张，不轮播、不漂移；
- * - pointer-events: none，永不拦截交互。
- */
 export default function SceneBackground() {
-  const items = useMemo(
-    () => sceneBackgrounds.map((it) => ({ ...it, url: withBase(it.src) })),
-    [],
-  );
-
+  const [mode, setMode] = useState<"night" | "day">("night");
   const [loaded, setLoaded] = useState<string[]>([]);
   const [index, setIndex] = useState(0);
   const [reduced, setReduced] = useState(false);
 
-  // 预加载 + 剔除失败项
+  useEffect(() => {
+    const readMode = () => {
+      setMode(document.documentElement.dataset.sceneMode === "day" ? "day" : "night");
+    };
+    readMode();
+    window.addEventListener("scene-mode-change", readMode);
+    document.addEventListener("astro:page-load", readMode);
+    return () => {
+      window.removeEventListener("scene-mode-change", readMode);
+      document.removeEventListener("astro:page-load", readMode);
+    };
+  }, []);
+
+  const items = useMemo(
+    () => (mode === "day" ? daySceneBackgrounds : sceneBackgrounds).map((it) => ({ ...it, url: withBase(it.src) })),
+    [mode],
+  );
+
   useEffect(() => {
     if (items.length === 0) return;
     setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    setLoaded([]);
+    setIndex(0);
 
     let alive = true;
     const ok: string[] = [];
@@ -41,7 +41,6 @@ export default function SceneBackground() {
       img.onload = () => {
         ok.push(it.url);
         if (--pending === 0 && alive) {
-          // 保持配置顺序
           setLoaded(items.map((x) => x.url).filter((u) => ok.includes(u)));
         }
       };
@@ -52,12 +51,12 @@ export default function SceneBackground() {
       };
       img.src = it.url;
     }
+
     return () => {
       alive = false;
     };
   }, [items]);
 
-  // 轮播计时
   useEffect(() => {
     if (reduced || loaded.length < 2) return;
     const timer = window.setInterval(() => {
@@ -67,12 +66,11 @@ export default function SceneBackground() {
     return () => window.clearInterval(timer);
   }, [reduced, loaded]);
 
-  if (loaded.length === 0) return null; // 星空兜底
-
+  if (loaded.length === 0) return null;
   const active = reduced ? 0 : index % loaded.length;
 
   return (
-    <div className="scene-bg" aria-hidden="true">
+    <div className="scene-bg" aria-hidden="true" data-scene={mode}>
       {loaded.map((url, i) => {
         const meta = items.find((it) => it.url === url);
         return (
@@ -88,7 +86,6 @@ export default function SceneBackground() {
           />
         );
       })}
-      {/* 深色遮罩：保证正文可读 */}
       <div className="scene-bg-shade" />
     </div>
   );

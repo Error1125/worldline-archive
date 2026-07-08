@@ -6,57 +6,50 @@ interface Props {
   startDate: string;
   class?: string;
 }
-const { startDate, class: className = "" } = Astro.props;
 
+const { startDate, class: className = "" } = Astro.props;
 const days = Math.max(1, Math.floor((Date.now() - new Date(startDate).getTime()) / 86_400_000));
 const year = new Date().getFullYear();
 const tech = ["Astro", "React", "Tailwind"];
 const worldline = siteConfig.profile.worldline;
 ---
 
-<div class:list={["status-strip glass hidden items-center gap-4 lg:flex", className]} role="contentinfo">
-  <span class="mono flex items-center gap-2 text-[12px] text-[var(--ia-star)]">
-    <Icon name="clock" size={13} class="text-[var(--ia-neon)]" />
+<div class:list={["status-strip glass hidden lg:flex", className]} role="contentinfo">
+  <div class="status-clock mono">
+    <Icon name="clock" size={16} />
     <span data-wl-clock>--:--:--</span>
-  </span>
+  </div>
 
-  <span class="strip-sep" aria-hidden="true"></span>
+  <div class="status-main">
+    <span class="status-signal">
+      <span class="inline-block size-2 rounded-full bg-[var(--ia-success)]"></span>
+      worldline <b>{worldline}</b> stable
+    </span>
+    <span class="strip-sep"></span>
+    <span class="mono">running {days} days</span>
+    <span class="strip-sep hidden xl:block"></span>
+    <span class="hidden xl:inline">archive sync complete</span>
+  </div>
 
-  <span class="mono flex items-center gap-2 text-[12px] text-[var(--ia-mist)]">
-    worldline <b class="font-semibold text-[var(--ia-ink)]">{worldline}</b>
-    <span class="status-badge" style="--sb-c: var(--ia-success)">stable</span>
-  </span>
-
-  <span class="strip-sep" aria-hidden="true"></span>
-
-  <span class="mono text-[12px] text-[var(--ia-mist)]">
-    running <b class="text-[var(--ia-ink)]">{days}</b> days
-  </span>
-
-  <span class="strip-sep hidden xl:block" aria-hidden="true"></span>
-
-  <span class="mono hidden items-center gap-1.5 text-[12px] text-[var(--ia-mist)] opacity-80 xl:flex">
-    <span class="inline-block size-1 rounded-full bg-[var(--ia-success)]"></span>
-    archive stable
-  </span>
-
-  <span class="ml-auto flex items-center gap-2">
+  <div class="status-tags">
     {tech.map((t) => <span class="tag-chip">{t}</span>)}
-    <span class="mono pl-1 text-[11px] text-[var(--ia-mist)] opacity-65">© {year} {siteConfig.author}</span>
-  </span>
+    <span class="mono status-copy">© {year} {siteConfig.author}</span>
+  </div>
 </div>
 
 <script>
   function fmt(n: number) {
     return String(n).padStart(2, "0");
   }
+
   function tick() {
-    const els = document.querySelectorAll<HTMLElement>("[data-wl-clock]");
-    if (els.length === 0) return;
     const d = new Date();
-    els.forEach((el) => (el.textContent = `${fmt(d.getHours())}:${fmt(d.getMinutes())}:${fmt(d.getSeconds())}`));
+    const s = `${fmt(d.getHours())}:${fmt(d.getMinutes())}:${fmt(d.getSeconds())}`;
+    document.querySelectorAll<HTMLElement>("[data-wl-clock]").forEach((el) => {
+      el.textContent = s;
+    });
   }
+
   tick();
-  window.setInterval(tick, 1000);
-  document.addEventListener("astro:page-load", tick);
+  setInterval(tick, 1000);
 </script>

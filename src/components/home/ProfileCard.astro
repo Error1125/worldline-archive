@@ -4,20 +4,11 @@ import GlassCard from "@/components/common/GlassCard.astro";
 import Icon from "@/components/common/Icon.astro";
 import { withBase } from "@/lib/paths";
 
-/**
- * ProfileCard.astro —— 存档者档案卡（观测室版）。
- *
- * - 头像更大 + 发光渐变描边；点击头像 / 名字进入 /about；
- * - 一句简介 + 当前状态，文字密度压到最低；
- * - 统计数字醒目且各自可点（文章 / 项目 / 档案 / 照片）；
- * - GitHub / Email / About 做成按钮式圆形 icon，hover 上浮；
- * - 整卡是 <div>，内部各链接独立，不嵌套 <a>；
- *   内部链接 withBase()，外链 / mailto 不加 base（withBase 已兜底）。
- */
 interface Props {
   counts: { posts: number; projects: number; archives: number; photos: number };
   class?: string;
 }
+
 const { counts, class: className = "" } = Astro.props;
 const p = siteConfig.profile;
 
@@ -31,71 +22,66 @@ const stats = [
 const iconLinks = [
   { icon: "github", label: "GitHub", href: siteConfig.links.github, external: true },
   { icon: "post", label: "Email", href: siteConfig.links.email, external: false },
-  { icon: "about", label: "关于我", href: withBase("/about"), external: false },
+  { icon: "about", label: "About", href: withBase("/about"), external: false },
 ].filter((l) => l.href);
 ---
 
-<GlassCard ticks class:list={["flex flex-col gap-4 p-5 sm:p-6", className]}>
-  <div class="flex items-center gap-4">
-    <!-- 头像：渐变发光描边 + 在线呼吸点 -->
-    <a href={withBase("/about")} class="clickable avatar-ring shrink-0" aria-label="关于我">
+<GlassCard ticks class={`profile-card ${className}`}>
+  <div class="profile-card-glow" aria-hidden="true"></div>
+
+  <div class="profile-main">
+    <a href={withBase("/about")} class="clickable avatar-ring profile-avatar shrink-0" aria-label="查看关于页面">
       <span class="avatar-core">
-        <Icon name="user" size={34} class="text-[var(--ia-star)]" />
+        <Icon name="user" size={42} class="text-[var(--ia-star)]" />
       </span>
-      <span class="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center">
-        <span class="absolute inline-flex size-3.5 animate-ping rounded-full bg-[var(--ia-success)] opacity-50"></span>
-        <span class="relative inline-flex size-2.5 rounded-full bg-[var(--ia-success)] shadow-[0_0_8px_var(--ia-success)]"></span>
+      <span class="profile-online" aria-hidden="true">
+        <span></span>
       </span>
     </a>
 
-    <div class="min-w-0">
-      <a href={withBase("/about")} class="clickable group flex flex-wrap items-baseline gap-x-2">
-        <span class="text-xl font-bold tracking-wide text-[var(--ia-ink)] transition-colors group-hover:text-[var(--ia-neon)]">
+    <div class="profile-copy min-w-0">
+      <a href={withBase("/about")} class="clickable group inline-flex flex-wrap items-baseline gap-x-2">
+        <span class="profile-name text-[var(--ia-ink)] transition-colors group-hover:text-[var(--ia-neon)]">
           {siteConfig.author}
         </span>
-        <span class="mono text-xs text-[var(--ia-neon)] opacity-90">{p.handle}</span>
+        <span class="mono profile-handle text-[var(--ia-neon)]">{p.handle}</span>
       </a>
-      <p class="mt-1 line-clamp-2 text-[13px] leading-relaxed text-[var(--ia-mist)]">{p.signature}</p>
-      <p class="mono mt-1.5 flex items-center gap-1.5 text-[10px] tracking-wider text-[var(--ia-mist)] opacity-80">
-        <span class="inline-block size-1 rounded-full bg-[var(--ia-neon)]"></span>
-        {p.status} · {p.mood}
+      <p class="profile-signature text-[var(--ia-mist)]">{p.signature}</p>
+      <p class="mono profile-status text-[var(--ia-mist)]">
+        <span class="inline-block size-1.5 rounded-full bg-[var(--ia-neon)] shadow-[0_0_8px_var(--ia-neon)]"></span>
+        {p.status} / {p.mood}
       </p>
     </div>
   </div>
 
-  <!-- 统计：醒目数字，各自可点 -->
-  <div class="grid grid-cols-4 gap-2">
+  <div class="profile-stats" aria-label="档案统计">
     {
       stats.map((s) => (
-        <a
-          href={withBase(s.href)}
-          class="clickable group flex flex-col items-center gap-0.5 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] px-1 py-2.5 transition-colors hover:border-[var(--ia-neon)]"
-          aria-label={`${s.label} ${s.value} 条`}
-        >
-          <b class="mono text-lg font-bold leading-none text-[var(--ia-star)] transition-colors group-hover:text-[var(--ia-neon)]">
-            {s.value}
-          </b>
-          <span class="text-[10.5px] text-[var(--ia-mist)]">{s.label}</span>
+        <a href={withBase(s.href)} class="profile-stat clickable group" aria-label={`查看${s.label}，共 ${s.value} 条`}>
+          <b class="mono">{s.value}</b>
+          <span>{s.label}</span>
+          <em class="mono">{s.labelEn}</em>
         </a>
       ))
     }
   </div>
 
-  <!-- 外链按钮 -->
-  <div class="flex items-center gap-2.5">
-    {
-      iconLinks.map((l) => (
-        <a
-          href={l.href}
-          {...(l.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-          aria-label={l.label}
-          title={l.label}
-          class="clickable grid size-9 place-items-center rounded-full border border-[var(--ia-line-strong)] bg-[var(--ia-panel)] text-[var(--ia-mist)] transition-all hover:-translate-y-0.5 hover:border-[var(--ia-neon)] hover:text-[var(--ia-neon)] hover:shadow-[0_6px_16px_-6px_color-mix(in_srgb,var(--ia-neon)_60%,transparent)]"
-        >
-          <Icon name={l.icon} size={16} />
-        </a>
-      ))
-    }
-    <span class="mono ml-auto text-[10px] tracking-[0.16em] text-[var(--ia-mist)] opacity-60">SAVE POINT 07</span>
+  <div class="profile-actions">
+    <div class="flex items-center gap-2.5">
+      {
+        iconLinks.map((l) => (
+          <a
+            href={l.href}
+            {...(l.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+            aria-label={l.label}
+            title={l.label}
+            class="profile-action clickable"
+          >
+            <Icon name={l.icon} size={17} />
+          </a>
+        ))
+      }
+    </div>
+    <span class="mono profile-save">SAVE POINT 07</span>
   </div>
 </GlassCard>
