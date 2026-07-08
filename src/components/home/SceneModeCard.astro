@@ -1,4 +1,11 @@
 ---
+/**
+ * SceneModeCard —— 昼夜模式卡（v3）。
+ * - 整张卡是一个 <button>，点击 / Enter / Space 即切换昼夜模式；
+ * - 已移除卡内独立 toggle 开关（与整卡点击重复）；
+ * - 页脚提示当前点击后的目标模式（tap to switch day/night mode）；
+ * - 切换与持久化逻辑由 SiteLayout 的全局 GlobalSceneModeController 承担。
+ */
 interface Props {
   class?: string;
 }
@@ -45,52 +52,24 @@ const { class: className = "" } = Astro.props;
       </div>
       <p class="scene-sub text-[var(--ia-mist)]">
         <span data-when="night">星轨观测的深夜</span>
-        <span data-when="day">落樱漫舞的清晨</span>
+        <span data-when="day">樱花漂浮的清晨</span>
       </p>
     </div>
 
-    <span class="scene-switch shrink-0" aria-hidden="true">
-      <span class="scene-knob"></span>
+    <span class="scene-tap-hint" aria-hidden="true">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12" />
+        <path d="M11 11.5v-1a1.5 1.5 0 0 1 3 0v1.5" />
+        <path d="M14 12v-.5a1.5 1.5 0 0 1 3 0V14c0 4-2.5 6.5-6 6.5-2.7 0-4.3-1.2-5.6-3.4L4 13.9c-.5-.9.2-2 1.3-1.9.5 0 .9.3 1.2.7L8 14.5" />
+      </svg>
     </span>
   </div>
 
   <div class="scene-mode-footer mono">
-    <span>tap to switch</span>
+    <span>
+      <span data-when="night">tap to switch day mode</span>
+      <span data-when="day">tap to switch night mode</span>
+    </span>
     <span>local memory on</span>
   </div>
 </button>
-
-<script>
-  const KEY = "wl-scene-mode";
-
-  function applyMode(mode: "night" | "day") {
-    document.documentElement.dataset.sceneMode = mode;
-    try {
-      localStorage.setItem(KEY, mode);
-    } catch {}
-    document
-      .querySelectorAll<HTMLElement>("[data-scene-toggle]")
-      .forEach((b) => b.setAttribute("aria-pressed", mode === "day" ? "true" : "false"));
-    window.dispatchEvent(new CustomEvent("scene-mode-change", { detail: { mode } }));
-  }
-
-  function current(): "night" | "day" {
-    return document.documentElement.dataset.sceneMode === "day" ? "day" : "night";
-  }
-
-  function syncButtons() {
-    const mode = current();
-    document
-      .querySelectorAll<HTMLElement>("[data-scene-toggle]")
-      .forEach((b) => b.setAttribute("aria-pressed", mode === "day" ? "true" : "false"));
-  }
-
-  document.addEventListener("click", (e) => {
-    const btn = (e.target as HTMLElement | null)?.closest?.("[data-scene-toggle]");
-    if (!btn) return;
-    applyMode(current() === "day" ? "night" : "day");
-  });
-
-  syncButtons();
-  document.addEventListener("astro:page-load", syncButtons);
-</script>

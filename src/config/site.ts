@@ -18,6 +18,16 @@ export const siteConfig = {
   links: {
     github: "https://github.com/Error1125",
     email: "mailto:traveler@example.com",
+    /** QQ 号（点击图标弹出账号 / 二维码；留空则不显示入口） */
+    qq: "10000",
+    /** 可选：QQ 二维码图片路径（/images/...），不填则只显示账号 */
+    qqQr: "",
+    /** 微信号（点击图标弹出账号 / 二维码；留空则不显示入口） */
+    wechat: "traveler_wx",
+    /** 可选：微信二维码图片路径（/images/...），不填则只显示账号 */
+    wechatQr: "",
+    /** Bilibili 个人主页（留空则不显示入口） */
+    bilibili: "https://space.bilibili.com/1",
     bangumi: "",
     anilist: "",
   },

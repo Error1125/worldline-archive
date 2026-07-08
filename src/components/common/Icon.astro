@@ -7,9 +7,10 @@ interface Props {
   name: string;
   size?: number;
   class?: string;
+  style?: string;
   strokeWidth?: number;
 }
-const { name, size = 18, class: className = "", strokeWidth = 1.6 } = Astro.props;
+const { name, size = 18, class: className = "", style, strokeWidth = 1.6 } = Astro.props;
 
 // 每个图标是一段 <path>/<g> 内容，viewBox 统一 0 0 24 24
 const paths: Record<string, string> = {
@@ -27,6 +28,10 @@ const paths: Record<string, string> = {
   search: `<circle cx="11" cy="11" r="6" /><path d="m16 16 4 4" />`,
   star: `<path d="M12 3.5l2.6 5.6 6 .8-4.4 4.1 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.9l6-.8z" />`,
   github: `<path d="M9 19c-4 1.4-4-2-5.5-2.5M15 21v-3.2c0-1 .2-1.6-.5-2.2 2.3-.3 4.5-1.1 4.5-5a3.9 3.9 0 0 0-1.1-2.7 3.6 3.6 0 0 0-.1-2.7s-.9-.3-3 1a10 10 0 0 0-5.4 0c-2.1-1.3-3-1-3-1a3.6 3.6 0 0 0-.1 2.7A3.9 3.9 0 0 0 4 12.6c0 3.9 2.2 4.7 4.5 5-.4.4-.6.9-.6 1.6V21" />`,
+  mail: `<rect x="3.5" y="5.5" width="17" height="13" rx="2" /><path d="m4.5 7.5 7.5 5.6 7.5-5.6" />`,
+  qq: `<path d="M12 3.5c-2.7 0-4.4 1.9-4.7 4.4-.1.9-.4 1.7-.8 2.5-.9 1.6-1.5 2.9-1.5 4.2 0 3 3.1 5.4 7 5.4s7-2.4 7-5.4c0-1.3-.6-2.6-1.5-4.2-.4-.8-.7-1.6-.8-2.5C16.4 5.4 14.7 3.5 12 3.5z" /><path d="M8.3 19.3c-1.5.6-3.2.5-3.7-.2-.4-.6.3-1.6 1.4-2.4" /><path d="M15.7 19.3c1.5.6 3.2.5 3.7-.2.4-.6-.3-1.6-1.4-2.4" /><path d="M9 15.3c.9.6 1.9.9 3 .9s2.1-.3 3-.9" />`,
+  wechat: `<path d="M10.6 4.5C6.9 4.5 4 6.9 4 9.9c0 1.7.9 3.2 2.4 4.2l-.5 2 2.2-1.1c.5.1 1 .2 1.6.2" /><path d="M14.6 8.6c3.1 0 5.6 2.1 5.6 4.7 0 1.5-.8 2.8-2.1 3.7l.4 1.7-1.9-.9c-.6.2-1.3.3-2 .3-3.1 0-5.6-2.1-5.6-4.8s2.5-4.7 5.6-4.7z" /><path d="M12.7 12.9h.01M16.4 12.9h.01" stroke-width="2.1" />`,
+  bilibili: `<rect x="3.5" y="7" width="17" height="12" rx="2.6" /><path d="M8 3.5 10.4 7M16 3.5 13.6 7" /><path d="M9.2 11.5v2.4M14.8 11.5v2.4" />`,
   terminal: `<path d="M4 5h16v14H4z" /><path d="m8 10 3 2-3 2" /><path d="M13 15h4" />`,
   lock: `<rect x="5" y="11" width="14" height="9" rx="1.6" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /><path d="M12 15v2" />`,
   user: `<circle cx="12" cy="8" r="3.4" /><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />`,
@@ -49,6 +54,7 @@ const inner = paths[name] ?? paths.star;
   stroke-linecap="round"
   stroke-linejoin="round"
   class={`ia-icon ${className}`}
+  style={style}
   aria-hidden="true"
   set:html={inner}
 />

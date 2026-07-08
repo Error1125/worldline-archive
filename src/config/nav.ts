@@ -18,14 +18,7 @@ export const mainNav: NavItem[] = [
   { label: "关于", labelEn: "ABOUT", href: "/about", icon: "about" },
 ];
 
-export const mobileNav: NavItem[] = [
-  { label: "首页", labelEn: "HOME", href: "/", icon: "home" },
-  { label: "时间线", labelEn: "TIMELINE", href: "/timeline", icon: "timeline" },
-  { label: "文章", labelEn: "POSTS", href: "/posts", icon: "post" },
-  { label: "档案", labelEn: "ARCHIVE", href: "/archive", icon: "archive" },
-  { label: "关于", labelEn: "ABOUT", href: "/about", icon: "about" },
-];
-
+// v3：移动端底部 TabBar 已移除，移动端导航统一由「放射展开菜单」（fullNav）承担。
 export const fullNav: NavItem[] = mainNav;
 
 export const archiveNav: NavItem[] = [

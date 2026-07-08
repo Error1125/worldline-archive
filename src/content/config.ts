@@ -27,6 +27,9 @@ const posts = defineCollection({
     tags: z.array(z.string()).default([]),
     category: z.string().optional(),
     cover: z.string().optional(),
+    /** v3：可选的昼夜专用封面；有则按模式切换，只有 cover 时昼夜共用 */
+    coverDay: z.string().optional(),
+    coverNight: z.string().optional(),
     mood: z.string().optional(),
     draft: z.boolean().default(false),
     featured: z.boolean().default(false),
@@ -80,6 +83,9 @@ const projects = defineCollection({
     repo: z.string().optional(),
     demo: z.string().optional(),
     cover: z.string().optional(),
+    /** v3：可选的昼夜专用封面；有则按模式切换，只有 cover 时昼夜共用 */
+    coverDay: z.string().optional(),
+    coverNight: z.string().optional(),
     featured: z.boolean().default(false),
     visibility,
     github: z
@@ -107,6 +113,9 @@ const anime = defineCollection({
     episodes: z.number().optional(),
     currentEpisode: z.number().optional(),
     cover: z.string().optional(),
+    /** v3：可选的昼夜专用封面；有则按模式切换，只有 cover 时昼夜共用 */
+    coverDay: z.string().optional(),
+    coverNight: z.string().optional(),
     season: z.string().optional(),
     year: z.number().optional(),
     tags: z.array(z.string()).default([]),
@@ -131,6 +140,9 @@ const music = defineCollection({
     date: z.coerce.date(),
     type: z.enum(["song", "album", "playlist"]),
     cover: z.string().optional(),
+    /** v3：可选的昼夜专用封面；有则按模式切换，只有 cover 时昼夜共用 */
+    coverDay: z.string().optional(),
+    coverNight: z.string().optional(),
     tags: z.array(z.string()).default([]),
     mood: z.string().optional(),
     comment: z.string().optional(),

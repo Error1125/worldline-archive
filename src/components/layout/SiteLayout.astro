@@ -5,9 +5,9 @@ import { siteConfig } from "@/config/site";
 import { withBase } from "@/lib/paths";
 
 import Header from "@/components/layout/Header.astro";
-import MobileNav from "@/components/layout/MobileNav.astro";
 import MobileRadialMenu from "@/components/layout/MobileRadialMenu.tsx";
 import Footer from "@/components/layout/Footer.astro";
+import GlobalMusicPlayer from "@/components/music/GlobalMusicPlayer.tsx";
 
 import Starfield from "@/components/effects/Starfield.tsx";
 import SakuraPetals from "@/components/effects/SakuraPetals.tsx";
@@ -42,28 +42,36 @@ const pageDesc = description ?? siteConfig.description;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script is:inline>
-      // 无闪烁昼夜模式：paint 前依据 localStorage 设定 html[data-scene-mode]（默认 night）。
+      // 无闪烁昼夜模式（全站持久化）：
+      // 1) paint 前依据 localStorage 设定 html[data-scene-mode]（默认 night）；
+      // 2) View Transitions 换页会用新文档的 <html> 属性覆盖当前属性，
+      //    因此在 astro:after-swap（DOM 交换后、绘制前）重新应用，避免「切到 Day 后进内页又变回夜间」。
       (function () {
-        try {
-          var m = localStorage.getItem("wl-scene-mode");
-          document.documentElement.dataset.sceneMode = m === "day" ? "day" : "night";
-        } catch (e) {
-          document.documentElement.dataset.sceneMode = "night";
+        function readMode() {
+          try {
+            return localStorage.getItem("wl-scene-mode") === "day" ? "day" : "night";
+          } catch (e) {
+            return "night";
+          }
         }
+        function apply() {
+          document.documentElement.dataset.sceneMode = readMode();
+        }
+        apply();
+        document.addEventListener("astro:after-swap", apply);
       })();
     </script>
     <link rel="icon" href={withBase("/favicon.svg")} type="image/svg+xml" />
     <title>{pageTitle}</title>
     <meta name="description" content={pageDesc} />
     <meta name="generator" content={Astro.generator} />
-    <meta name="color-scheme" content="dark" />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={pageDesc} />
     <meta property="og:type" content="website" />
     <ClientRouter />
   </head>
 
-  <body class="main-has-tabbar min-h-screen text-[var(--ia-ink)] antialiased">
+  <body class="min-h-screen text-[var(--ia-ink)] antialiased">
     <!-- 背景层：星云渐变（z-0），路由间持久化，避免闪烁 -->
     <div class="ia-nebula" transition:persist="nebula" aria-hidden="true"></div>
 
@@ -90,7 +98,7 @@ const pageDesc = description ?? siteConfig.description;
       class:list={[
         "relative z-10 mx-auto w-full",
         home
-          ? "home-shell max-w-[1180px] px-4 pt-5 pb-7 sm:px-6 sm:pt-6 lg:flex lg:flex-col lg:pb-5"
+          ? "home-shell max-w-[1180px] px-4 pt-5 pb-7 sm:px-6 sm:pt-6 xl:flex xl:flex-col xl:pb-5"
           : "max-w-6xl px-5 py-8 sm:px-6 sm:py-10",
       ]}
     >
@@ -99,19 +107,60 @@ const pageDesc = description ?? siteConfig.description;
 
     {!home && <Footer />}
 
-    <MobileNav />
+    <!-- 非首页全局音乐浮球（首页由 NowPlayingCard 承担，组件内部依据 pathname 自行隐藏）；
+         transition:persist 保证换页时播放状态不丢失 -->
+    <GlobalMusicPlayer client:only="react" transition:persist="global-music" />
 
     <!-- 移动端「全部入口」放射菜单（桌面隐藏；持久化避免路由闪烁） -->
     <MobileRadialMenu client:only="react" transition:persist="radial" />
 
     <!--
-      SSR-safe 的两段客户端增强脚本：
+      SSR-safe 的客户端增强脚本：
+      0) 全局昼夜模式控制器：委托 [data-scene-toggle] 点击，写入 localStorage 并广播事件；
       1) 卡片聚光：跟随鼠标更新 .glass-card 的 --spot-x / --spot-y；
       2) 进场浮现：IntersectionObserver 给 .reveal 加 .in。
       使用事件委托 + astro:page-load，兼容 View Transitions。
     -->
     <script>
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      // 0) 全局昼夜模式控制器（GlobalSceneModeController）
+      const SCENE_KEY = "wl-scene-mode";
+      type SceneMode = "night" | "day";
+
+      function currentScene(): SceneMode {
+        return document.documentElement.dataset.sceneMode === "day" ? "day" : "night";
+      }
+      function applyScene(mode: SceneMode) {
+        document.documentElement.dataset.sceneMode = mode;
+        try {
+          localStorage.setItem(SCENE_KEY, mode);
+        } catch {}
+        syncSceneToggles();
+        window.dispatchEvent(new CustomEvent("scene-mode-change", { detail: { mode } }));
+      }
+      function syncSceneToggles() {
+        const mode = currentScene();
+        document
+          .querySelectorAll<HTMLElement>("[data-scene-toggle]")
+          .forEach((b) => b.setAttribute("aria-pressed", mode === "day" ? "true" : "false"));
+      }
+      document.addEventListener("click", (e) => {
+        const btn = (e.target as HTMLElement | null)?.closest?.("[data-scene-toggle]");
+        if (!btn) return;
+        applyScene(currentScene() === "day" ? "night" : "day");
+      });
+      document.addEventListener("keydown", (e) => {
+        // 卡片本体是 <button>，Enter/Space 会触发 click；这里兜底其他宿主元素
+        if (e.key !== "Enter" && e.key !== " ") return;
+        const el = e.target as HTMLElement | null;
+        if (el?.hasAttribute?.("data-scene-toggle") && el.tagName !== "BUTTON") {
+          e.preventDefault();
+          applyScene(currentScene() === "day" ? "night" : "day");
+        }
+      });
+      syncSceneToggles();
+      document.addEventListener("astro:page-load", syncSceneToggles);
 
       // 1) 卡片聚光（委托到 document，命中 .glass-card）
       function onPointerMove(e: PointerEvent) {

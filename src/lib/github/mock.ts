@@ -12,7 +12,7 @@ export const mockRepos: GitHubRepo[] = [
   {
     owner: "traveler-dev",
     repo: "worldline-archive",
-    description: "荳ｪ莠ｺ蠑ゆｸ也阜蟄俶｡｣轤ｹ 窶披・逕ｨ Astro 隶ｰ蠖慕函豢ｻ縲∫分蜑ｧ縲・浹荵舌・｡ｹ逶ｮ荳・Bug縲・,
+    description: "Personal worldline archive built with Astro.",
     url: "https://github.com/Error1125/worldline-archive",
     language: "Astro",
     stars: 128,
@@ -23,7 +23,7 @@ export const mockRepos: GitHubRepo[] = [
   {
     owner: "traveler-dev",
     repo: "bug-battle-log",
-    description: "謚頑ｯ丈ｸ谺｡蜥・Bug 逧・・譁怜・謌仙､咲尨逧・ｰ丞ｷ･蜈ｷ縲・,
+    description: "Bug notes and postmortem records.",
     url: "https://github.com/traveler-dev/bug-battle-log",
     language: "TypeScript",
     stars: 64,
@@ -34,7 +34,7 @@ export const mockRepos: GitHubRepo[] = [
   {
     owner: "traveler-dev",
     repo: "anime-memory-shelf",
-    description: "逡ｪ蜑ｧ隗よｵ玖ｮｰ蠖慕噪謨ｰ謐ｮ讓｡蝙句ｮ樣ｪ後・,
+    description: "Anime watch notes and memory shelf.",
     url: "https://github.com/traveler-dev/anime-memory-shelf",
     language: "TypeScript",
     stars: 37,
@@ -49,7 +49,7 @@ export const mockActivity: GitHubActivity[] = [
     id: "evt_001",
     type: "commit",
     repo: "Error1125/worldline-archive",
-    title: "feat: 譏溽ｩｺ隗・ｷｮ + 蠑ｹ蟷募ｱる㍾譫・,
+    title: "feat: starfield and danmaku background",
     createdAt: "2025-06-28T21:14:00.000Z",
     url: "https://github.com/Error1125/worldline-archive",
   },
@@ -57,7 +57,7 @@ export const mockActivity: GitHubActivity[] = [
     id: "evt_002",
     type: "issue",
     repo: "Error1125/worldline-archive",
-    title: "遘ｻ蜉ｨ遶ｯ蠎暮Κ TabBar 驕ｮ謖｡豁｣譁・,
+    title: "fix: mobile tabbar overlay",
     createdAt: "2025-06-27T12:03:00.000Z",
   },
   {

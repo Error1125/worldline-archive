@@ -231,3 +231,79 @@ export async function getSearchIndex(): Promise<SearchDoc[]> {
     typeLabelZh: TYPE_META[it.type].labelZh,
   }));
 }
+
+// ---- Worldline Divergence 状态机制（v3 彩蛋） ----
+
+export type WorldlineLevel = "stable" | "observing" | "unstable" | "shift";
+
+export interface WorldlineStatus {
+  /** 最近窗口内的活跃度分数 */
+  score: number;
+  level: WorldlineLevel;
+  /** 状态徽章文案 */
+  badge: string;
+  /** 卡片底部说明 */
+  caption: string;
+  /** 统计窗口（天） */
+  windowDays: number;
+}
+
+/** 内容更新对世界线的扰动权重（见 v3 改修文档 §8） */
+export const WORLDLINE_WEIGHTS: Record<ContentType, number> = {
+  project: 5,
+  post: 4,
+  photo: 3,
+  bug: 3,
+  moment: 2,
+  anime: 1,
+  music: 1,
+};
+
+/**
+ * 根据最近 windowDays 天内的内容更新计算世界线状态。
+ * 分级：0-3 Stable / 4-8 Observing / 9-14 Unstable / 15+ Divergence Shift。
+ * 纯构建期计算，不依赖任何后台。
+ */
+export async function getWorldlineStatus(windowDays = 30): Promise<WorldlineStatus> {
+  const items = await getTimelineItems();
+  const since = Date.now() - windowDays * 86_400_000;
+  const score = items.reduce(
+    (acc, it) => acc + (it.date.getTime() >= since ? WORLDLINE_WEIGHTS[it.type] : 0),
+    0,
+  );
+
+  if (score >= 15) {
+    return {
+      score,
+      level: "shift",
+      badge: "divergence shifting",
+      caption: "检测到密集存档写入 · 世界线漂移中",
+      windowDays,
+    };
+  }
+  if (score >= 9) {
+    return {
+      score,
+      level: "unstable",
+      badge: "archive unstable",
+      caption: "档案更新频繁 · 观测值轻微扰动",
+      windowDays,
+    };
+  }
+  if (score >= 4) {
+    return {
+      score,
+      level: "observing",
+      badge: "observation active",
+      caption: "持续观测中 · 存档同步正常",
+      windowDays,
+    };
+  }
+  return {
+    score,
+    level: "stable",
+    badge: "archive stable",
+    caption: "当前世界线稳定 · 观测值已锁定",
+    windowDays,
+  };
+}

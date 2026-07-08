@@ -19,6 +19,7 @@ import {
   getPhotos,
   getBugs,
   getMoments,
+  getWorldlineStatus,
   TYPE_META,
   type ContentType,
 } from "@/lib/content";
@@ -34,6 +35,9 @@ const [posts, projects, anime, music, photos, bugs, moments] = await Promise.all
   getBugs(),
   getMoments(),
 ]);
+
+// v3：Worldline Divergence 状态（按最近 30 天内容更新计算）
+const worldlineStatus = await getWorldlineStatus();
 
 const totalArchives =
   posts.length + projects.length + bugs.length + anime.length + music.length + photos.length + moments.length;
@@ -69,6 +73,8 @@ for (const p of posts.filter((x) => x.data.featured).slice(0, 2)) {
     href: withBase(`/posts/${p.id}`),
     accent: ACCENT.post,
     image: p.data.cover ? withBase(p.data.cover) : undefined,
+    imageDay: p.data.coverDay ? withBase(p.data.coverDay) : undefined,
+    imageNight: p.data.coverNight ? withBase(p.data.coverNight) : undefined,
     imageAlt: p.data.title,
   });
 }
@@ -84,6 +90,8 @@ if (featProject) {
     href: withBase("/projects"),
     accent: ACCENT.project,
     image: featProject.data.cover ? withBase(featProject.data.cover) : undefined,
+    imageDay: featProject.data.coverDay ? withBase(featProject.data.coverDay) : undefined,
+    imageNight: featProject.data.coverNight ? withBase(featProject.data.coverNight) : undefined,
     imageAlt: featProject.data.title,
   });
 }
@@ -116,6 +124,8 @@ if (latestAnimeEntry) {
     href: withBase("/anime"),
     accent: ACCENT.anime,
     image: latestAnimeEntry.data.cover ? withBase(latestAnimeEntry.data.cover) : undefined,
+    imageDay: latestAnimeEntry.data.coverDay ? withBase(latestAnimeEntry.data.coverDay) : undefined,
+    imageNight: latestAnimeEntry.data.coverNight ? withBase(latestAnimeEntry.data.coverNight) : undefined,
     imageAlt: latestAnimeEntry.data.title,
   });
 }
@@ -132,6 +142,8 @@ if (latestMusicEntry) {
     href: withBase("/music"),
     accent: ACCENT.music,
     image: m.cover ? withBase(m.cover) : undefined,
+    imageDay: m.coverDay ? withBase(m.coverDay) : undefined,
+    imageNight: m.coverNight ? withBase(m.coverNight) : undefined,
     imageAlt: m.title,
   });
 }
@@ -174,32 +186,32 @@ const startDate = earliest.toISOString();
 ---
 
 <SiteLayout home>
-  <div class="home-stack flex flex-col gap-5 lg:h-full lg:min-h-0 lg:gap-6">
+  <div class="home-stack flex flex-col gap-5 xl:h-full xl:min-h-0 xl:gap-6">
     <section class="reveal shrink-0">
       <HeroSearch />
     </section>
 
     <div
-  class="home-grid grid min-h-0 grid-cols-1 gap-5 lg:flex-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:grid-rows-[auto_550px] xl:grid-rows-[auto_570px] 2xl:grid-rows-[auto_590px]"
+  class="home-grid grid min-h-0 grid-cols-1 gap-5 xl:flex-1 xl:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] xl:grid-rows-[auto_560px] 2xl:grid-rows-[auto_585px]"
 >
-      <div class="reveal order-1 min-w-0 lg:order-none lg:col-start-1 lg:row-start-1">
+      <div class="reveal order-1 min-w-0 xl:order-none xl:col-start-1 xl:row-start-1">
         <ProfileCard counts={counts} />
       </div>
 
-      <div class="reveal order-2 min-w-0 lg:order-none lg:col-start-2 lg:row-start-1">
+      <div class="reveal order-2 min-w-0 xl:order-none xl:col-start-2 xl:row-start-1">
         <NowPlayingCard />
       </div>
 
-      <div class="reveal order-3 min-h-0 min-w-0 lg:order-none lg:col-start-1 lg:row-start-2">
+      <div class="reveal order-3 min-h-0 min-w-0 xl:order-none xl:col-start-1 xl:row-start-2">
         <FeaturedDeck client:visible items={deckItems} className="h-full" />
       </div>
 
-      <div class="home-side-stack order-4 flex min-h-0 min-w-0 flex-col gap-5 lg:order-none lg:col-start-2 lg:row-start-2 lg:gap-5">
-  <div class="reveal min-h-0 lg:h-[165px] xl:h-[172px] 2xl:h-[178px] lg:flex-none">
-    <TimelineTeaserCard count={totalArchives} latest={timelineLatest} recent={timelineRecent} class="h-full" />
+      <div class="home-side-stack order-4 flex min-h-0 min-w-0 flex-col gap-5 xl:order-none xl:col-start-2 xl:row-start-2 xl:gap-5">
+  <div class="reveal min-h-0 xl:h-[172px] 2xl:h-[178px] xl:flex-none">
+    <TimelineTeaserCard count={totalArchives} latest={timelineLatest} recent={timelineRecent} status={worldlineStatus} class="h-full" />
   </div>
 
-  <div class="reveal min-h-0 lg:flex-1">
+  <div class="reveal min-h-0 xl:flex-1">
     <AnimeHomeCard
       count={anime.length}
       latestTitle={topAnime?.data.title}
@@ -209,7 +221,7 @@ const startDate = earliest.toISOString();
     />
   </div>
 
-  <div class="reveal min-h-0 lg:h-[155px] xl:h-[162px] 2xl:h-[168px] lg:flex-none">
+  <div class="reveal min-h-0 xl:h-[162px] 2xl:h-[168px] xl:flex-none">
     <SceneModeCard class="h-full" />
   </div>
 </div>

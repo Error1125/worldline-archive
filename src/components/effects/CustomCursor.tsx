@@ -24,6 +24,8 @@ export default function CustomCursor() {
     const dot = dotRef.current;
     const ring = ringRef.current;
     if (!dot || !ring) return;
+    const dotEl = dot;
+    const ringEl = ring;
 
     document.documentElement.classList.add("ia-cursor");
 
@@ -36,9 +38,9 @@ export default function CustomCursor() {
     const onMove = (e: PointerEvent) => {
       mouse.x = e.clientX;
       mouse.y = e.clientY;
-      dot.style.transform = `translate3d(${mouse.x}px, ${mouse.y}px, 0) translate(-50%, -50%)`;
+      dotEl.style.transform = `translate3d(${mouse.x}px, ${mouse.y}px, 0) translate(-50%, -50%)`;
       if (reduced) {
-        ring.style.transform = `translate3d(${mouse.x}px, ${mouse.y}px, 0) translate(-50%, -50%)`;
+        ringEl.style.transform = `translate3d(${mouse.x}px, ${mouse.y}px, 0) translate(-50%, -50%)`;
       }
       const target = e.target as Element | null;
       hovering = !!target && !!target.closest(HOVER_SELECTOR);
@@ -51,20 +53,20 @@ export default function CustomCursor() {
       pressing = false;
     };
     const onLeave = () => {
-      dot.style.opacity = "0";
-      ring.style.opacity = "0";
+      dotEl.style.opacity = "0";
+      ringEl.style.opacity = "0";
     };
     const onEnter = () => {
-      dot.style.opacity = "1";
-      ring.style.opacity = "1";
+      dotEl.style.opacity = "1";
+      ringEl.style.opacity = "1";
     };
 
     function tick() {
       ringPos.x += (mouse.x - ringPos.x) * cursorTheme.lerp;
       ringPos.y += (mouse.y - ringPos.y) * cursorTheme.lerp;
       const scale = pressing ? 0.7 : hovering ? cursorTheme.ringHoverScale : 1;
-      ring.style.transform = `translate3d(${ringPos.x}px, ${ringPos.y}px, 0) translate(-50%, -50%) scale(${scale})`;
-      ring.style.borderColor = hovering
+      ringEl.style.transform = `translate3d(${ringPos.x}px, ${ringPos.y}px, 0) translate(-50%, -50%) scale(${scale})`;
+      ringEl.style.borderColor = hovering
         ? "color-mix(in srgb, var(--ia-neon) 80%, transparent)"
         : "color-mix(in srgb, var(--ia-blue) 55%, transparent)";
       raf = requestAnimationFrame(tick);

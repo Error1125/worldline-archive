@@ -1,25 +1,17 @@
-import { useState } from "react";
 import { motion } from "motion/react";
-import type { AppleTrack } from "@/lib/apple-music/types";
-import { mockNowPlaying } from "@/lib/apple-music/mock";
 import { withBase } from "@/lib/paths";
+import { getTrack, nextTrack, playlist, togglePlaying, useMusicState } from "@/lib/music/store";
 
 /**
- * MusicPlayer —— 首页 / 音乐页的「正在收听」mock 播放器。
+ * MusicPlayer —— 首页 / 音乐页的「正在收听」mock 播放器（v3）。
  * 只做 UI：不真正播放音频、不做任何 OAuth。
- * 播放/暂停只切换律动条与进度动画的观感。
+ * v3：状态改由全局音乐 store 驱动 —— 与非首页的 GlobalMusicPlayer 共享
+ * 同一份播放状态（曲目 / 播放中 / 进度），从首页开始播放后进入其他页面，
+ * Mini Player 会无缝接管显示。
  */
-interface Props {
-  track?: AppleTrack;
-  initialProgress?: number;
-}
-
-export default function MusicPlayer({
-  track = mockNowPlaying.track,
-  initialProgress = mockNowPlaying.progress ?? 0.35,
-}: Props) {
-  const [playing, setPlaying] = useState(false);
-  const t = track;
+export default function MusicPlayer() {
+  const state = useMusicState();
+  const t = getTrack(state.index);
 
   if (!t) {
     return (
@@ -29,7 +21,8 @@ export default function MusicPlayer({
     );
   }
 
-  const pct = Math.round(initialProgress * 100);
+  const playing = state.playing;
+  const pct = Math.round(Math.min(1, Math.max(0, state.progress)) * 100);
 
   return (
     <div className="flex items-center gap-4 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] p-4">
@@ -38,7 +31,7 @@ export default function MusicPlayer({
         {t.artworkUrl ? (
           <img src={withBase(t.artworkUrl)} alt={t.title} className="size-full object-cover" />
         ) : (
-          <div className="grid size-full place-items-center bg-[#0b1024] text-[var(--ia-star)]">♪</div>
+          <div className="grid size-full place-items-center bg-[var(--ia-panel-strong)] text-[var(--ia-star)]">♪</div>
         )}
         <motion.div
           className="pointer-events-none absolute inset-0"
@@ -65,34 +58,49 @@ export default function MusicPlayer({
         </div>
 
         <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/10">
-          <motion.div
-            className="h-full rounded-full"
-            style={{ background: "linear-gradient(90deg, var(--ia-neon), var(--ia-nebula))" }}
-            initial={{ width: `${pct}%` }}
-            animate={{ width: playing ? "100%" : `${pct}%` }}
-            transition={{ duration: playing ? 40 : 0.4, ease: "linear" }}
+          <div
+            className="h-full rounded-full transition-[width] duration-1000 ease-linear"
+            style={{
+              width: `${pct}%`,
+              background: "linear-gradient(90deg, var(--ia-neon), var(--ia-nebula))",
+            }}
           />
         </div>
       </div>
 
-      {/* 播放/暂停（仅切换观感） */}
-      <button
-        type="button"
-        onClick={() => setPlaying((p) => !p)}
-        aria-label={playing ? "暂停" : "播放"}
-        className="clickable grid size-10 shrink-0 place-items-center rounded-full border border-[var(--ia-line-strong)] text-[var(--ia-ink)] transition-colors hover:border-[var(--ia-neon)] hover:text-[var(--ia-neon)]"
-      >
-        {playing ? (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <rect x="6" y="5" width="4" height="14" rx="1" />
-            <rect x="14" y="5" width="4" height="14" rx="1" />
-          </svg>
-        ) : (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M8 5v14l11-7z" />
-          </svg>
+      {/* 控制：播放/暂停 + 下一首（写入全局状态） */}
+      <div className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={togglePlaying}
+          aria-label={playing ? "暂停" : "播放"}
+          className="clickable grid size-10 place-items-center rounded-full border border-[var(--ia-line-strong)] text-[var(--ia-ink)] transition-colors hover:border-[var(--ia-neon)] hover:text-[var(--ia-neon)]"
+        >
+          {playing ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="6" y="5" width="4" height="14" rx="1" />
+              <rect x="14" y="5" width="4" height="14" rx="1" />
+            </svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          )}
+        </button>
+        {playlist.length > 1 && (
+          <button
+            type="button"
+            onClick={nextTrack}
+            aria-label="下一首"
+            className="clickable grid size-9 place-items-center rounded-full border border-[var(--ia-line)] text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-neon)] hover:text-[var(--ia-neon)]"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6 5v14l8.5-7z" />
+              <rect x="16" y="5" width="2.4" height="14" rx="1" />
+            </svg>
+          </button>
         )}
-      </button>
+      </div>
     </div>
   );
 }

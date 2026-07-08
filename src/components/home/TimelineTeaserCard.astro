@@ -2,22 +2,48 @@
 import Icon from "@/components/common/Icon.astro";
 import { siteConfig } from "@/config/site";
 import { withBase } from "@/lib/paths";
+import type { WorldlineStatus } from "@/lib/content";
 
+/**
+ * TimelineTeaserCard —— WorldlineDivergenceCard（v3）。
+ * 定位：世界线状态仪表 / 时间线入口 / 隐藏彩蛋，不是日志列表。
+ * - 整卡点击进入 /timeline，不展示 log rows，不加额外 CTA；
+ * - 状态由构建期内容活跃度驱动（stable / observing / unstable / shift）；
+ * - shift 状态进场播放一次短暂跳变后回落为 locked（observation locked）；
+ * - 数值轻微 flicker、指针浮动、扫描波均为轻量动画，reduced-motion 下降级为静态。
+ */
 interface Props {
   count: number;
   latest?: string;
   recent?: { title: string; typeLabel: string }[];
+  status: WorldlineStatus;
   class?: string;
 }
 
-const { count, class: className = "" } = Astro.props;
+const { count, status, class: className = "" } = Astro.props;
 const worldline = siteConfig.profile.worldline;
+
+/** 各状态徽章色 */
+const LEVEL_COLOR: Record<string, string> = {
+  stable: "var(--ia-success)",
+  observing: "var(--ia-blue)",
+  unstable: "var(--ia-warning)",
+  shift: "var(--ia-nebula)",
+};
+
+/** 指针位置：stable 停在黄金分割位，其余随活跃度向右漂 */
+const needlePct =
+  status.level === "stable" ? 61.8 : Math.min(88, Math.max(24, 30 + status.score * 3.2));
 ---
 
 <a
   href={withBase("/timeline")}
+  data-wl-card
+  data-wl-level={status.level}
+  data-wl-score={status.score}
   class:list={["teaser-card glass-card corner-ticks clickable group flex flex-col", className]}
-  aria-label={`查看世界线仪表卡，当前世界线 ${worldline}，共 ${count} 条时间线记录`}
+  style={`--wl-needle: ${needlePct}%`}
+  aria-label={`世界线仪表：${status.badge}，最近 ${status.windowDays} 天活跃度 ${status.score}，点击查看时间线（共 ${count} 条记录）`}
 >
   <div class="teaser-scan" aria-hidden="true"></div>
 
@@ -31,19 +57,119 @@ const worldline = siteConfig.profile.worldline;
 
   <div class="teaser-readout" aria-hidden="true">
     <span class="teaser-readout-glow"></span>
-    <b class="teaser-count mono">{worldline}</b>
+    <b class="teaser-count mono" data-wl-readout data-wl-value={worldline}>{worldline}</b>
   </div>
 
   <div class="teaser-gauge" aria-hidden="true">
     {Array.from({ length: 17 }).map((_, i) => <i class:list={[i % 4 === 0 && "is-major"]}></i>)}
     <b class="teaser-needle"></b>
+    <span class="teaser-wave"></span>
   </div>
 
   <div class="teaser-status-row">
-    <span class="status-badge" style="--sb-c: var(--ia-success)">archive stable</span>
+    <span
+      class="status-badge"
+      data-wl-badge
+      style={`--sb-c: ${LEVEL_COLOR[status.level] ?? "var(--ia-success)"}`}
+    >
+      {status.badge}
+    </span>
     <span class="teaser-field mono">α attractor field</span>
   </div>
 
-  <p class="teaser-caption">当前世界线稳定 · 观测值已锁定</p>
-
+  <p class="teaser-caption" data-wl-caption>{status.caption}</p>
 </a>
+
+<script>
+  /**
+   * 世界线仪表彩蛋脚本（轻量、无后台）：
+   * - stable/observing：数值偶尔小幅 flicker；
+   * - unstable：flicker 更频繁；
+   * - shift：进场播放约 2.6s 的明显跳变（scramble），随后回落为 locked（observation locked）；
+   * - prefers-reduced-motion：全部跳过，shift 直接呈现 locked。
+   */
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const inited = new WeakSet<Element>();
+
+  function jitterValue(base: string, strength: number): string {
+    // 只扰动小数点后 4~6 位，保持 1.04xxxx 的观感
+    const head = base.slice(0, 4); // "1.04"
+    const tail = base.slice(4);
+    const scrambled = tail
+      .split("")
+      .map((ch) => (Math.random() < strength ? String(Math.floor(Math.random() * 10)) : ch))
+      .join("");
+    return head + scrambled;
+  }
+
+  function lock(card: HTMLElement) {
+    card.dataset.wlLevel = "locked";
+    const badge = card.querySelector<HTMLElement>("[data-wl-badge]");
+    const caption = card.querySelector<HTMLElement>("[data-wl-caption]");
+    if (badge) {
+      badge.textContent = "observation locked";
+      badge.style.setProperty("--sb-c", "var(--ia-success)");
+    }
+    if (caption) caption.textContent = "观测值已锁定 · 世界线回归稳定";
+  }
+
+  function initCard(card: HTMLElement) {
+    if (inited.has(card)) return;
+    inited.add(card);
+
+    const readout = card.querySelector<HTMLElement>("[data-wl-readout]");
+    const base = readout?.dataset.wlValue ?? "1.048596";
+    const level = card.dataset.wlLevel ?? "stable";
+
+    if (reduce) {
+      if (level === "shift") lock(card);
+      return;
+    }
+
+    if (level === "shift" && readout) {
+      // 明显短暂跳变：约 2.6s 的 scramble，之后回到基准值并锁定
+      card.classList.add("is-shifting");
+      const start = Date.now();
+      const scramble = window.setInterval(() => {
+        if (!document.contains(card)) return window.clearInterval(scramble);
+        readout.textContent = jitterValue(base, 0.85);
+        if (Date.now() - start > 2600) {
+          window.clearInterval(scramble);
+          readout.textContent = base;
+          card.classList.remove("is-shifting");
+          lock(card);
+        }
+      }, 70);
+      return;
+    }
+
+    // stable / observing / unstable：偶尔 flicker 一下
+    if (!readout) return;
+    const gap: [number, number] = level === "unstable" ? [2400, 5200] : [4800, 9600];
+    const strength = level === "unstable" ? 0.5 : 0.3;
+
+    function schedule() {
+      const wait = gap[0] + Math.random() * (gap[1] - gap[0]);
+      window.setTimeout(() => {
+        if (!document.contains(card) || !readout) return;
+        if (!document.hidden) {
+          readout.textContent = jitterValue(base, strength);
+          readout.classList.add("is-flicker");
+          window.setTimeout(() => {
+            readout.textContent = base;
+            readout.classList.remove("is-flicker");
+          }, 320);
+        }
+        schedule();
+      }, wait);
+    }
+    schedule();
+  }
+
+  function scan() {
+    document.querySelectorAll<HTMLElement>("[data-wl-card]").forEach(initCard);
+  }
+
+  scan();
+  document.addEventListener("astro:page-load", scan);
+</script>

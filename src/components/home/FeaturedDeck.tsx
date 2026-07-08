@@ -24,8 +24,11 @@ export interface DeckItem {
   href: string;
   /** 强调色（CSS 颜色值） */
   accent: string;
-  /** 已带 base 的大图（可选；无图时用渐变场） */
+  /** 已带 base 的大图（可选；无图时用模式感知渐变场） */
   image?: string;
+  /** v3：昼夜专用封面（已带 base）；有则按模式切换，缺省回退到 image */
+  imageDay?: string;
+  imageNight?: string;
   imageAlt?: string;
 }
 
@@ -140,20 +143,42 @@ export default function FeaturedDeck({ items, intervalMs = 7000, className = "" 
     >
       {items.map((it, i) => {
         const active = i === index;
+        // 昼夜封面解析：coverNight/coverDay 优先，其次共用 cover；两侧一致时只渲染一张
+        const nightSrc = it.imageNight ?? it.image ?? it.imageDay;
+        const daySrc = it.imageDay ?? it.image ?? it.imageNight;
+        const hasImage = Boolean(nightSrc || daySrc);
+        const modeSplit = hasImage && nightSrc !== daySrc;
         return (
           <a
             key={it.href + it.title}
             href={it.href}
-            className={`deck-slide${active ? " is-active" : ""}`}
+            className={`deck-slide${active ? " is-active" : ""}${hasImage ? "" : " is-field"}`}
             style={{ ["--accent" as string]: it.accent }}
             aria-hidden={active ? undefined : "true"}
             tabIndex={active ? 0 : -1}
             draggable={false}
           >
-            {/* 背景层：大图或渐变场，承载视差与缩放 */}
+            {/* 背景层：大图（可分昼夜）或模式感知渐变场，承载视差与缩放 */}
             <div className="deck-bg" aria-hidden="true">
-              {it.image ? (
-                <img src={it.image} alt="" draggable={false} loading={i === 0 ? "eager" : "lazy"} />
+              {modeSplit ? (
+                <>
+                  <img
+                    className="deck-img deck-img-night"
+                    src={nightSrc}
+                    alt=""
+                    draggable={false}
+                    loading={i === 0 ? "eager" : "lazy"}
+                  />
+                  <img
+                    className="deck-img deck-img-day"
+                    src={daySrc}
+                    alt=""
+                    draggable={false}
+                    loading="lazy"
+                  />
+                </>
+              ) : hasImage ? (
+                <img src={nightSrc} alt="" draggable={false} loading={i === 0 ? "eager" : "lazy"} />
               ) : (
                 <div className="deck-field" />
               )}

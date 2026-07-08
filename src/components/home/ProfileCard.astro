@@ -4,6 +4,13 @@ import GlassCard from "@/components/common/GlassCard.astro";
 import Icon from "@/components/common/Icon.astro";
 import { withBase } from "@/lib/paths";
 
+/**
+ * ProfileCard —— 首页个人资料卡（v3）。
+ * 社交 / 联系入口：GitHub、Email（mailto + 正确邮件图标）、QQ、WeChat、Bilibili。
+ * - QQ / WeChat 使用轻量 popover：点击弹出账号（可复制）与可选二维码，再次点击 / 点击外部 / Esc 关闭；
+ * - 所有入口 hover / focus 显示 tooltip；
+ * - 在 src/config/site.ts 的 links 中留空某一项即可隐藏对应入口。
+ */
 interface Props {
   counts: { posts: number; projects: number; archives: number; photos: number };
   class?: string;
@@ -11,6 +18,7 @@ interface Props {
 
 const { counts, class: className = "" } = Astro.props;
 const p = siteConfig.profile;
+const links = siteConfig.links;
 
 const stats = [
   { label: "文章", labelEn: "POSTS", value: counts.posts, href: "/posts" },
@@ -19,11 +27,35 @@ const stats = [
   { label: "照片", labelEn: "PHOTOS", value: counts.photos, href: "/photos" },
 ];
 
-const iconLinks = [
-  { icon: "github", label: "GitHub", href: siteConfig.links.github, external: true },
-  { icon: "post", label: "Email", href: siteConfig.links.email, external: false },
-  { icon: "about", label: "About", href: withBase("/about"), external: false },
-].filter((l) => l.href);
+type SocialLink = { kind: "link"; icon: string; label: string; href: string; external: boolean };
+type SocialPop = { kind: "pop"; icon: string; label: string; account: string; qr?: string; note: string };
+type Social = SocialLink | SocialPop;
+
+const socials: Social[] = [];
+if (links.github)
+  socials.push({ kind: "link", icon: "github", label: "GitHub", href: links.github, external: true });
+if (links.email)
+  socials.push({ kind: "link", icon: "mail", label: "Email", href: links.email, external: false });
+if (links.qq)
+  socials.push({
+    kind: "pop",
+    icon: "qq",
+    label: "QQ",
+    account: links.qq,
+    qr: links.qqQr || undefined,
+    note: "点击账号即可复制",
+  });
+if (links.wechat)
+  socials.push({
+    kind: "pop",
+    icon: "wechat",
+    label: "WeChat",
+    account: links.wechat,
+    qr: links.wechatQr || undefined,
+    note: "点击账号即可复制",
+  });
+if (links.bilibili)
+  socials.push({ kind: "link", icon: "bilibili", label: "Bilibili", href: links.bilibili, external: true });
 ---
 
 <GlassCard ticks class={`profile-card ${className}`}>
@@ -67,21 +99,129 @@ const iconLinks = [
   </div>
 
   <div class="profile-actions">
-    <div class="flex items-center gap-2.5">
+    <div class="profile-social flex items-center gap-2.5">
       {
-        iconLinks.map((l) => (
-          <a
-            href={l.href}
-            {...(l.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-            aria-label={l.label}
-            title={l.label}
-            class="profile-action clickable"
-          >
-            <Icon name={l.icon} size={17} />
-          </a>
-        ))
+        socials.map((s) =>
+          s.kind === "link" ? (
+            <a
+              href={s.href}
+              {...(s.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+              aria-label={s.label}
+              data-tip={s.label}
+              class="profile-action clickable"
+            >
+              <Icon name={s.icon} size={17} />
+            </a>
+          ) : (
+            <span class="profile-pop-wrap">
+              <button
+                type="button"
+                data-pop-toggle
+                aria-expanded="false"
+                aria-haspopup="dialog"
+                aria-label={`${s.label}：点击查看账号`}
+                data-tip={s.label}
+                class="profile-action clickable"
+              >
+                <Icon name={s.icon} size={17} />
+              </button>
+              <span class="profile-pop" role="dialog" aria-label={`${s.label} 联系方式`}>
+                {s.qr && <img class="profile-pop-qr" src={withBase(s.qr)} alt={`${s.label} 二维码`} loading="lazy" />}
+                <span class="profile-pop-label mono">{s.label}</span>
+                <button type="button" class="profile-pop-account clickable mono" data-copy={s.account}>
+                  <span class="pop-account-text">{s.account}</span>
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <rect x="9" y="9" width="11" height="11" rx="2" />
+                    <path d="M5 15V6a2 2 0 0 1 2-2h9" />
+                  </svg>
+                </button>
+                <span class="profile-pop-note">{s.note}</span>
+              </span>
+            </span>
+          ),
+        )
       }
     </div>
     <span class="mono profile-save">SAVE POINT 07</span>
   </div>
 </GlassCard>
+
+<script>
+  /**
+   * 社交 popover / 复制交互（事件委托，兼容 View Transitions）：
+   * - 点击图标切换弹层；点击外部 / Esc / 再次点击关闭；
+   * - 点击账号复制到剪贴板，短暂显示「已复制」。
+   */
+  function closeAllPops(except?: Element | null) {
+    document.querySelectorAll<HTMLElement>(".profile-pop-wrap.is-open").forEach((w) => {
+      if (w === except) return;
+      w.classList.remove("is-open");
+      w.querySelector("[data-pop-toggle]")?.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  async function copyText(text: string): Promise<boolean> {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // 降级：临时 textarea 复制
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand("copy");
+        ta.remove();
+        return ok;
+      } catch {
+        return false;
+      }
+    }
+  }
+
+  document.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement | null;
+
+    const copyBtn = target?.closest?.<HTMLElement>("[data-copy]");
+    if (copyBtn) {
+      const text = copyBtn.getAttribute("data-copy") ?? "";
+      void copyText(text).then((ok) => {
+        if (!ok) return;
+        copyBtn.classList.add("is-copied");
+        window.setTimeout(() => copyBtn.classList.remove("is-copied"), 1400);
+      });
+      return;
+    }
+
+    const toggle = target?.closest?.<HTMLElement>("[data-pop-toggle]");
+    if (toggle) {
+      const wrap = toggle.closest(".profile-pop-wrap");
+      if (!wrap) return;
+      const open = wrap.classList.toggle("is-open");
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      closeAllPops(wrap);
+      return;
+    }
+
+    if (!target?.closest?.(".profile-pop")) closeAllPops();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeAllPops();
+  });
+
+  document.addEventListener("astro:page-load", () => closeAllPops());
+</script>
