@@ -5,12 +5,12 @@ date: 2025-06-18
 status: "building"
 tags: ["Astro", "TypeScript", "鬘ｹ逶ｮ", "蠑ゆｸ也阜蟄俶｡｣"]
 techStack: ["Astro 5", "TypeScript", "Tailwind v4", "React 19", "Motion"]
-repo: "https://github.com/your-name/worldline-archive"
-demo: "https://your-name.github.io/worldline-archive"
+repo: "https://github.com/Error1125/worldline-archive"
+demo: "https://Error1125.github.io/worldline-archive"
 featured: true
 visibility: "public"
 github:
-  owner: "your-name"
+  owner: "Error1125"
   repo: "worldline-archive"
   stars: 128
   forks: 12

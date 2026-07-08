@@ -5,11 +5,11 @@ date: 2025-04-08
 status: "paused"
 tags: ["鬘ｹ逶ｮ", "逡ｪ蜑ｧ"]
 techStack: ["TypeScript", "React"]
-repo: "https://github.com/your-name/anime-memory-shelf"
+repo: "https://github.com/Error1125/anime-memory-shelf"
 featured: false
 visibility: "public"
 github:
-  owner: "your-name"
+  owner: "Error1125"
   repo: "anime-memory-shelf"
   stars: 37
   forks: 3

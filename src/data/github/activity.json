@@ -1,26 +1,26 @@
-{
+﻿{
   "_note": "Mock GitHub activity data. Replace with scripts/sync-github.ts output later.",
   "generatedAt": "2025-06-28T21:20:00.000Z",
   "activity": [
     {
       "id": "evt_001",
       "type": "commit",
-      "repo": "your-name/worldline-archive",
+      "repo": "Error1125/worldline-archive",
       "title": "feat: add worldline archive deploy setup",
       "createdAt": "2025-06-28T21:14:00.000Z",
-      "url": "https://github.com/your-name/worldline-archive"
+      "url": "https://github.com/Error1125/worldline-archive"
     },
     {
       "id": "evt_002",
       "type": "issue",
-      "repo": "your-name/worldline-archive",
+      "repo": "Error1125/worldline-archive",
       "title": "Fix mobile tab bar spacing",
       "createdAt": "2025-06-27T12:03:00.000Z"
     },
     {
       "id": "evt_003",
       "type": "pull_request",
-      "repo": "your-name/bug-battle-log",
+      "repo": "Error1125/bug-battle-log",
       "title": "Export bug notes as Markdown",
       "createdAt": "2025-06-24T19:20:00.000Z"
     }

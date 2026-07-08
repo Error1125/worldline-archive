@@ -5,11 +5,11 @@ date: 2025-05-20
 status: "done"
 tags: ["项目", "开发记录", "复盘"]
 techStack: ["TypeScript", "Markdown", "Astro Content"]
-repo: "https://github.com/your-name/bug-battle-log"
+repo: "https://github.com/Error1125/bug-battle-log"
 featured: false
 visibility: "public"
 github:
-  owner: "your-name"
+  owner: "Error1125"
   repo: "bug-battle-log"
   stars: 64
   forks: 5

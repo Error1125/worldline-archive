@@ -1,14 +1,14 @@
----
-title: "WMS 系统"
-description: "一套仓储管理系统，很多经典 Bug 战斗记录都诞生于此。"
+﻿---
+title: "WMS System"
+description: "A warehouse management system archive with Java, Spring, MySQL, and Maven notes."
 date: 2025-01-15
 status: "archived"
-tags: ["项目", "Java"]
+tags: ["Project", "Java"]
 techStack: ["Java", "Spring", "MySQL", "Maven"]
 featured: false
 visibility: "public"
 github:
-  owner: "your-name"
+  owner: "Error1125"
   repo: "wms-system"
   stars: 18
   forks: 2
@@ -16,4 +16,4 @@ github:
   language: "Java"
 ---
 
-已归档的老项目。它教会我的东西，大多写在 `/bugs` 里：Maven 幽灵依赖、重复提交、并发对账。
+蟾ｲ蠖呈｡｣逧・・｡ｹ逶ｮ縲ょｮ・蕗莨壽・逧・ｸ懆･ｿ・悟､ｧ螟壼・蝨ｨ `/bugs` 驥鯉ｼ哺aven 蟷ｽ轣ｵ萓晁ｵ悶・㍾螟肴署莠､縲∝ｹｶ蜿大ｯｹ雍ｦ縲・

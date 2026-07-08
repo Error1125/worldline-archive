@@ -1,22 +1,22 @@
 export const siteConfig = {
   title: "Worldline Archive",
-  subtitle: "世界线存档点",
-  description: "记录生活、番剧、音乐、项目、Bug 和深夜念头的个人数字庭院。",
+  subtitle: "Worldline Save Point",
+  description: "A personal digital garden for life notes, anime, music, projects, bugs, and late-night thoughts.",
   author: "Traveler",
   language: "zh-CN",
-  url: "https://your-name.github.io/worldline-archive",
+  url: "https://Error1125.github.io/worldline-archive",
 
   profile: {
     handle: "@traveler_dev",
-    signature: "在无数条世界线里，留下这一条记录。",
-    status: "夜间观测中",
-    mood: "平静 / 稳定",
+    signature: "Leaving one record among countless worldlines.",
+    status: "Night observation",
+    mood: "Calm / stable",
     coordinate: "Worldline Archive / Save Point 7",
     worldline: "1.048596",
   },
 
   links: {
-    github: "https://github.com/your-name",
+    github: "https://github.com/Error1125",
     email: "mailto:traveler@example.com",
     bangumi: "",
     anilist: "",

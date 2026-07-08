@@ -1,12 +1,12 @@
-{
+﻿{
   "_note": "Mock GitHub repository data. Replace with scripts/sync-github.ts output later.",
   "generatedAt": "2025-06-28T21:20:00.000Z",
   "repos": [
     {
-      "owner": "your-name",
+      "owner": "Error1125",
       "repo": "worldline-archive",
       "description": "A personal Worldline Archive built with Astro.",
-      "url": "https://github.com/your-name/worldline-archive",
+      "url": "https://github.com/Error1125/worldline-archive",
       "language": "Astro",
       "stars": 128,
       "forks": 9,
@@ -14,10 +14,10 @@
       "topics": ["astro", "personal-site", "archive"]
     },
     {
-      "owner": "your-name",
+      "owner": "Error1125",
       "repo": "bug-battle-log",
       "description": "Bug review notes and postmortems.",
-      "url": "https://github.com/your-name/bug-battle-log",
+      "url": "https://github.com/Error1125/bug-battle-log",
       "language": "TypeScript",
       "stars": 64,
       "forks": 5,
@@ -25,10 +25,10 @@
       "topics": ["cli", "logging", "postmortem"]
     },
     {
-      "owner": "your-name",
+      "owner": "Error1125",
       "repo": "anime-memory-shelf",
       "description": "Anime watching status and notes.",
-      "url": "https://github.com/your-name/anime-memory-shelf",
+      "url": "https://github.com/Error1125/anime-memory-shelf",
       "language": "TypeScript",
       "stars": 37,
       "forks": 2,
