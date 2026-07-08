@@ -1175,11 +1175,12 @@ html.wl-loading { overflow: hidden; }
 
 /* ---------- HomeStatusStrip 底部状态条 ---------- */
 .status-strip {
-  min-height: 52px;
-  padding: 0 1.5rem;
-  border-radius: 16px;
+  min-height: 46px;
+  padding: 0 1.2rem;
+  border-radius: 14px;
   font-size: 13px;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.45rem;
+  border-color: color-mix(in srgb, var(--ia-line-strong) 72%, transparent);
 }
 .strip-sep {
   width: 1px;
@@ -1212,7 +1213,7 @@ html.wl-loading { overflow: hidden; }
 
 /* ---------- 首页一屏布局辅助 ---------- */
 @media (min-width: 1024px) {
-  .home-shell { height: calc(100dvh - 4rem); min-height: 640px; }
+  .home-shell { height: calc(100dvh - 4rem); min-height: 660px; }
 }
 
 /* ============================================================
@@ -1230,30 +1231,30 @@ html[data-scene-mode="day"] .scene-bg { display: none; }
 
 /* ---------- 日间模式配色（覆盖 :root 深色变量） ---------- */
 html[data-scene-mode="day"] {
-  --ia-bg: #eef2fb;
-  --ia-bg-2: #f4ecf5;
-  --ia-panel: rgba(255, 255, 255, 0.62);
-  --ia-panel-strong: rgba(255, 255, 255, 0.82);
-  --ia-line: rgba(120, 110, 150, 0.20);
-  --ia-line-strong: rgba(120, 110, 150, 0.36);
-  --ia-ink: #2b2f47;
-  --ia-mist: #6b6f8a;
-  --ia-star: #8a5a86;
-  --ia-neon: #ef7aa8;
-  --ia-nebula: #9b7bff;
-  --ia-blue: #5f96f5;
+  --ia-bg: #f7f3fb;
+  --ia-bg-2: #f4edf8;
+  --ia-panel: rgba(255, 255, 255, 0.58);
+  --ia-panel-strong: rgba(255, 255, 255, 0.72);
+  --ia-line: rgba(93, 74, 112, 0.18);
+  --ia-line-strong: rgba(93, 74, 112, 0.28);
+  --ia-ink: #262033;
+  --ia-mist: #655b76;
+  --ia-star: #ff8fc4;
+  --ia-neon: #7b6dff;
+  --ia-nebula: #d7b8ff;
+  --ia-blue: #6c95e8;
   --ia-pink: #ff9fd6;
   --ia-success: #34a67c;
-  --ia-warning: #cf8a1f;
+  --ia-warning: #d58b2d;
   --ia-danger: #dd5a78;
   color-scheme: light;
 }
 html[data-scene-mode="day"] .ia-nebula {
   background:
-    radial-gradient(120% 90% at 15% -10%, rgba(255, 205, 226, 0.60), transparent 55%),
-    radial-gradient(90% 70% at 85% 4%, rgba(186, 214, 255, 0.50), transparent 55%),
-    radial-gradient(80% 80% at 50% 120%, rgba(255, 175, 214, 0.30), transparent 60%),
-    linear-gradient(180deg, #eef2fb 0%, #f7eef6 45%, #eaf1fb 100%);
+    radial-gradient(85% 65% at 16% 8%, rgba(255, 190, 220, 0.48), transparent 58%),
+    radial-gradient(72% 62% at 88% 10%, rgba(216, 196, 255, 0.42), transparent 58%),
+    radial-gradient(90% 72% at 46% 112%, rgba(196, 220, 255, 0.28), transparent 62%),
+    linear-gradient(180deg, #f7f3fb 0%, #f5eef8 50%, #edf4fb 100%);
 }
 html[data-scene-mode="day"] .ia-nebula::after { opacity: 0.03; }
 html[data-scene-mode="day"] .avatar-core { background: #fff2f7; }
@@ -1263,8 +1264,21 @@ html[data-scene-mode="day"] .avatar-core { background: #fff2f7; }
   display: flex;
   flex-direction: column;
   width: 100%;
-  padding: 1rem 1.15rem;
+  justify-content: space-between;
+  padding: 0.95rem 1.05rem;
   text-align: left;
+}
+.scene-mode-state {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--ia-mist);
+  opacity: 0.78;
+}
+.scene-mode-main {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-top: 0.85rem;
 }
 .scene-dot {
   width: 7px; height: 7px; border-radius: 999px;
@@ -1272,7 +1286,7 @@ html[data-scene-mode="day"] .avatar-core { background: #fff2f7; }
 }
 .scene-orb {
   position: relative; display: grid; place-items: center;
-  width: 46px; height: 46px; flex: none; border-radius: 14px; overflow: hidden;
+  width: 42px; height: 42px; flex: none; border-radius: 13px; overflow: hidden;
   background: color-mix(in srgb, var(--ia-blue) 16%, transparent);
   color: var(--ia-star);
   transition: background 0.4s ease, color 0.4s ease;
@@ -1285,8 +1299,8 @@ html[data-scene-mode="day"] .avatar-core { background: #fff2f7; }
 html[data-scene-mode="day"] .scene-orb { background: color-mix(in srgb, var(--ia-warning) 22%, transparent); color: var(--ia-warning); }
 html[data-scene-mode="day"] .scene-orb-night { opacity: 0; transform: scale(0.6) rotate(40deg); }
 html[data-scene-mode="day"] .scene-orb-day { opacity: 1; transform: none; }
-.scene-title { font-size: clamp(16px, 1.5vw, 19px); line-height: 1.2; }
-.scene-sub { margin-top: 3px; font-size: 12.5px; }
+.scene-title { font-size: clamp(15px, 1.35vw, 17px); line-height: 1.25; }
+.scene-sub { margin-top: 3px; font-size: 12px; line-height: 1.45; }
 .scene-mode-card [data-when="day"] { display: none; }
 html[data-scene-mode="day"] .scene-mode-card [data-when="night"] { display: none; }
 html[data-scene-mode="day"] .scene-mode-card [data-when="day"] { display: inline; }
@@ -1305,8 +1319,44 @@ html[data-scene-mode="day"] .scene-knob { transform: translateX(20px); backgroun
 .scene-mode-card:hover .scene-switch { filter: brightness(1.12); }
 
 /* ---------- TimelineTeaserCard ---------- */
-.teaser-card { padding: 1rem 1.15rem; }
-.teaser-count { font-size: clamp(26px, 3.2vw, 34px); line-height: 1; letter-spacing: 0.01em; }
+.teaser-card { padding: 1rem 1.1rem; }
+.teaser-count { font-size: clamp(25px, 3vw, 32px); line-height: 1; letter-spacing: 0.01em; }
+.teaser-metrics {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.9rem;
+  margin-top: 0.75rem;
+}
+.teaser-latest {
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  color: var(--ia-mist);
+  opacity: 0.82;
+}
+.teaser-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+  margin-top: 0.78rem;
+}
+.teaser-recent li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--ia-mist);
+}
+.teaser-type {
+  flex: none;
+  font-size: 10px;
+  color: var(--ia-neon);
+  opacity: 0.82;
+}
 
 /* ---------- AnimeHomeCard（可选轻封面 + 渐变遮罩） ---------- */
 .anime-card { position: relative; padding: 0; overflow: hidden; }

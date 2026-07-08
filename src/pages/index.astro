@@ -189,7 +189,7 @@ const startDate = earliest.toISOString();
 ---
 
 <SiteLayout home>
-  <div class="flex flex-col gap-4 lg:h-full lg:min-h-0 lg:gap-5">
+  <div class="flex flex-col gap-5 lg:h-full lg:min-h-0 lg:gap-6">
     <!-- 顶部：站点身份（移动端）+ 大搜索框 -->
     <section class="reveal shrink-0">
       <HeroSearch />
@@ -197,7 +197,7 @@ const startDate = earliest.toISOString();
 
     <!-- 主网格：桌面 左7:右5 两列两行；移动端 order-* 单列 -->
     <div
-      class="grid min-h-0 grid-cols-1 gap-4 lg:flex-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:grid-rows-[auto_minmax(0,1fr)] lg:gap-5"
+      class="grid min-h-0 grid-cols-1 gap-5 lg:flex-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:grid-rows-[auto_minmax(0,1fr)] lg:gap-6"
     >
       <!-- 档案员 -->
       <div class="reveal order-1 min-w-0 lg:order-none lg:col-start-1 lg:row-start-1">
@@ -215,7 +215,7 @@ const startDate = earliest.toISOString();
       </div>
 
       <!-- 右列小卡堆：时间线入口 / 番剧入口 / 昼夜模式 -->
-      <div class="order-4 flex min-h-0 min-w-0 flex-col gap-4 lg:order-none lg:col-start-2 lg:row-start-2 lg:gap-5">
+      <div class="order-4 flex min-h-0 min-w-0 flex-col gap-5 lg:order-none lg:col-start-2 lg:row-start-2 lg:gap-6">
         <div class="reveal min-h-0 lg:flex-1"><TimelineTeaserCard count={totalArchives} latest={timelineLatest} recent={timelineRecent} class="h-full" /></div>
         <div class="reveal min-h-0 lg:flex-1"><AnimeHomeCard count={anime.length} latestTitle={topAnime?.data.title} statusLabel={animeStatus} cover={animeCover} class="h-full" /></div>
         <div class="reveal min-h-0 lg:flex-1"><SceneModeCard class="h-full" /></div>

@@ -2,14 +2,7 @@
 import Icon from "@/components/common/Icon.astro";
 import { siteConfig } from "@/config/site";
 
-/**
- * HomeStatusStrip.astro —— 首页底部状态条（桌面端；移动端隐藏）。
- * v2.2：放大 + 远离底边；移除音乐标题（首页已有 MusicCard），
- * 收进 worldline / stable / running / 技术栈 / 版权，并附一句终端氛围。
- * 实时时钟由内联小脚本驱动（无 React island），兼容 View Transitions。
- */
 interface Props {
-  /** 最早一条存档的日期（ISO 字符串），用来计算 running days */
   startDate: string;
   class?: string;
 }
@@ -17,13 +10,13 @@ const { startDate, class: className = "" } = Astro.props;
 
 const days = Math.max(1, Math.floor((Date.now() - new Date(startDate).getTime()) / 86_400_000));
 const year = new Date().getFullYear();
-const tech = ["Astro 5", "React 19", "Tailwind 4"];
+const tech = ["Astro", "React", "Tailwind"];
 const worldline = siteConfig.profile.worldline;
 ---
 
 <div class:list={["status-strip glass hidden items-center gap-4 lg:flex", className]} role="contentinfo">
-  <span class="mono flex items-center gap-2 text-[13px] text-[var(--ia-star)]">
-    <Icon name="clock" size={14} class="text-[var(--ia-neon)]" />
+  <span class="mono flex items-center gap-2 text-[12px] text-[var(--ia-star)]">
+    <Icon name="clock" size={13} class="text-[var(--ia-neon)]" />
     <span data-wl-clock>--:--:--</span>
   </span>
 
@@ -44,17 +37,16 @@ const worldline = siteConfig.profile.worldline;
 
   <span class="mono hidden items-center gap-1.5 text-[12px] text-[var(--ia-mist)] opacity-80 xl:flex">
     <span class="inline-block size-1 rounded-full bg-[var(--ia-success)]"></span>
-    archive stable · memory sync complete
+    archive stable
   </span>
 
   <span class="ml-auto flex items-center gap-2">
     {tech.map((t) => <span class="tag-chip">{t}</span>)}
-    <span class="mono pl-1 text-[11px] text-[var(--ia-mist)] opacity-60">© {year} {siteConfig.author}</span>
+    <span class="mono pl-1 text-[11px] text-[var(--ia-mist)] opacity-65">© {year} {siteConfig.author}</span>
   </span>
 </div>
 
 <script>
-  // 实时时钟：每秒刷新页面上所有 [data-wl-clock]（每次 tick 重查，兼容 View Transitions）。
   function fmt(n: number) {
     return String(n).padStart(2, "0");
   }
