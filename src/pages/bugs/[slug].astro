@@ -1,0 +1,105 @@
+---
+import { getCollection, render } from "astro:content";
+import SiteLayout from "@/components/layout/SiteLayout.astro";
+import TagList from "@/components/common/TagList.astro";
+import StatusBadge from "@/components/common/StatusBadge.astro";
+import Icon from "@/components/common/Icon.astro";
+import { formatDate } from "@/lib/format";
+import { isVisiblePublic } from "@/lib/visibility";
+
+export async function getStaticPaths() {
+  const bugs = await getCollection("bugs", ({ data }) => isVisiblePublic(data.visibility));
+  return bugs.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { title, date, status, severity, summary, project, cause, solution, tags, relatedFiles } =
+  entry.data;
+const { Content } = await render(entry);
+
+const meta: { label: string; value: string }[] = [
+  { label: "STATUS", value: status },
+  ...(severity ? [{ label: "SEVERITY", value: severity }] : []),
+  ...(project ? [{ label: "PROJECT", value: project }] : []),
+  { label: "DATE", value: formatDate(date) },
+];
+---
+
+<SiteLayout title={title} description={summary}>
+  <article class="mx-auto max-w-3xl">
+    <a href="/bugs" class="clickable mb-6 inline-flex items-center gap-1.5 mono text-xs text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-neon)]">
+      <Icon name="arrow" size={13} class="rotate-180" /> 返回战斗记录
+    </a>
+
+    <header class="reveal border-b border-[var(--ia-line)] pb-6">
+      <div class="flex items-center justify-between gap-3">
+        <div class="eyebrow flex items-center gap-1.5">
+          <Icon name="bug" size={13} class="text-[var(--ia-danger)]" /> BUG // 战斗记录
+        </div>
+        <StatusBadge domain="bug" status={status} />
+      </div>
+      <h1 class="mt-3 text-2xl font-bold leading-tight text-[var(--ia-ink)] sm:text-3xl">{title}</h1>
+      <p class="mt-3 text-base leading-relaxed text-[var(--ia-mist)]">{summary}</p>
+
+      <dl class="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {
+          meta.map((m) => (
+            <div class="rounded-lg border border-[var(--ia-line)] bg-[var(--ia-panel)] px-3 py-2">
+              <dt class="mono text-[9px] uppercase tracking-wider text-[var(--ia-mist)] opacity-70">{m.label}</dt>
+              <dd class="mt-0.5 truncate text-xs text-[var(--ia-ink)]">{m.value}</dd>
+            </div>
+          ))
+        }
+      </dl>
+
+      {tags.length > 0 && <div class="mt-4"><TagList tags={tags} /></div>}
+    </header>
+
+    <!-- 快速根因 / 修复摘要 -->
+    {
+      (cause || solution) && (
+        <div class="reveal mt-6 grid gap-4 sm:grid-cols-2">
+          {cause && (
+            <div class="glass-card rounded-xl p-4">
+              <div class="eyebrow mb-1.5 text-[var(--ia-danger)]">ROOT CAUSE // 根因</div>
+              <p class="text-sm leading-relaxed text-[var(--ia-ink)]">{cause}</p>
+            </div>
+          )}
+          {solution && (
+            <div class="glass-card rounded-xl p-4">
+              <div class="eyebrow mb-1.5 text-[var(--ia-success)]">FIX // 修复</div>
+              <p class="text-sm leading-relaxed text-[var(--ia-ink)]">{solution}</p>
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    {
+      relatedFiles && relatedFiles.length > 0 && (
+        <div class="reveal mt-6">
+          <div class="eyebrow mb-2">RELATED FILES // 关联文件</div>
+          <ul class="flex flex-col gap-1 mono text-xs text-[var(--ia-mist)]">
+            {relatedFiles.map((f) => (
+              <li class="flex items-center gap-1.5">
+                <span class="text-[var(--ia-neon)]">›</span> {f}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )
+    }
+
+    <!-- 正文（完整复盘） -->
+    <div class="ia-prose reveal mt-8">
+      <Content />
+    </div>
+
+    <footer class="mt-12 border-t border-[var(--ia-line)] pt-6 mono text-xs text-[var(--ia-mist)] opacity-70">
+      <p>// battle logged — 下一场再见</p>
+    </footer>
+  </article>
+</SiteLayout>

@@ -1,0 +1,25 @@
+---
+/**
+ * TagList.astro —— 标签列表（#tag）。
+ * 非交互装饰元素，避免整卡链接内嵌套 <a>。支持 max 截断。
+ */
+interface Props {
+  tags?: string[];
+  max?: number;
+  class?: string;
+}
+const { tags = [], max, class: className = "" } = Astro.props;
+const shown = typeof max === "number" ? tags.slice(0, max) : tags;
+const rest = tags.length - shown.length;
+---
+
+{
+  shown.length > 0 && (
+    <div class:list={["flex flex-wrap gap-1.5", className]}>
+      {shown.map((t) => (
+        <span class="tag-chip">#{t}</span>
+      ))}
+      {rest > 0 && <span class="tag-chip opacity-70">+{rest}</span>}
+    </div>
+  )
+}

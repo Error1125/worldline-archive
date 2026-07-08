@@ -1,0 +1,48 @@
+---
+import SiteLayout from "@/components/layout/SiteLayout.astro";
+import PageHeader from "@/components/common/PageHeader.astro";
+import MusicCard from "@/components/cards/MusicCard.astro";
+import EmptyState from "@/components/common/EmptyState.astro";
+import GlassCard from "@/components/common/GlassCard.astro";
+import MusicPlayer from "@/components/music/MusicPlayer.tsx";
+import AppleMusicConnectButton from "@/components/music/AppleMusicConnectButton.tsx";
+import { getMusic } from "@/lib/content";
+
+const music = await getMusic();
+---
+
+<SiteLayout title="音乐" description="深夜循环的歌、专辑与歌单碎片。">
+  <PageHeader
+    eyebrow="MUSIC // 音乐碎片"
+    title="深夜循环"
+    subtitle="最近喜欢的歌、专辑与歌单。歌词是自己写的氛围短句，不搬运真实歌词。"
+    icon="music"
+    class="mb-8"
+  />
+
+  <!-- 正在收听 + Apple Music 预留 -->
+  <div class="reveal mb-8 grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+    <GlassCard ticks class="flex flex-col gap-3 p-5">
+      <span class="eyebrow">NOW PLAYING // 正在收听</span>
+      <MusicPlayer client:load />
+    </GlassCard>
+    <GlassCard class="flex flex-col justify-center gap-3 p-5">
+      <span class="eyebrow">APPLE MUSIC // 预留</span>
+      <AppleMusicConnectButton client:load />
+    </GlassCard>
+  </div>
+
+  {
+    music.length > 0 ? (
+      <div class="grid gap-5 sm:grid-cols-2">
+        {music.map((entry) => (
+          <div class="reveal">
+            <MusicCard entry={entry} />
+          </div>
+        ))}
+      </div>
+    ) : (
+      <EmptyState icon="music" />
+    )
+  }
+</SiteLayout>

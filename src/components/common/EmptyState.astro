@@ -1,0 +1,31 @@
+---
+import Icon from "@/components/common/Icon.astro";
+
+/**
+ * EmptyState.astro —— 空状态占位。
+ * 默认文案：这一格档案还空着 / // no records found
+ */
+interface Props {
+  title?: string;
+  hint?: string;
+  icon?: string;
+  class?: string;
+}
+const {
+  title = "这一格档案还空着",
+  hint = "// no records found",
+  icon = "archive",
+  class: className = "",
+} = Astro.props;
+---
+
+<div
+  class:list={[
+    "glass flex flex-col items-center justify-center gap-2 rounded-2xl px-6 py-12 text-center",
+    className,
+  ]}
+>
+  <Icon name={icon} size={26} class="text-[var(--ia-mist)] opacity-70" />
+  <p class="text-sm text-[var(--ia-ink)]">{title}</p>
+  <p class="mono text-xs text-[var(--ia-mist)] opacity-70">{hint}</p>
+</div>

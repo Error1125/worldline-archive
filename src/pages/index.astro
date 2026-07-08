@@ -1,0 +1,88 @@
+﻿---
+import SiteLayout from "@/components/layout/SiteLayout.astro";
+import GlassCard from "@/components/common/GlassCard.astro";
+import SectionTitle from "@/components/common/SectionTitle.astro";
+import Icon from "@/components/common/Icon.astro";
+
+import ProfileCard from "@/components/home/ProfileCard.astro";
+import TerminalLog from "@/components/home/TerminalLog.astro";
+import RecentTimeline from "@/components/home/RecentTimeline.astro";
+import NowPlayingCard from "@/components/home/NowPlayingCard.astro";
+import GitHubActivityCard from "@/components/home/GitHubActivityCard.astro";
+
+import { archiveNav } from "@/config/nav";
+import { withBase } from "@/lib/paths";
+---
+
+<SiteLayout>
+  <!-- Hero・壼ｭ俶｡｣轤ｹ螟ｧ蜴・-->
+  <section class="reveal relative mb-12 overflow-hidden">
+    <div class="flex flex-col gap-4 py-6 sm:py-10">
+      <span class="eyebrow flex items-center gap-2">
+        <span class="inline-block size-1.5 rounded-full bg-[var(--ia-neon)] shadow-[0_0_8px_var(--ia-neon)]"></span>
+        SAVE POINT // 蟄俶｡｣轤ｹ蟾ｲ霑樊磁
+      </span>
+      <h1 class="text-3xl font-bold leading-tight tracking-tight text-[var(--ia-ink)] sm:text-5xl">
+        Welcome back,<br class="sm:hidden" />
+        <span class="bg-gradient-to-r from-[var(--ia-star)] via-[var(--ia-neon)] to-[var(--ia-nebula)] bg-clip-text text-transparent">
+          traveler.
+        </span>
+      </h1>
+      <p class="max-w-2xl text-base leading-relaxed text-[var(--ia-mist)]">
+        这里是我的世界线存档点。<br class="hidden sm:block" />
+        记录生活、番剧、音乐、项目、Bug 和深夜里冒出来的念头。
+      </p>
+      <div class="mt-2 flex flex-wrap gap-3">
+        <a href={withBase("/timeline")} class="clickable inline-flex items-center gap-2 rounded-xl border border-[var(--ia-line-strong)] bg-[var(--ia-panel)] px-4 py-2 text-sm text-[var(--ia-ink)] transition-colors hover:border-[var(--ia-neon)] hover:text-[var(--ia-neon)]">
+          <Icon name="timeline" size={16} /> 查看时间线
+        </a>
+        <a href={withBase("/archive")} class="clickable inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-ink)]">
+          <Icon name="archive" size={16} /> 浏览档案馆
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 荳ｻ鄂第ｼ -->
+  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
+    <!-- 蟾ｦ蛻・-->
+    <div class="flex flex-col gap-6">
+      <div class="reveal"><ProfileCard /></div>
+      <div class="reveal"><TerminalLog /></div>
+      <div class="reveal"><GitHubActivityCard /></div>
+    </div>
+
+    <!-- 蜿ｳ蛻・-->
+    <div class="flex flex-col gap-6">
+      <div class="reveal"><NowPlayingCard /></div>
+      <GlassCard ticks class="reveal flex flex-col gap-4 p-5">
+        <SectionTitle labelEn="RECENT" title="世界线动态" icon="timeline" href="/timeline" />
+        <RecentTimeline limit={7} />
+      </GlassCard>
+    </div>
+  </div>
+
+  <!-- 譯｣譯磯ｦ・ｿｫ謐ｷ蜈･蜿｣ -->
+  <section class="reveal mt-12">
+    <SectionTitle labelEn="ARCHIVE" title="存档分类" icon="archive" href="/archive" class="mb-4" />
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      {
+        archiveNav.map((item) => (
+          <a
+            href={withBase(item.href)}
+            aria-label={item.label}
+            class="clickable glass-card group flex flex-col items-center gap-2 rounded-xl p-4 text-center"
+          >
+            <span class="grid size-10 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)] transition-colors group-hover:border-[var(--ia-neon)] group-hover:text-[var(--ia-neon)]">
+              <Icon name={item.icon} size={18} />
+            </span>
+            <span class="text-xs font-medium text-[var(--ia-ink)]">{item.label}</span>
+            <span class="mono text-[9px] uppercase tracking-wider text-[var(--ia-mist)] opacity-70">
+              {item.labelEn}
+            </span>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+</SiteLayout>

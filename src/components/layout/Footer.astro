@@ -1,0 +1,50 @@
+---
+import { siteConfig } from "@/config/site";
+import { features } from "@/config/features";
+import Icon from "@/components/common/Icon.astro";
+import { withBase } from "@/lib/paths";
+
+/**
+ * Footer.astro —— 小型页脚。
+ * - worldline rate 彩蛋；
+ * - /admin 低调入口，受 features.auth 控制（关闭时不显示）。
+ */
+const year = new Date().getFullYear();
+const worldline = siteConfig.profile.worldline;
+---
+
+<footer class="relative z-10 mt-20 border-t border-[var(--ia-line)]">
+  <div class="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-8 text-xs text-[var(--ia-mist)] sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex flex-col gap-1">
+      <span class="mono">
+        © {year} {siteConfig.author} · {siteConfig.title}
+      </span>
+      <span class="mono opacity-70">
+        // a personal save point in the isekai
+      </span>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <!-- worldline 彩蛋 -->
+      <span
+        class="diamond mono text-[var(--ia-mist)]"
+        title="World line divergence"
+      >
+        worldline {worldline}
+      </span>
+
+      {
+        features.auth && (
+          <a
+            href={withBase("/admin")}
+            class="clickable inline-flex items-center gap-1 text-[var(--ia-mist)] opacity-60 transition-opacity hover:opacity-100"
+            aria-label="后台入口"
+          >
+            <Icon name="lock" size={12} />
+            <span class="mono">admin</span>
+          </a>
+        )
+      }
+    </div>
+  </div>
+</footer>

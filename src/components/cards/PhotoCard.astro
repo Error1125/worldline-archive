@@ -1,0 +1,52 @@
+---
+import type { CollectionEntry } from "astro:content";
+import GlassCard from "@/components/common/GlassCard.astro";
+import TagList from "@/components/common/TagList.astro";
+import Icon from "@/components/common/Icon.astro";
+import { formatDate } from "@/lib/format";
+import { withBase } from "@/lib/paths";
+
+interface Props {
+  entry: CollectionEntry<"photos">;
+}
+const { entry } = Astro.props;
+const { title, date, album, description, images, tags, mood } = entry.data;
+const cover = images[0];
+const extra = images.length - 1;
+---
+
+<GlassCard class="group flex flex-col gap-3 p-4">
+  <div class="relative aspect-[4/3] overflow-hidden rounded-xl border border-[var(--ia-line)]">
+    <img
+      src={withBase(cover)}
+      alt={title}
+      loading="lazy"
+      class="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+    />
+    <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+    {
+      extra > 0 && (
+        <div class="absolute bottom-2 right-2 flex items-center gap-1 rounded-full border border-[var(--ia-line-strong)] bg-black/45 px-2 py-0.5 mono text-[11px] text-[var(--ia-star)] backdrop-blur">
+          <Icon name="photo" size={11} /> +{extra}
+        </div>
+      )
+    }
+    {album && <span class="absolute left-2 top-2 tag-chip backdrop-blur">{album}</span>}
+  </div>
+
+  <div class="flex items-center justify-between gap-3">
+    <h3 class="truncate text-sm font-semibold text-[var(--ia-ink)] transition-colors group-hover:text-[var(--ia-star)]">
+      {title}
+    </h3>
+    <time class="mono text-[11px] text-[var(--ia-mist)]" datetime={date.toISOString()}>
+      {formatDate(date)}
+    </time>
+  </div>
+
+  {description && <p class="line-clamp-2 text-xs leading-relaxed text-[var(--ia-mist)]">{description}</p>}
+
+  <div class="mt-auto flex items-center justify-between gap-2 pt-1">
+    <TagList tags={tags ?? []} max={3} />
+    {mood && <span class="mono text-[11px] text-[var(--ia-nebula)]">◇ {mood}</span>}
+  </div>
+</GlassCard>

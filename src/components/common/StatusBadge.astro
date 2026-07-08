@@ -1,0 +1,45 @@
+---
+/**
+ * StatusBadge.astro —— 领域状态徽标。
+ * 支持 anime / bug / project 三个领域，颜色通过 --sb-c 控制。
+ */
+type Domain = "anime" | "bug" | "project";
+
+interface Props {
+  domain: Domain;
+  status: string;
+  class?: string;
+}
+const { domain, status, class: className = "" } = Astro.props;
+
+type Entry = { label: string; color: string };
+
+const MAP: Record<Domain, Record<string, Entry>> = {
+  anime: {
+    watching: { label: "在看", color: "var(--ia-neon)" },
+    completed: { label: "看完", color: "var(--ia-success)" },
+    planned: { label: "想看", color: "var(--ia-nebula)" },
+    paused: { label: "搁置", color: "var(--ia-warning)" },
+    dropped: { label: "弃番", color: "var(--ia-danger)" },
+  },
+  bug: {
+    fixed: { label: "已修复", color: "var(--ia-success)" },
+    investigating: { label: "调查中", color: "var(--ia-warning)" },
+    wontfix: { label: "不修了", color: "var(--ia-danger)" },
+    note: { label: "记录", color: "var(--ia-mist)" },
+  },
+  project: {
+    idea: { label: "构想", color: "var(--ia-nebula)" },
+    building: { label: "建造中", color: "var(--ia-neon)" },
+    paused: { label: "暂停", color: "var(--ia-warning)" },
+    done: { label: "已完成", color: "var(--ia-success)" },
+    archived: { label: "已归档", color: "var(--ia-mist)" },
+  },
+};
+
+const entry: Entry = MAP[domain][status] ?? { label: status, color: "var(--ia-mist)" };
+---
+
+<span class:list={["status-badge", className]} style={`--sb-c:${entry.color}`}>
+  {entry.label}
+</span>

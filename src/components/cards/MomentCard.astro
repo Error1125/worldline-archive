@@ -1,0 +1,41 @@
+---
+import type { CollectionEntry } from "astro:content";
+import GlassCard from "@/components/common/GlassCard.astro";
+import TagList from "@/components/common/TagList.astro";
+import Icon from "@/components/common/Icon.astro";
+import { formatDate } from "@/lib/format";
+
+interface Props {
+  entry: CollectionEntry<"moments">;
+}
+const { entry } = Astro.props;
+const { content, date, tags, mood, weather, locationText } = entry.data;
+const meta = [mood, weather, locationText].filter(Boolean) as string[];
+---
+
+<GlassCard class="group flex flex-col gap-3 p-5">
+  <div class="flex items-center justify-between gap-3">
+    <span class="eyebrow flex items-center gap-1.5">
+      <Icon name="moment" size={13} class="text-[var(--ia-neon)]" />
+      MOMENT // 说说
+    </span>
+    <time class="mono text-[11px] text-[var(--ia-mist)]" datetime={date.toISOString()}>
+      {formatDate(date)}
+    </time>
+  </div>
+
+  <p class="whitespace-pre-line text-[15px] leading-relaxed text-[var(--ia-ink)]">
+    {content}
+  </p>
+
+  <div class="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-1">
+    <TagList tags={tags ?? []} max={4} />
+    {
+      meta.length > 0 && (
+        <span class="mono text-[11px] text-[var(--ia-mist)]">
+          {meta.map((m) => `· ${m}`).join(" ")}
+        </span>
+      )
+    }
+  </div>
+</GlassCard>

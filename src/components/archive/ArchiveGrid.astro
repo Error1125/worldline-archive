@@ -1,0 +1,59 @@
+---
+import { archiveNav } from "@/config/nav";
+import GlassCard from "@/components/common/GlassCard.astro";
+import Icon from "@/components/common/Icon.astro";
+import { getAnime, getMusic, getProjects, getBugs, getPhotos, getMoments } from "@/lib/content";
+
+/**
+ * ArchiveGrid.astro —— 档案馆入口九宫格：中文标题 + 英文标签 + 描述 + icon + 数量。
+ */
+const [anime, music, projects, bugs, photos, moments] = await Promise.all([
+  getAnime(),
+  getMusic(),
+  getProjects(),
+  getBugs(),
+  getPhotos(),
+  getMoments(),
+]);
+
+const counts: Record<string, number> = {
+  "/anime": anime.length,
+  "/music": music.length,
+  "/projects": projects.length,
+  "/bugs": bugs.length,
+  "/photos": photos.length,
+  "/moments": moments.length,
+};
+---
+
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  {
+    archiveNav.map((item) => (
+      <GlassCard href={item.href} ticks ariaLabel={item.label} class="group flex flex-col gap-3 p-5">
+        <div class="flex items-center justify-between">
+          <span class="grid size-11 place-items-center rounded-xl border border-[var(--ia-line-strong)] bg-[#0b1024] text-[var(--ia-neon)] transition-colors group-hover:text-[var(--ia-star)]">
+            <Icon name={item.icon} size={22} />
+          </span>
+          <span class="mono text-2xl font-bold text-[var(--ia-ink)] opacity-90">
+            {String(counts[item.href] ?? 0).padStart(2, "0")}
+          </span>
+        </div>
+
+        <div>
+          <div class="eyebrow">{item.labelEn}</div>
+          <h3 class="mt-0.5 text-base font-semibold text-[var(--ia-ink)] transition-colors group-hover:text-[var(--ia-star)]">
+            {item.label}
+          </h3>
+        </div>
+
+        {item.description && (
+          <p class="text-sm leading-relaxed text-[var(--ia-mist)]">{item.description}</p>
+        )}
+
+        <span class="mt-auto inline-flex items-center gap-1 mono text-[11px] text-[var(--ia-mist)] transition-colors group-hover:text-[var(--ia-neon)]">
+          进入档案 <Icon name="arrow" size={13} class="transition-transform group-hover:translate-x-0.5" />
+        </span>
+      </GlassCard>
+    ))
+  }
+</div>

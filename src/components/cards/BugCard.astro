@@ -1,0 +1,51 @@
+---
+import type { CollectionEntry } from "astro:content";
+import GlassCard from "@/components/common/GlassCard.astro";
+import TagList from "@/components/common/TagList.astro";
+import StatusBadge from "@/components/common/StatusBadge.astro";
+import Icon from "@/components/common/Icon.astro";
+import { formatDate } from "@/lib/format";
+
+interface Props {
+  entry: CollectionEntry<"bugs">;
+}
+const { entry } = Astro.props;
+const { title, date, status, severity, summary, tags, project } = entry.data;
+
+const sevColor: Record<string, string> = {
+  low: "var(--ia-mist)",
+  medium: "var(--ia-warning)",
+  high: "var(--ia-danger)",
+  critical: "var(--ia-danger)",
+};
+---
+
+<GlassCard href={`/bugs/${entry.id}`} ticks ariaLabel={title} class="group flex flex-col gap-3 p-5">
+  <div class="flex items-center justify-between gap-3">
+    <span class="eyebrow flex items-center gap-1.5">
+      <Icon name="bug" size={13} class="text-[var(--ia-danger)]" />
+      BUG // 战斗记录
+    </span>
+    <StatusBadge domain="bug" status={status} />
+  </div>
+
+  <h3 class="text-base font-semibold leading-snug text-[var(--ia-ink)] transition-colors group-hover:text-[var(--ia-star)]">
+    {title}
+  </h3>
+  <p class="line-clamp-2 text-sm leading-relaxed text-[var(--ia-mist)]">{summary}</p>
+
+  <div class="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-1">
+    <TagList tags={tags} max={3} />
+    <span class="ml-auto flex items-center gap-2 mono text-[11px] text-[var(--ia-mist)]">
+      {
+        severity && (
+          <span style={`color:${sevColor[severity] ?? "var(--ia-mist)"}`}>
+            ▲ {severity}
+          </span>
+        )
+      }
+      {project && <span>· {project}</span>}
+      <time datetime={date.toISOString()}>{formatDate(date)}</time>
+    </span>
+  </div>
+</GlassCard>

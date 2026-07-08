@@ -1,0 +1,33 @@
+---
+import SiteLayout from "@/components/layout/SiteLayout.astro";
+import PageHeader from "@/components/common/PageHeader.astro";
+import ProjectCard from "@/components/cards/ProjectCard.astro";
+import EmptyState from "@/components/common/EmptyState.astro";
+import { getProjects } from "@/lib/content";
+
+const projects = await getProjects();
+---
+
+<SiteLayout title="项目" description="正在建造、暂停或已归档的造物。">
+  <PageHeader
+    eyebrow="PROJECTS // 造物记录"
+    title="造物档案"
+    subtitle="正在建造、暂停、或已经归档的东西。GitHub 数据目前是 mock，未来接真实 API。"
+    icon="project"
+    class="mb-10"
+  />
+
+  {
+    projects.length > 0 ? (
+      <div class="grid gap-5 sm:grid-cols-2">
+        {projects.map((entry) => (
+          <div class="reveal">
+            <ProjectCard entry={entry} />
+          </div>
+        ))}
+      </div>
+    ) : (
+      <EmptyState icon="project" />
+    )
+  }
+</SiteLayout>

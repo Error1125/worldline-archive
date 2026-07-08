@@ -1,0 +1,42 @@
+﻿---
+import GlassCard from "@/components/common/GlassCard.astro";
+
+/**
+ * TerminalLog.astro 窶披・菴朱乗・縲悟星蜉ｨ譌･蠢励咲ｻ育ｫｯ縲らｻ吝ｭ俶｡｣轤ｹ螟ｧ蜴・ｸ轤ｹ蠑譛ｺ莉ｪ蠑乗─縲・ */
+const lines: { text: string; tone?: "dim" | "ok" | "accent" }[] = [
+  { text: "booting worldline-archive...", tone: "accent" },
+  { text: "loading memories...", tone: "dim" },
+  { text: "sync github commits...", tone: "dim" },
+  { text: "scanning anime records...", tone: "dim" },
+  { text: "bug battle logs mounted.", tone: "ok" },
+  { text: "welcome back, traveler.", tone: "accent" },
+];
+
+const toneClass: Record<string, string> = {
+  dim: "text-[var(--ia-mist)]",
+  ok: "text-[var(--ia-success)]",
+  accent: "text-[var(--ia-neon)]",
+};
+---
+
+<GlassCard class="overflow-hidden p-0">
+  <div class="flex items-center gap-2 border-b border-[var(--ia-line)] bg-[var(--ia-panel)] px-4 py-2">
+    <span class="size-2.5 rounded-full bg-[var(--ia-danger)] opacity-80"></span>
+    <span class="size-2.5 rounded-full bg-[var(--ia-warning)] opacity-80"></span>
+    <span class="size-2.5 rounded-full bg-[var(--ia-success)] opacity-80"></span>
+    <span class="ml-2 mono text-[11px] text-[var(--ia-mist)]">~/isekai 窶・boot.log</span>
+  </div>
+  <div class="space-y-1 px-4 py-4 mono text-[12px] leading-relaxed">
+    {
+      lines.map((l) => (
+        <p class="terminal-line">
+          <span class={toneClass[l.tone ?? "dim"]}>{l.text}</span>
+        </p>
+      ))
+    }
+    <p class="mt-1 flex items-center gap-1 text-[var(--ia-mist)]">
+      <span>$</span>
+      <span class="inline-block h-3.5 w-2 animate-pulse bg-[var(--ia-neon)]"></span>
+    </p>
+  </div>
+</GlassCard>

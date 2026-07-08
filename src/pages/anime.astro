@@ -1,0 +1,44 @@
+---
+import SiteLayout from "@/components/layout/SiteLayout.astro";
+import PageHeader from "@/components/common/PageHeader.astro";
+import AnimeCard from "@/components/cards/AnimeCard.astro";
+import EmptyState from "@/components/common/EmptyState.astro";
+import { getAnime } from "@/lib/content";
+
+const anime = await getAnime();
+
+// 简单统计
+const watching = anime.filter((a) => a.data.status === "watching").length;
+const completed = anime.filter((a) => a.data.status === "completed").length;
+const planned = anime.filter((a) => a.data.status === "planned").length;
+---
+
+<SiteLayout title="番剧" description="看过、在看、想看的作品与观测记录。">
+  <PageHeader
+    eyebrow="ANIME // 番剧观测"
+    title="番剧观测记录"
+    subtitle="在看、看完、想看的作品，以及一些主观到不能再主观的短评。"
+    icon="anime"
+    class="mb-6"
+  />
+
+  <div class="mb-8 flex flex-wrap gap-3 mono text-xs">
+    <span class="rounded-lg border border-[var(--ia-line)] bg-[var(--ia-panel)] px-3 py-1.5 text-[var(--ia-neon)]">在看 {watching}</span>
+    <span class="rounded-lg border border-[var(--ia-line)] bg-[var(--ia-panel)] px-3 py-1.5 text-[var(--ia-success)]">看完 {completed}</span>
+    <span class="rounded-lg border border-[var(--ia-line)] bg-[var(--ia-panel)] px-3 py-1.5 text-[var(--ia-nebula)]">想看 {planned}</span>
+  </div>
+
+  {
+    anime.length > 0 ? (
+      <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {anime.map((entry) => (
+          <div class="reveal">
+            <AnimeCard entry={entry} />
+          </div>
+        ))}
+      </div>
+    ) : (
+      <EmptyState icon="anime" />
+    )
+  }
+</SiteLayout>

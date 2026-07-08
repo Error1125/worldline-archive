@@ -1,0 +1,33 @@
+---
+import SiteLayout from "@/components/layout/SiteLayout.astro";
+import PageHeader from "@/components/common/PageHeader.astro";
+import PhotoCard from "@/components/cards/PhotoCard.astro";
+import EmptyState from "@/components/common/EmptyState.astro";
+import { getPhotos } from "@/lib/content";
+
+const photos = await getPhotos();
+---
+
+<SiteLayout title="照片" description="屏幕之外的光，与一些夜空观测。">
+  <PageHeader
+    eyebrow="PHOTOS // 相册"
+    title="屏幕之外"
+    subtitle="夜空观测、城市漫游、与一些离线的日常。第一版全部是占位图，不含真实照片与 EXIF。"
+    icon="photo"
+    class="mb-10"
+  />
+
+  {
+    photos.length > 0 ? (
+      <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {photos.map((entry) => (
+          <div class="reveal">
+            <PhotoCard entry={entry} />
+          </div>
+        ))}
+      </div>
+    ) : (
+      <EmptyState icon="photo" />
+    )
+  }
+</SiteLayout>

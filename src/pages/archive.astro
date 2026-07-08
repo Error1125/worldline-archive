@@ -1,0 +1,17 @@
+---
+import SiteLayout from "@/components/layout/SiteLayout.astro";
+import PageHeader from "@/components/common/PageHeader.astro";
+import ArchiveGrid from "@/components/archive/ArchiveGrid.astro";
+---
+
+<SiteLayout title="档案馆" description="番剧、音乐、项目、Bug、照片与说说的分区入口。">
+  <PageHeader
+    eyebrow="ARCHIVE // 档案馆"
+    title="存档分区"
+    subtitle="把不同类型的记忆分门别类地存好。选一个分区，进去慢慢翻。"
+    icon="archive"
+    class="mb-10"
+  />
+
+  <ArchiveGrid />
+</SiteLayout>

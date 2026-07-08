@@ -1,0 +1,42 @@
+---
+import SiteLayout from "@/components/layout/SiteLayout.astro";
+import GlassCard from "@/components/common/GlassCard.astro";
+import Icon from "@/components/common/Icon.astro";
+---
+
+<SiteLayout title="登录" description="登录功能即将上线。">
+  <div class="mx-auto flex max-w-md flex-col items-center py-16 text-center">
+    <span class="grid size-16 place-items-center rounded-2xl border border-[var(--ia-line-strong)] bg-[#0b1024] text-[var(--ia-neon)]">
+      <Icon name="lock" size={30} />
+    </span>
+    <div class="eyebrow mt-6">LOGIN // 登录</div>
+    <h1 class="mt-2 text-2xl font-bold text-[var(--ia-ink)]">登录即将上线</h1>
+    <p class="mt-3 text-sm leading-relaxed text-[var(--ia-mist)]">
+      第一版还没有真实登录。未来这里会支持登录，用于评论、点赞，以及站长本人进入后台。
+    </p>
+
+    <GlassCard class="mt-8 w-full p-5 text-left">
+      <div class="eyebrow mb-3">PLANNED // 计划中的方案</div>
+      <ul class="flex flex-col gap-2 text-sm text-[var(--ia-mist)]">
+        <li class="flex gap-2"><span class="text-[var(--ia-neon)]">▹</span> Supabase Auth（邮箱魔法链接）</li>
+        <li class="flex gap-2"><span class="text-[var(--ia-neon)]">▹</span> GitHub OAuth</li>
+        <li class="flex gap-2"><span class="text-[var(--ia-neon)]">▹</span> 访客登录仅用于评论 / 点赞</li>
+        <li class="flex gap-2"><span class="text-[var(--ia-neon)]">▹</span> 仅站长可进入后台</li>
+      </ul>
+    </GlassCard>
+
+    <button
+      type="button"
+      disabled
+      aria-disabled="true"
+      class="mt-6 inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] px-5 py-2.5 text-sm text-[var(--ia-mist)] opacity-70"
+    >
+      <Icon name="github" size={16} /> 使用 GitHub 登录
+      <span class="rounded-full border border-[var(--ia-line)] px-1.5 py-0.5 mono text-[10px] uppercase text-[var(--ia-nebula)]">soon</span>
+    </button>
+
+    <a href="/" class="clickable mt-8 inline-flex items-center gap-1.5 mono text-xs text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-neon)]">
+      <Icon name="arrow" size={13} class="rotate-180" /> 返回大厅
+    </a>
+  </div>
+</SiteLayout>

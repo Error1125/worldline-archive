@@ -1,0 +1,26 @@
+---
+import SiteLayout from "@/components/layout/SiteLayout.astro";
+import PageHeader from "@/components/common/PageHeader.astro";
+import SearchBox from "@/components/search/SearchBox.tsx";
+import { getSearchIndex } from "@/lib/content";
+
+const index = await getSearchIndex();
+---
+
+<SiteLayout title="搜索" description="检索这条世界线上的全部记录。">
+  <PageHeader
+    eyebrow="SEARCH // 检索"
+    title="检索存档"
+    subtitle="在标题、描述与标签之间做客户端匹配。第一版是轻量静态索引，未来会接 Pagefind。"
+    icon="search"
+    class="mb-8"
+  />
+
+  <div class="reveal mx-auto max-w-2xl">
+    <SearchBox client:load index={index} />
+  </div>
+
+  <p class="mt-10 text-center mono text-[11px] text-[var(--ia-mist)] opacity-60">
+    // TODO: 未来用 Pagefind 在构建期生成静态全文索引，支持正文级检索
+  </p>
+</SiteLayout>

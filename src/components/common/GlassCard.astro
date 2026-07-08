@@ -1,0 +1,24 @@
+---
+/**
+ * GlassCard.astro —— 毛玻璃卡片容器。
+ * 整卡可作为链接（href 存在时渲染 <a>，否则 <div>）。
+ * 规范：div 不能输出非法 href；整卡为链接时内部不要再嵌套 <a>。
+ */
+interface Props {
+  href?: string;
+  ticks?: boolean;
+  class?: string;
+  ariaLabel?: string;
+}
+const { href, ticks = false, class: className = "", ariaLabel } = Astro.props;
+const Tag = href ? "a" : "div";
+// 仅当是 <a> 时才透传 href / aria-label，避免 div 上出现非法属性
+const attrs = href ? { href, "aria-label": ariaLabel } : {};
+---
+
+<Tag
+  {...attrs}
+  class:list={["glass-card", ticks && "corner-ticks", href && "clickable block", className]}
+>
+  <slot />
+</Tag>

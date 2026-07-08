@@ -1,0 +1,97 @@
+---
+import SiteLayout from "@/components/layout/SiteLayout.astro";
+import PageHeader from "@/components/common/PageHeader.astro";
+import GlassCard from "@/components/common/GlassCard.astro";
+import Icon from "@/components/common/Icon.astro";
+import { siteConfig } from "@/config/site";
+import { features } from "@/config/features";
+
+const p = siteConfig.profile;
+const stack = ["Astro 5", "TypeScript", "Tailwind CSS v4", "React 19", "MDX", "Motion", "Canvas"];
+const links = siteConfig.links;
+---
+
+<SiteLayout title="关于" description="关于这个存档点，以及背后的人。">
+  <PageHeader
+    eyebrow="ABOUT // 关于"
+    title="关于这个存档点"
+    subtitle="一个把生活与代码混在一起的地方。既是日记，也是作品集，还是一份写给自己的世界线备份。"
+    icon="about"
+    class="mb-10"
+  />
+
+  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+    <!-- 存档者 -->
+    <GlassCard ticks class="reveal flex flex-col gap-4 p-6">
+      <div class="flex items-center gap-3">
+        <span class="grid size-12 place-items-center rounded-2xl border border-[var(--ia-line-strong)] bg-[#0b1024] text-[var(--ia-star)]">
+          <Icon name="user" size={24} />
+        </span>
+        <div>
+          <div class="text-lg font-semibold text-[var(--ia-ink)]">{siteConfig.author}</div>
+          <div class="mono text-xs text-[var(--ia-neon)]">{p.handle}</div>
+        </div>
+      </div>
+      <p class="text-sm leading-relaxed text-[var(--ia-mist)]">{p.signature}</p>
+      <div class="flex flex-wrap gap-3 pt-1">
+        {
+          links.github && (
+            <a href={links.github} target="_blank" rel="noopener noreferrer" class="clickable inline-flex items-center gap-1.5 mono text-xs text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-neon)]">
+              <Icon name="github" size={14} /> GitHub
+            </a>
+          )
+        }
+        {
+          links.email && (
+            <a href={links.email} class="clickable inline-flex items-center gap-1.5 mono text-xs text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-neon)]">
+              <Icon name="sparkle" size={14} /> Email
+            </a>
+          )
+        }
+      </div>
+    </GlassCard>
+
+    <!-- 关于站点 -->
+    <div class="flex flex-col gap-6">
+      <GlassCard class="reveal flex flex-col gap-3 p-6">
+        <span class="eyebrow">STACK // 技术栈</span>
+        <div class="flex flex-wrap gap-2">
+          {stack.map((s) => <span class="tag-chip">{s}</span>)}
+        </div>
+        <p class="mt-1 text-sm leading-relaxed text-[var(--ia-mist)]">
+          纯静态站点，内容用 Content Collections 管理，特效走轻量 React islands。
+          追求「有灵魂」而不是堆功能：深夜、星光、毛玻璃、终端与档案馆的气质。
+        </p>
+      </GlassCard>
+
+      <GlassCard class="reveal flex flex-col gap-3 p-6">
+        <span class="eyebrow">PRINCIPLES // 一些原则</span>
+        <ul class="flex flex-col gap-2 text-sm text-[var(--ia-mist)]">
+          <li class="flex gap-2"><span class="text-[var(--ia-neon)]">▹</span> 生活记录和开发记录混在一起，不刻意分开。</li>
+          <li class="flex gap-2"><span class="text-[var(--ia-neon)]">▹</span> 照片只放占位图，不暴露 EXIF 与地理信息。</li>
+          <li class="flex gap-2"><span class="text-[var(--ia-neon)]">▹</span> 音乐只写原创氛围短句，不搬运真实歌词。</li>
+          <li class="flex gap-2"><span class="text-[var(--ia-neon)]">▹</span> 像是在给自己的世界线做一次存档。</li>
+        </ul>
+      </GlassCard>
+    </div>
+  </div>
+
+  <!-- 低调的后台入口（放页面角落，受 features.auth 控制） -->
+  <div class="mt-12 flex items-center justify-center gap-4 border-t border-[var(--ia-line)] pt-6 mono text-[11px] text-[var(--ia-mist)] opacity-60">
+    <span class="diamond">worldline {p.worldline}</span>
+    {
+      features.auth && (
+        <a href="/admin" class="clickable inline-flex items-center gap-1 transition-opacity hover:opacity-100">
+          <Icon name="lock" size={11} /> admin
+        </a>
+      )
+    }
+    {
+      !features.auth && (
+        <a href="/login" class="clickable inline-flex items-center gap-1 transition-opacity hover:opacity-100">
+          <Icon name="lock" size={11} /> 登录（soon）
+        </a>
+      )
+    }
+  </div>
+</SiteLayout>

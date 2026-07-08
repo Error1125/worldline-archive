@@ -1,0 +1,46 @@
+---
+import Icon from "@/components/common/Icon.astro";
+
+/**
+ * SectionTitle.astro —— 区块标题。
+ * 英文眉题 + 中文标题 + 可选 icon + 可选 href（右侧「更多」入口）。
+ */
+interface Props {
+  labelEn: string;
+  title: string;
+  icon?: string;
+  href?: string;
+  hrefLabel?: string;
+  class?: string;
+}
+const {
+  labelEn,
+  title,
+  icon,
+  href,
+  hrefLabel = "MORE",
+  class: className = "",
+} = Astro.props;
+---
+
+<div class:list={["flex items-end justify-between gap-4", className]}>
+  <div class="min-w-0">
+    <div class="eyebrow">{labelEn}</div>
+    <h2 class="mt-1 flex items-center gap-2 text-lg font-semibold tracking-wide text-[var(--ia-ink)] sm:text-xl">
+      {icon && <Icon name={icon} size={18} class="text-[var(--ia-neon)]" />}
+      <span class="truncate">{title}</span>
+    </h2>
+  </div>
+
+  {
+    href && (
+      <a
+        href={href}
+        class="clickable group inline-flex shrink-0 items-center gap-1 text-xs mono text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-neon)]"
+      >
+        <span>{hrefLabel}</span>
+        <Icon name="arrow" size={14} class="transition-transform group-hover:translate-x-0.5" />
+      </a>
+    )
+  }
+</div>

@@ -1,0 +1,21 @@
+---
+import SiteLayout from "@/components/layout/SiteLayout.astro";
+import PageHeader from "@/components/common/PageHeader.astro";
+import TimelineView from "@/components/timeline/TimelineView.astro";
+import { getTimelineItems } from "@/lib/content";
+import EmptyState from "@/components/common/EmptyState.astro";
+
+const count = (await getTimelineItems()).length;
+---
+
+<SiteLayout title="时间线" description="这条世界线上的全部记录，按时间倒序排列。">
+  <PageHeader
+    eyebrow="TIMELINE // 时间线"
+    title="世界线记录"
+    subtitle="把文章、说说、番剧、音乐、项目与 Bug 混在一起，按时间倒序，像一条连续的存档轨迹。"
+    icon="timeline"
+    class="mb-10"
+  />
+
+  {count > 0 ? <TimelineView /> : <EmptyState icon="timeline" />}
+</SiteLayout>

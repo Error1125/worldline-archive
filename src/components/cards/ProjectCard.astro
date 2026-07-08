@@ -1,0 +1,80 @@
+---
+import type { CollectionEntry } from "astro:content";
+import GlassCard from "@/components/common/GlassCard.astro";
+import TagList from "@/components/common/TagList.astro";
+import StatusBadge from "@/components/common/StatusBadge.astro";
+import Icon from "@/components/common/Icon.astro";
+import { formatDate } from "@/lib/format";
+
+interface Props {
+  entry: CollectionEntry<"projects">;
+}
+const { entry } = Astro.props;
+const { title, description, date, status, tags, techStack, github, repo, demo } = entry.data;
+---
+
+<GlassCard ticks class="group flex flex-col gap-3 p-5">
+  <div class="flex items-center justify-between gap-3">
+    <span class="eyebrow flex items-center gap-1.5">
+      <Icon name="project" size={13} class="text-[var(--ia-neon)]" />
+      PROJECT // 造物
+    </span>
+    <StatusBadge domain="project" status={status} />
+  </div>
+
+  <h3 class="text-base font-semibold leading-snug text-[var(--ia-ink)] transition-colors group-hover:text-[var(--ia-star)]">
+    {title}
+  </h3>
+  <p class="line-clamp-2 text-sm leading-relaxed text-[var(--ia-mist)]">{description}</p>
+
+  {techStack.length > 0 && <TagList tags={techStack} max={5} />}
+
+  <div class="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1 mono text-[11px] text-[var(--ia-mist)]">
+    {
+      github && (
+        <span class="flex items-center gap-3">
+          <span class="flex items-center gap-1 text-[var(--ia-star)]">
+            <Icon name="star" size={12} /> {github.stars ?? 0}
+          </span>
+          <span>⑂ {github.forks ?? 0}</span>
+          {github.language && <span class="text-[var(--ia-neon)]">{github.language}</span>}
+        </span>
+      )
+    }
+    <span class="ml-auto flex items-center gap-3">
+      {
+        repo && (
+          <a
+            href={repo}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="clickable inline-flex items-center gap-1 transition-colors hover:text-[var(--ia-neon)]"
+          >
+            <Icon name="github" size={13} /> repo
+          </a>
+        )
+      }
+      {
+        demo && (
+          <a
+            href={demo}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="clickable transition-colors hover:text-[var(--ia-neon)]"
+          >
+            demo ↗
+          </a>
+        )
+      }
+      <time datetime={date.toISOString()}>{formatDate(date)}</time>
+    </span>
+  </div>
+
+  {
+    tags.length > 0 && (
+      <div class="border-t border-[var(--ia-line)] pt-3">
+        <TagList tags={tags} max={4} />
+      </div>
+    )
+  }
+</GlassCard>

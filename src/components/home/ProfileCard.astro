@@ -1,0 +1,50 @@
+---
+import { siteConfig } from "@/config/site";
+import GlassCard from "@/components/common/GlassCard.astro";
+import Icon from "@/components/common/Icon.astro";
+
+/**
+ * ProfileCard.astro —— 存档者档案卡（handle / signature / status / mood / coordinate / worldline）。
+ */
+const p = siteConfig.profile;
+
+const rows: { label: string; value: string; icon: string }[] = [
+  { label: "STATUS", value: p.status, icon: "terminal" },
+  { label: "MOOD", value: p.mood, icon: "sparkle" },
+  { label: "COORD", value: p.coordinate, icon: "star" },
+  { label: "WORLDLINE", value: p.worldline, icon: "clock" },
+];
+---
+
+<GlassCard ticks class="flex flex-col gap-4 p-6">
+  <div class="flex items-center gap-4">
+    <div class="relative grid size-14 place-items-center rounded-2xl border border-[var(--ia-line-strong)] bg-[#0b1024]">
+      <Icon name="user" size={26} class="text-[var(--ia-star)]" />
+      <span class="absolute -bottom-1 -right-1 flex size-4 items-center justify-center">
+        <span class="absolute inline-flex size-3 animate-ping rounded-full bg-[var(--ia-success)] opacity-60"></span>
+        <span class="relative inline-flex size-2.5 rounded-full bg-[var(--ia-success)] shadow-[0_0_8px_var(--ia-success)]"></span>
+      </span>
+    </div>
+    <div class="min-w-0">
+      <div class="flex items-center gap-2">
+        <span class="text-lg font-semibold text-[var(--ia-ink)]">{siteConfig.author}</span>
+        <span class="mono text-xs text-[var(--ia-neon)]">{p.handle}</span>
+      </div>
+      <p class="mt-1 text-sm leading-relaxed text-[var(--ia-mist)]">{p.signature}</p>
+    </div>
+  </div>
+
+  <dl class="grid grid-cols-2 gap-2">
+    {
+      rows.map((r) => (
+        <div class="flex items-center gap-2 rounded-lg border border-[var(--ia-line)] bg-[var(--ia-panel)] px-3 py-2">
+          <Icon name={r.icon} size={14} class="shrink-0 text-[var(--ia-mist)]" />
+          <div class="min-w-0">
+            <dt class="mono text-[9px] uppercase tracking-wider text-[var(--ia-mist)] opacity-70">{r.label}</dt>
+            <dd class="truncate text-xs text-[var(--ia-ink)]">{r.value}</dd>
+          </div>
+        </div>
+      ))
+    }
+  </dl>
+</GlassCard>

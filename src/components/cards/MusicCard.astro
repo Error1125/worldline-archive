@@ -1,0 +1,81 @@
+---
+import type { CollectionEntry } from "astro:content";
+import GlassCard from "@/components/common/GlassCard.astro";
+import TagList from "@/components/common/TagList.astro";
+import Icon from "@/components/common/Icon.astro";
+
+interface Props {
+  entry: CollectionEntry<"music">;
+}
+const { entry } = Astro.props;
+const { title, artist, album, type, cover, tags, mood, comment, appleMusicUrl, lyricsQuote } =
+  entry.data;
+
+const kindLabel: Record<string, string> = { song: "单曲", album: "专辑", playlist: "歌单" };
+
+const hueSeed = [...(title + artist)].reduce((a, c) => a + c.charCodeAt(0), 0);
+const hueA = hueSeed % 360;
+const hueB = (hueSeed * 2 + 200) % 360;
+---
+
+<GlassCard class="group flex flex-col gap-3 p-4">
+  <div class="flex items-start gap-3">
+    <!-- 封面 -->
+    <div class="relative size-16 shrink-0 overflow-hidden rounded-lg border border-[var(--ia-line)]">
+      {
+        cover ? (
+          <img src={cover} alt={`${title} - ${artist}`} loading="lazy" class="size-full object-cover" />
+        ) : (
+          <div
+            class="grid size-full place-items-center"
+            style={`background:radial-gradient(130% 130% at 20% 10%, hsl(${hueA} 70% 26% / .95), transparent 55%), radial-gradient(130% 130% at 90% 90%, hsl(${hueB} 70% 28% / .95), #070a16)`}
+          >
+            <Icon name="music" size={22} class="text-[var(--ia-star)] opacity-85" />
+          </div>
+        )
+      }
+      <!-- 播放态律动条 -->
+      <span class="eq absolute bottom-1 right-1 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true">
+        <i></i><i></i><i></i><i></i>
+      </span>
+    </div>
+
+    <div class="min-w-0 flex-1">
+      <div class="flex items-center gap-2">
+        <span class="tag-chip">{kindLabel[type] ?? type}</span>
+        {mood && <span class="mono text-[11px] text-[var(--ia-nebula)]">◇ {mood}</span>}
+      </div>
+      <h3 class="mt-1 truncate text-sm font-semibold text-[var(--ia-ink)] transition-colors group-hover:text-[var(--ia-star)]">
+        {title}
+      </h3>
+      <p class="truncate text-xs text-[var(--ia-mist)]">
+        {artist}{album ? ` · ${album}` : ""}
+      </p>
+    </div>
+  </div>
+
+  {
+    lyricsQuote && (
+      <blockquote class="border-l-2 border-[var(--ia-nebula)] pl-3 text-xs italic leading-relaxed text-[var(--ia-mist)]">
+        「{lyricsQuote}」
+      </blockquote>
+    )
+  }
+  {comment && <p class="line-clamp-2 text-xs leading-relaxed text-[var(--ia-mist)]">{comment}</p>}
+
+  <div class="mt-auto flex items-center justify-between gap-2 pt-1">
+    <TagList tags={tags} max={3} />
+    {
+      appleMusicUrl && (
+        <a
+          href={appleMusicUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="clickable inline-flex shrink-0 items-center gap-1 mono text-[11px] text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-neon)]"
+        >
+          Apple Music ↗
+        </a>
+      )
+    }
+  </div>
+</GlassCard>

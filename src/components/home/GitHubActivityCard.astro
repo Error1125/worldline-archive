@@ -1,0 +1,49 @@
+---
+import GlassCard from "@/components/common/GlassCard.astro";
+import SectionTitle from "@/components/common/SectionTitle.astro";
+import Icon from "@/components/common/Icon.astro";
+import { formatRelative } from "@/lib/format";
+import activityData from "@/data/github/activity.json";
+import type { GitHubActivity } from "@/lib/github/types";
+
+/**
+ * GitHubActivityCard.astro —— 读取 mock activity JSON，terminal 风格展示最近活动。
+ */
+const activity = (activityData.activity as GitHubActivity[]).slice(0, 5);
+
+const typeGlyph: Record<string, { g: string; c: string }> = {
+  commit: { g: "◆", c: "var(--ia-neon)" },
+  issue: { g: "!", c: "var(--ia-warning)" },
+  pull_request: { g: "⇅", c: "var(--ia-nebula)" },
+  release: { g: "▲", c: "var(--ia-success)" },
+  star: { g: "★", c: "var(--ia-star)" },
+};
+---
+
+<GlassCard ticks class="flex flex-col gap-4 p-5">
+  <SectionTitle labelEn="GITHUB // 活动" title="代码轨迹" icon="github" />
+
+  <ul class="flex flex-col gap-2.5 mono text-[12px]">
+    {
+      activity.map((ev) => {
+        const gl = typeGlyph[ev.type] ?? { g: "·", c: "var(--ia-mist)" };
+        return (
+          <li class="flex items-start gap-2.5">
+            <span class="mt-0.5 shrink-0" style={`color:${gl.c}`}>{gl.g}</span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-[var(--ia-ink)]">{ev.title}</p>
+              <p class="truncate text-[11px] text-[var(--ia-mist)]">
+                {ev.repo.split("/")[1]} · {formatRelative(ev.createdAt)}
+              </p>
+            </div>
+          </li>
+        );
+      })
+    }
+  </ul>
+
+  <p class="flex items-center gap-1.5 border-t border-[var(--ia-line)] pt-3 mono text-[11px] text-[var(--ia-mist)] opacity-70">
+    <Icon name="terminal" size={12} />
+    // mock 数据 · 未来由 pnpm sync:github 生成
+  </p>
+</GlassCard>

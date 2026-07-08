@@ -1,0 +1,33 @@
+---
+import SiteLayout from "@/components/layout/SiteLayout.astro";
+import PageHeader from "@/components/common/PageHeader.astro";
+import MomentCard from "@/components/cards/MomentCard.astro";
+import EmptyState from "@/components/common/EmptyState.astro";
+import { getMoments } from "@/lib/content";
+
+const moments = await getMoments();
+---
+
+<SiteLayout title="说说" description="没人听见、却想留下的碎碎念。">
+  <PageHeader
+    eyebrow="MOMENTS // 说说"
+    title="碎碎念"
+    subtitle="比文章短、比沉默长的那些瞬间。心情、天气、和一闪而过的念头。"
+    icon="moment"
+    class="mb-10"
+  />
+
+  {
+    moments.length > 0 ? (
+      <div class="columns-1 gap-5 sm:columns-2 [&>*]:mb-5 [&>*]:break-inside-avoid">
+        {moments.map((entry) => (
+          <div class="reveal">
+            <MomentCard entry={entry} />
+          </div>
+        ))}
+      </div>
+    ) : (
+      <EmptyState icon="moment" />
+    )
+  }
+</SiteLayout>

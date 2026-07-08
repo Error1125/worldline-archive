@@ -1,0 +1,120 @@
+---
+import "@/styles/global.css";
+import { ClientRouter } from "astro:transitions";
+import { siteConfig } from "@/config/site";
+import { withBase } from "@/lib/paths";
+
+import Header from "@/components/layout/Header.astro";
+import MobileNav from "@/components/layout/MobileNav.astro";
+import Footer from "@/components/layout/Footer.astro";
+
+import Starfield from "@/components/effects/Starfield.tsx";
+import DanmakuBackground from "@/components/effects/DanmakuBackground.tsx";
+import CustomCursor from "@/components/effects/CustomCursor.tsx";
+import ClickSpark from "@/components/effects/ClickSpark.tsx";
+import PageEnter from "@/components/effects/PageEnter.tsx";
+
+/**
+ * SiteLayout.astro —— 全站根布局。
+ * - 引入 global.css，使用 View Transitions（ClientRouter）；
+ * - 背景特效岛（星空 / 弹幕 / 光标 / 点击火花 / 进场扫光）均 client:only + transition:persist，
+ *   路由切换时保持存活、背景不闪烁；
+ * - z 轴：星云 z-0 → 特效 z-1/2 → 正文 z-10 → 头部 / 底栏 z-40。
+ */
+interface Props {
+  title?: string;
+  description?: string;
+}
+const { title, description } = Astro.props;
+const pageTitle = title ? `${title} · ${siteConfig.title}` : `${siteConfig.title} · ${siteConfig.subtitle}`;
+const pageDesc = description ?? siteConfig.description;
+---
+
+<!doctype html>
+<html lang={siteConfig.language}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href={withBase("/favicon.svg")} type="image/svg+xml" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={pageDesc} />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="color-scheme" content="dark" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDesc} />
+    <meta property="og:type" content="website" />
+    <ClientRouter />
+  </head>
+
+  <body class="main-has-tabbar min-h-screen text-[var(--ia-ink)] antialiased">
+    <!-- 背景层：星云渐变（z-0），路由间持久化，避免闪烁 -->
+    <div class="ia-nebula" transition:persist="nebula" aria-hidden="true"></div>
+
+    <!-- 特效岛：全部 client:only（避免 SSR window 报错）+ 持久化 -->
+    <Starfield client:only="react" transition:persist="starfield" />
+    <DanmakuBackground client:only="react" transition:persist="danmaku" />
+    <CustomCursor client:only="react" transition:persist="cursor" />
+    <ClickSpark client:only="react" transition:persist="spark" />
+    <PageEnter client:only="react" transition:persist="page-enter" />
+
+    <!-- 路由进场扫光条（由 PageEnter 触发 .run） -->
+    <div class="page-sweep" aria-hidden="true"></div>
+
+    <Header />
+
+    <main class="relative z-10 mx-auto w-full max-w-6xl px-5 py-8 sm:px-6 sm:py-10">
+      <slot />
+    </main>
+
+    <Footer />
+
+    <MobileNav />
+
+    <!--
+      SSR-safe 的两段客户端增强脚本：
+      1) 卡片聚光：跟随鼠标更新 .glass-card 的 --spot-x / --spot-y；
+      2) 进场浮现：IntersectionObserver 给 .reveal 加 .in。
+      使用事件委托 + astro:page-load，兼容 View Transitions。
+    -->
+    <script>
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      // 1) 卡片聚光（委托到 document，命中 .glass-card）
+      function onPointerMove(e: PointerEvent) {
+        const target = e.target as HTMLElement | null;
+        const card = target?.closest?.(".glass-card") as HTMLElement | null;
+        if (!card) return;
+        const rect = card.getBoundingClientRect();
+        card.style.setProperty("--spot-x", `${e.clientX - rect.left}px`);
+        card.style.setProperty("--spot-y", `${e.clientY - rect.top}px`);
+      }
+      document.addEventListener("pointermove", onPointerMove, { passive: true });
+
+      // 2) 进场浮现
+      let observer: IntersectionObserver | null = null;
+      function setupReveal() {
+        if (reduceMotion) {
+          document.querySelectorAll(".reveal").forEach((el) => el.classList.add("in"));
+          return;
+        }
+        observer?.disconnect();
+        observer = new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              if (entry.isIntersecting) {
+                entry.target.classList.add("in");
+                observer?.unobserve(entry.target);
+              }
+            }
+          },
+          { rootMargin: "0px 0px -8% 0px", threshold: 0.05 },
+        );
+        document.querySelectorAll(".reveal:not(.in)").forEach((el) => observer!.observe(el));
+      }
+
+      setupReveal();
+      // View Transitions：每次换页后重新扫描
+      document.addEventListener("astro:page-load", setupReveal);
+    </script>
+  </body>
+</html>

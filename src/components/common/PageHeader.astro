@@ -1,0 +1,30 @@
+---
+import Icon from "@/components/common/Icon.astro";
+
+/**
+ * PageHeader.astro —— 页面头部（眉题 + 标题 + 副标题 + 可选 icon）。
+ */
+interface Props {
+  eyebrow: string;
+  title: string;
+  subtitle?: string;
+  icon?: string;
+  class?: string;
+}
+const { eyebrow, title, subtitle, icon, class: className = "" } = Astro.props;
+---
+
+<header class:list={["reveal", className]}>
+  <div class="eyebrow">{eyebrow}</div>
+  <h1 class="mt-2 flex items-center gap-3 text-2xl font-semibold tracking-wide text-[var(--ia-ink)] sm:text-3xl">
+    {
+      icon && (
+        <span class="grid size-9 place-items-center rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] text-[var(--ia-neon)]">
+          <Icon name={icon} size={20} />
+        </span>
+      )
+    }
+    <span>{title}</span>
+  </h1>
+  {subtitle && <p class="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--ia-mist)]">{subtitle}</p>}
+</header>
