@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <!-- 雨夜街道：雨丝 + 霓虹光斑 + 湿地反光（原创占位背景） -->
+  <defs>
+    <linearGradient id="sky3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#04060d"/>
+      <stop offset="0.62" stop-color="#081226"/>
+      <stop offset="1" stop-color="#0a0f22"/>
+    </linearGradient>
+    <radialGradient id="bk-a" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#4df0dd" stop-opacity="0.55"/><stop offset="1" stop-color="#4df0dd" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bk-b" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ff9fd6" stop-opacity="0.5"/><stop offset="1" stop-color="#ff9fd6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bk-c" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#7db5ff" stop-opacity="0.5"/><stop offset="1" stop-color="#7db5ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="wet3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0d1a34" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#04060d"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky3)"/>
+  <!-- 霓虹光斑 bokeh -->
+  <circle cx="330" cy="300" r="120" fill="url(#bk-a)"/>
+  <circle cx="620" cy="210" r="80" fill="url(#bk-b)"/>
+  <circle cx="980" cy="330" r="140" fill="url(#bk-c)"/>
+  <circle cx="1310" cy="240" r="95" fill="url(#bk-b)"/>
+  <circle cx="1480" cy="420" r="70" fill="url(#bk-a)"/>
+  <circle cx="150" cy="470" r="85" fill="url(#bk-c)"/>
+  <!-- 街面与倒影 -->
+  <rect x="0" y="620" width="1600" height="280" fill="url(#wet3)"/>
+  <g opacity="0.32">
+    <rect x="290" y="620" width="80" height="220" fill="url(#bk-a)"/>
+    <rect x="940" y="620" width="90" height="250" fill="url(#bk-c)"/>
+    <rect x="1280" y="620" width="60" height="190" fill="url(#bk-b)"/>
+  </g>
+  <line x1="0" y1="620" x2="1600" y2="620" stroke="#7db5ff" stroke-opacity="0.22" stroke-width="1.5"/>
+  <!-- 雨丝 -->
+  <g stroke="#9fd4ff" stroke-opacity="0.14" stroke-width="1.5" stroke-linecap="round">
+    <line x1="120" y1="40" x2="104" y2="150"/><line x1="260" y1="180" x2="244" y2="290"/>
+    <line x1="420" y1="60" x2="404" y2="200"/><line x1="560" y1="300" x2="546" y2="410"/>
+    <line x1="700" y1="90" x2="684" y2="230"/><line x1="840" y1="240" x2="824" y2="380"/>
+    <line x1="1010" y1="60" x2="994" y2="180"/><line x1="1150" y1="320" x2="1136" y2="440"/>
+    <line x1="1290" y1="80" x2="1274" y2="220"/><line x1="1430" y1="260" x2="1414" y2="400"/>
+    <line x1="1560" y1="120" x2="1544" y2="240"/><line x1="60" y1="330" x2="46" y2="440"/>
+    <line x1="360" y1="420" x2="346" y2="540"/><line x1="900" y1="450" x2="886" y2="560"/>
+    <line x1="1200" y1="470" x2="1186" y2="580"/><line x1="640" y1="480" x2="626" y2="590"/>
+  </g>
+</svg>

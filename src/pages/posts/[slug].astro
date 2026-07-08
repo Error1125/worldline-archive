@@ -1,4 +1,5 @@
 ---
+import { withBase } from "@/lib/paths";
 import { getCollection, render } from "astro:content";
 import SiteLayout from "@/components/layout/SiteLayout.astro";
 import TagList from "@/components/common/TagList.astro";
@@ -22,7 +23,7 @@ const { Content } = await render(entry);
 <SiteLayout title={title} description={description}>
   <article class="mx-auto max-w-3xl">
     <!-- 返回 -->
-    <a href="/posts" class="clickable mb-6 inline-flex items-center gap-1.5 mono text-xs text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-neon)]">
+    <a href={withBase("/posts")} class="clickable mb-6 inline-flex items-center gap-1.5 mono text-xs text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-neon)]">
       <Icon name="arrow" size={13} class="rotate-180" /> 返回文章列表
     </a>
 

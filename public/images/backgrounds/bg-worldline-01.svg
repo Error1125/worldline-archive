@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <!-- 深夜观测室：穹顶弧线 + 月辉 + 远山地平线（原创占位背景） -->
+  <defs>
+    <linearGradient id="sky1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#060a1a"/>
+      <stop offset="0.55" stop-color="#0a1230"/>
+      <stop offset="1" stop-color="#05070f"/>
+    </linearGradient>
+    <radialGradient id="moon1" cx="0.78" cy="0.22" r="0.5">
+      <stop offset="0" stop-color="#9fd4ff" stop-opacity="0.5"/>
+      <stop offset="0.35" stop-color="#7db5ff" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#7db5ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ground1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a1024"/>
+      <stop offset="1" stop-color="#04060d"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky1)"/>
+  <rect width="1600" height="900" fill="url(#moon1)"/>
+  <circle cx="1248" cy="198" r="52" fill="#dfe8ff" opacity="0.85"/>
+  <circle cx="1248" cy="198" r="82" fill="none" stroke="#9fd4ff" stroke-opacity="0.25" stroke-width="2"/>
+  <g fill="#dfe8ff">
+    <circle cx="140" cy="120" r="1.6" opacity="0.8"/><circle cx="320" cy="220" r="1.2" opacity="0.6"/>
+    <circle cx="520" cy="90" r="1.8" opacity="0.9"/><circle cx="700" cy="260" r="1.1" opacity="0.5"/>
+    <circle cx="860" cy="150" r="1.5" opacity="0.7"/><circle cx="1030" cy="80" r="1.2" opacity="0.6"/>
+    <circle cx="1420" cy="320" r="1.4" opacity="0.6"/><circle cx="1540" cy="110" r="1.7" opacity="0.8"/>
+    <circle cx="240" cy="360" r="1.1" opacity="0.45"/><circle cx="980" cy="330" r="1.3" opacity="0.5"/>
+    <circle cx="60" cy="250" r="1.2" opacity="0.55"/><circle cx="1180" cy="420" r="1" opacity="0.4"/>
+  </g>
+  <!-- 远山 -->
+  <path d="M0 640 L220 560 L410 630 L620 540 L840 640 L1050 560 L1280 650 L1470 580 L1600 640 L1600 900 L0 900 Z" fill="url(#ground1)"/>
+  <!-- 观测穹顶剪影 -->
+  <g transform="translate(1080 640)">
+    <path d="M-150 0 A150 150 0 0 1 150 0 Z" fill="#070c1c"/>
+    <path d="M-150 0 A150 150 0 0 1 150 0" fill="none" stroke="#7db5ff" stroke-opacity="0.28" stroke-width="2"/>
+    <rect x="-16" y="-150" width="32" height="76" rx="4" fill="#0c1430"/>
+    <rect x="-16" y="-150" width="32" height="76" rx="4" fill="none" stroke="#4df0dd" stroke-opacity="0.4" stroke-width="1.5"/>
+    <line x1="0" y1="-150" x2="86" y2="-268" stroke="#4df0dd" stroke-opacity="0.35" stroke-width="2"/>
+    <rect x="-170" y="0" width="340" height="60" fill="#060a16"/>
+    <rect x="-60" y="18" width="10" height="6" fill="#ffd479" opacity="0.7"/>
+    <rect x="34" y="18" width="10" height="6" fill="#7db5ff" opacity="0.6"/>
+  </g>
+  <!-- 地平薄雾 -->
+  <rect x="0" y="600" width="1600" height="90" fill="#7db5ff" opacity="0.05"/>
+</svg>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import type { SearchDoc } from "@/lib/content";
+import { withBase } from "@/lib/paths";
 
 /**
  * SearchBox —— 纯客户端搜索。
@@ -22,7 +23,10 @@ const TYPE_COLOR: Record<string, string> = {
 };
 
 export default function SearchBox({ index }: Props) {
-  const [q, setQ] = useState("");
+  // 首页大搜索框以 GET ?q= 跳转过来；client:only 组件可直接读 location（保守起见仍做 window 守卫）
+  const [q, setQ] = useState(() =>
+    typeof window === "undefined" ? "" : (new URLSearchParams(window.location.search).get("q") ?? ""),
+  );
 
   const results = useMemo(() => {
     const query = q.trim().toLowerCase();
@@ -74,7 +78,7 @@ export default function SearchBox({ index }: Props) {
           {results.map((doc, i) => (
             <motion.a
               key={doc.href + doc.title + i}
-              href={doc.href}
+              href={withBase(doc.href)}
               layout
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}

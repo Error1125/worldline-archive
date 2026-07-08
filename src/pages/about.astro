@@ -1,4 +1,5 @@
 ---
+import { withBase } from "@/lib/paths";
 import SiteLayout from "@/components/layout/SiteLayout.astro";
 import PageHeader from "@/components/common/PageHeader.astro";
 import GlassCard from "@/components/common/GlassCard.astro";
@@ -81,14 +82,14 @@ const links = siteConfig.links;
     <span class="diamond">worldline {p.worldline}</span>
     {
       features.auth && (
-        <a href="/admin" class="clickable inline-flex items-center gap-1 transition-opacity hover:opacity-100">
+        <a href={withBase("/admin")} class="clickable inline-flex items-center gap-1 transition-opacity hover:opacity-100">
           <Icon name="lock" size={11} /> admin
         </a>
       )
     }
     {
       !features.auth && (
-        <a href="/login" class="clickable inline-flex items-center gap-1 transition-opacity hover:opacity-100">
+        <a href={withBase("/login")} class="clickable inline-flex items-center gap-1 transition-opacity hover:opacity-100">
           <Icon name="lock" size={11} /> 登录（soon）
         </a>
       )

@@ -1,4 +1,5 @@
 ---
+import { withBase } from "@/lib/paths";
 import SiteLayout from "@/components/layout/SiteLayout.astro";
 import GlassCard from "@/components/common/GlassCard.astro";
 import Icon from "@/components/common/Icon.astro";
@@ -51,7 +52,7 @@ const capabilities: { icon: string; title: string; desc: string }[] = [
     </div>
 
     <div class="mt-8 text-center">
-      <a href="/" class="clickable inline-flex items-center gap-1.5 mono text-xs text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-neon)]">
+      <a href={withBase("/")} class="clickable inline-flex items-center gap-1.5 mono text-xs text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-neon)]">
         <Icon name="arrow" size={13} class="rotate-180" /> 返回大厅
       </a>
     </div>

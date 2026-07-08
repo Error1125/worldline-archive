@@ -2,49 +2,100 @@
 import { siteConfig } from "@/config/site";
 import GlassCard from "@/components/common/GlassCard.astro";
 import Icon from "@/components/common/Icon.astro";
+import { withBase } from "@/lib/paths";
 
 /**
- * ProfileCard.astro —— 存档者档案卡（handle / signature / status / mood / coordinate / worldline）。
+ * ProfileCard.astro —— 存档者档案卡（观测室版）。
+ *
+ * - 头像更大 + 发光渐变描边；点击头像 / 名字进入 /about；
+ * - 一句简介 + 当前状态，文字密度压到最低；
+ * - 统计数字醒目且各自可点（文章 / 项目 / 档案 / 照片）；
+ * - GitHub / Email / About 做成按钮式圆形 icon，hover 上浮；
+ * - 整卡是 <div>，内部各链接独立，不嵌套 <a>；
+ *   内部链接 withBase()，外链 / mailto 不加 base（withBase 已兜底）。
  */
+interface Props {
+  counts: { posts: number; projects: number; archives: number; photos: number };
+  class?: string;
+}
+const { counts, class: className = "" } = Astro.props;
 const p = siteConfig.profile;
 
-const rows: { label: string; value: string; icon: string }[] = [
-  { label: "STATUS", value: p.status, icon: "terminal" },
-  { label: "MOOD", value: p.mood, icon: "sparkle" },
-  { label: "COORD", value: p.coordinate, icon: "star" },
-  { label: "WORLDLINE", value: p.worldline, icon: "clock" },
+const stats = [
+  { label: "文章", labelEn: "POSTS", value: counts.posts, href: "/posts" },
+  { label: "项目", labelEn: "PROJECTS", value: counts.projects, href: "/projects" },
+  { label: "档案", labelEn: "ARCHIVES", value: counts.archives, href: "/archive" },
+  { label: "照片", labelEn: "PHOTOS", value: counts.photos, href: "/photos" },
 ];
+
+const iconLinks = [
+  { icon: "github", label: "GitHub", href: siteConfig.links.github, external: true },
+  { icon: "post", label: "Email", href: siteConfig.links.email, external: false },
+  { icon: "about", label: "关于我", href: withBase("/about"), external: false },
+].filter((l) => l.href);
 ---
 
-<GlassCard ticks class="flex flex-col gap-4 p-6">
+<GlassCard ticks class:list={["flex flex-col gap-4 p-5 sm:p-6", className]}>
   <div class="flex items-center gap-4">
-    <div class="relative grid size-14 place-items-center rounded-2xl border border-[var(--ia-line-strong)] bg-[#0b1024]">
-      <Icon name="user" size={26} class="text-[var(--ia-star)]" />
-      <span class="absolute -bottom-1 -right-1 flex size-4 items-center justify-center">
-        <span class="absolute inline-flex size-3 animate-ping rounded-full bg-[var(--ia-success)] opacity-60"></span>
+    <!-- 头像：渐变发光描边 + 在线呼吸点 -->
+    <a href={withBase("/about")} class="clickable avatar-ring shrink-0" aria-label="关于我">
+      <span class="avatar-core">
+        <Icon name="user" size={34} class="text-[var(--ia-star)]" />
+      </span>
+      <span class="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center">
+        <span class="absolute inline-flex size-3.5 animate-ping rounded-full bg-[var(--ia-success)] opacity-50"></span>
         <span class="relative inline-flex size-2.5 rounded-full bg-[var(--ia-success)] shadow-[0_0_8px_var(--ia-success)]"></span>
       </span>
-    </div>
+    </a>
+
     <div class="min-w-0">
-      <div class="flex items-center gap-2">
-        <span class="text-lg font-semibold text-[var(--ia-ink)]">{siteConfig.author}</span>
-        <span class="mono text-xs text-[var(--ia-neon)]">{p.handle}</span>
-      </div>
-      <p class="mt-1 text-sm leading-relaxed text-[var(--ia-mist)]">{p.signature}</p>
+      <a href={withBase("/about")} class="clickable group flex flex-wrap items-baseline gap-x-2">
+        <span class="text-xl font-bold tracking-wide text-[var(--ia-ink)] transition-colors group-hover:text-[var(--ia-neon)]">
+          {siteConfig.author}
+        </span>
+        <span class="mono text-xs text-[var(--ia-neon)] opacity-90">{p.handle}</span>
+      </a>
+      <p class="mt-1 line-clamp-2 text-[13px] leading-relaxed text-[var(--ia-mist)]">{p.signature}</p>
+      <p class="mono mt-1.5 flex items-center gap-1.5 text-[10px] tracking-wider text-[var(--ia-mist)] opacity-80">
+        <span class="inline-block size-1 rounded-full bg-[var(--ia-neon)]"></span>
+        {p.status} · {p.mood}
+      </p>
     </div>
   </div>
 
-  <dl class="grid grid-cols-2 gap-2">
+  <!-- 统计：醒目数字，各自可点 -->
+  <div class="grid grid-cols-4 gap-2">
     {
-      rows.map((r) => (
-        <div class="flex items-center gap-2 rounded-lg border border-[var(--ia-line)] bg-[var(--ia-panel)] px-3 py-2">
-          <Icon name={r.icon} size={14} class="shrink-0 text-[var(--ia-mist)]" />
-          <div class="min-w-0">
-            <dt class="mono text-[9px] uppercase tracking-wider text-[var(--ia-mist)] opacity-70">{r.label}</dt>
-            <dd class="truncate text-xs text-[var(--ia-ink)]">{r.value}</dd>
-          </div>
-        </div>
+      stats.map((s) => (
+        <a
+          href={withBase(s.href)}
+          class="clickable group flex flex-col items-center gap-0.5 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] px-1 py-2.5 transition-colors hover:border-[var(--ia-neon)]"
+          aria-label={`${s.label} ${s.value} 条`}
+        >
+          <b class="mono text-lg font-bold leading-none text-[var(--ia-star)] transition-colors group-hover:text-[var(--ia-neon)]">
+            {s.value}
+          </b>
+          <span class="text-[10.5px] text-[var(--ia-mist)]">{s.label}</span>
+        </a>
       ))
     }
-  </dl>
+  </div>
+
+  <!-- 外链按钮 -->
+  <div class="flex items-center gap-2.5">
+    {
+      iconLinks.map((l) => (
+        <a
+          href={l.href}
+          {...(l.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+          aria-label={l.label}
+          title={l.label}
+          class="clickable grid size-9 place-items-center rounded-full border border-[var(--ia-line-strong)] bg-[var(--ia-panel)] text-[var(--ia-mist)] transition-all hover:-translate-y-0.5 hover:border-[var(--ia-neon)] hover:text-[var(--ia-neon)] hover:shadow-[0_6px_16px_-6px_color-mix(in_srgb,var(--ia-neon)_60%,transparent)]"
+        >
+          <Icon name={l.icon} size={16} />
+        </a>
+      ))
+    }
+    <span class="mono ml-auto text-[10px] tracking-[0.16em] text-[var(--ia-mist)] opacity-60">SAVE POINT 07</span>
+  </div>
 </GlassCard>

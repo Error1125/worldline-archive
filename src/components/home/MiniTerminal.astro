@@ -1,0 +1,49 @@
+---
+import GlassCard from "@/components/common/GlassCard.astro";
+import { siteConfig } from "@/config/site";
+
+/**
+ * MiniTerminal.astro —— 降权后的小型氛围终端（角落 / 下方）。
+ * 只保留 4 行世界线 boot 文案 + 光标，不再占据首页主舞台。
+ * （原 TerminalLog.astro 保留未删，供其他场景复用。）
+ */
+interface Props {
+  class?: string;
+}
+const { class: className = "" } = Astro.props;
+
+const lines: { text: string; tone: "dim" | "ok" | "accent" }[] = [
+  { text: "booting worldline archive...", tone: "accent" },
+  { text: "loading memory fragments...", tone: "dim" },
+  { text: `divergence: ${siteConfig.profile.worldline}`, tone: "dim" },
+  { text: "archive stable.", tone: "ok" },
+];
+
+const toneClass: Record<string, string> = {
+  dim: "text-[var(--ia-mist)]",
+  ok: "text-[var(--ia-success)]",
+  accent: "text-[var(--ia-neon)]",
+};
+---
+
+<GlassCard class:list={["flex flex-col overflow-hidden p-0", className]}>
+  <div class="flex items-center gap-1.5 border-b border-[var(--ia-line)] bg-[var(--ia-panel)] px-3 py-1.5">
+    <span class="size-2 rounded-full bg-[var(--ia-danger)] opacity-80"></span>
+    <span class="size-2 rounded-full bg-[var(--ia-warning)] opacity-80"></span>
+    <span class="size-2 rounded-full bg-[var(--ia-success)] opacity-80"></span>
+    <span class="mono ml-1.5 text-[10px] text-[var(--ia-mist)]">obs://boot.log</span>
+  </div>
+  <div class="mono flex-1 space-y-0.5 px-3.5 py-3 text-[11.5px] leading-relaxed">
+    {
+      lines.map((l) => (
+        <p class="terminal-line !text-[11.5px]">
+          <span class={toneClass[l.tone]}>{l.text}</span>
+        </p>
+      ))
+    }
+    <p class="flex items-center gap-1 pt-0.5 text-[var(--ia-mist)]">
+      <span>$</span>
+      <span class="inline-block h-3 w-1.5 animate-pulse bg-[var(--ia-neon)]"></span>
+    </p>
+  </div>
+</GlassCard>

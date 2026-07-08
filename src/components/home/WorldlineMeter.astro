@@ -1,0 +1,64 @@
+---
+import { siteConfig } from "@/config/site";
+import { withBase } from "@/lib/paths";
+
+/**
+ * WorldlineMeter.astro —— 世界线变动率观测仪（本站特色模块）。
+ *
+ * - 大号 mono 数字 + 个别位轻微 flicker + 扫描线，像一台观测仪器；
+ * - hover 浮出彩蛋说明（触屏设备退化为 title 提示）；
+ * - 整卡点击 → /timeline（withBase 兼容 GitHub Pages）；
+ * - 数值与文案为本站自设彩蛋，不复制任何 IP 的 UI。
+ */
+interface Props {
+  class?: string;
+}
+const { class: className = "" } = Astro.props;
+
+const worldline = siteConfig.profile.worldline; // "1.048596"
+const digits = worldline.split("");
+const tip = "当前数值是本站彩蛋，用来标记这条世界线的存档状态。点击进入时间线。";
+---
+
+<a
+  href={withBase("/timeline")}
+  class:list={["wl-meter glass-card corner-ticks clickable group", className]}
+  aria-label={`世界线变动率 ${worldline}，点击查看时间线`}
+  title={tip}
+>
+  <div class="flex items-center justify-between gap-3">
+    <span class="eyebrow flex items-center gap-2">
+      <span class="wl-meter-lamp" aria-hidden="true"></span>
+      WORLDLINE DIVERGENCE
+    </span>
+    <span class="mono text-[10px] tracking-[0.18em] text-[var(--ia-mist)] opacity-70">OBS-07</span>
+  </div>
+
+  <div class="wl-meter-readout" aria-hidden="true">
+    <div class="wl-meter-digits mono">
+      {
+        digits.map((d, i) => (
+          <span
+            class:list={[d !== "." && (i === 2 || i === 6) && "wl-flicker"]}
+            style={`animation-delay:${(i * 173) % 1100}ms`}
+          >
+            {d}
+          </span>
+        ))
+      }
+    </div>
+    <div class="wl-meter-rule">
+      {Array.from({ length: 21 }).map((_, i) => <i class:list={[i % 5 === 0 && "is-major"]} />)}
+      <b class="wl-meter-needle"></b>
+    </div>
+  </div>
+
+  <div class="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-3">
+    <span class="status-badge" style="--sb-c: var(--ia-success)">archive stable</span>
+    <span class="mono text-[11px] text-[var(--ia-mist)]">α attractor field</span>
+    <span class="mono ml-auto text-[10px] text-[var(--ia-mist)] opacity-70">当前世界线稳定 · 观测值已锁定</span>
+  </div>
+
+  <!-- hover 彩蛋说明（精准指针设备） -->
+  <span class="wl-meter-tip mono" role="tooltip">{tip}</span>
+</a>

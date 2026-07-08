@@ -1,4 +1,5 @@
 ---
+import { withBase } from "@/lib/paths";
 import SiteLayout from "@/components/layout/SiteLayout.astro";
 import GlassCard from "@/components/common/GlassCard.astro";
 import Icon from "@/components/common/Icon.astro";
@@ -35,7 +36,7 @@ import Icon from "@/components/common/Icon.astro";
       <span class="rounded-full border border-[var(--ia-line)] px-1.5 py-0.5 mono text-[10px] uppercase text-[var(--ia-nebula)]">soon</span>
     </button>
 
-    <a href="/" class="clickable mt-8 inline-flex items-center gap-1.5 mono text-xs text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-neon)]">
+    <a href={withBase("/")} class="clickable mt-8 inline-flex items-center gap-1.5 mono text-xs text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-neon)]">
       <Icon name="arrow" size={13} class="rotate-180" /> 返回大厅
     </a>
   </div>

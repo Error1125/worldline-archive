@@ -1,0 +1,56 @@
+---
+import Icon from "@/components/common/Icon.astro";
+import { siteConfig } from "@/config/site";
+import { withBase } from "@/lib/paths";
+
+/**
+ * HeroSearch.astro —— 首页中央大搜索框（观测台入口）。
+ *
+ * - GET 表单提交到 /search?q=xxx（withBase 兼容 GitHub Pages）；
+ * - 移动端顶部没有 Header，这里同时承担站点身份（标题 + 副标题）；
+ * - 纯静态，无 JS；focus 发光由 global.css 的 .hero-search 提供。
+ */
+---
+
+<section class="flex flex-col items-center gap-4 text-center">
+  <!-- 移动端站点身份（桌面端 Header 已有，隐藏） -->
+  <div class="md:hidden">
+    <h1 class="text-[26px] font-bold leading-tight tracking-wide">
+      <span class="bg-gradient-to-r from-[var(--ia-star)] via-[var(--ia-blue)] to-[var(--ia-nebula)] bg-clip-text text-transparent">
+        WORLDLINE ARCHIVE
+      </span>
+    </h1>
+    <p class="mono mt-1 text-[11px] tracking-[0.32em] text-[var(--ia-mist)]">世界线观测室 · SAVE POINT</p>
+  </div>
+
+  <!-- 桌面端观测台眉题 -->
+  <p class="eyebrow hidden items-center gap-2 md:flex">
+    <span class="inline-block size-1.5 rounded-full bg-[var(--ia-neon)] shadow-[0_0_8px_var(--ia-neon)]"></span>
+    OBSERVATION DECK // 世界线观测室
+    <span class="wl-caret" aria-hidden="true"></span>
+  </p>
+
+  <form
+    action={withBase("/search")}
+    method="get"
+    role="search"
+    aria-label="站内搜索"
+    class="hero-search clickable"
+  >
+    <Icon name="search" size={19} class="shrink-0 text-[var(--ia-mist)]" />
+    <input
+      type="search"
+      name="q"
+      autocomplete="off"
+      placeholder="搜索世界线记录：文章、项目、Bug、番剧、音乐……"
+      aria-label="搜索世界线记录"
+    />
+    <kbd class="mono hidden shrink-0 items-center gap-1 rounded-md border border-[var(--ia-line)] px-2 py-1 text-[10px] text-[var(--ia-mist)] sm:flex">
+      ENTER ↵
+    </kbd>
+  </form>
+
+  <p class="mono text-[10px] tracking-[0.2em] text-[var(--ia-mist)] opacity-60">
+    {siteConfig.profile.coordinate}
+  </p>
+</section>

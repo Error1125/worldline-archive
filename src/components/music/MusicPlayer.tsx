@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import type { AppleTrack } from "@/lib/apple-music/types";
 import { mockNowPlaying } from "@/lib/apple-music/mock";
+import { withBase } from "@/lib/paths";
 
 /**
  * MusicPlayer —— 首页 / 音乐页的「正在收听」mock 播放器。
@@ -35,7 +36,7 @@ export default function MusicPlayer({
       {/* 封面 */}
       <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-[var(--ia-line)]">
         {t.artworkUrl ? (
-          <img src={t.artworkUrl} alt={t.title} className="size-full object-cover" />
+          <img src={withBase(t.artworkUrl)} alt={t.title} className="size-full object-cover" />
         ) : (
           <div className="grid size-full place-items-center bg-[#0b1024] text-[var(--ia-star)]">♪</div>
         )}

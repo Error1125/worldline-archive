@@ -1,0 +1,60 @@
+---
+import Icon from "@/components/common/Icon.astro";
+import { withBase } from "@/lib/paths";
+
+/**
+ * QuickArchiveIndex.astro —— 快速索引入口（桌面 4 列 x 2 行 / 移动 2 列 x 4 行）。
+ * 每张卡：icon + 中文名 + 英文名 + 数量 + 一句极短说明；hover lift + glow（沿用 glass-card）。
+ */
+export interface QuickCounts {
+  posts: number;
+  timeline: number;
+  projects: number;
+  bugs: number;
+  anime: number;
+  music: number;
+  photos: number;
+  moments: number;
+}
+
+interface Props {
+  counts: QuickCounts;
+  class?: string;
+}
+const { counts, class: className = "" } = Astro.props;
+
+const entries: { key: keyof QuickCounts; label: string; labelEn: string; href: string; icon: string; hint: string }[] = [
+  { key: "posts", label: "文章", labelEn: "POSTS", href: "/posts", icon: "post", hint: "长夜里的输出" },
+  { key: "timeline", label: "时间线", labelEn: "TIMELINE", href: "/timeline", icon: "timeline", hint: "全部世界线动态" },
+  { key: "projects", label: "项目", labelEn: "PROJECTS", href: "/projects", icon: "project", hint: "造物与实验" },
+  { key: "bugs", label: "Bug", labelEn: "BUG LOGS", href: "/bugs", icon: "bug", hint: "战斗与复盘" },
+  { key: "anime", label: "番剧", labelEn: "ANIME", href: "/anime", icon: "anime", hint: "观测名单" },
+  { key: "music", label: "音乐", labelEn: "MUSIC", href: "/music", icon: "music", hint: "深夜循环" },
+  { key: "photos", label: "照片", labelEn: "PHOTOS", href: "/photos", icon: "photo", hint: "屏幕之外的光" },
+  { key: "moments", label: "说说", labelEn: "MOMENTS", href: "/moments", icon: "moment", hint: "碎碎念存档" },
+];
+---
+
+<nav class:list={["grid grid-cols-2 gap-3 lg:grid-cols-4", className]} aria-label="档案快速索引">
+  {
+    entries.map((e) => (
+      <a
+        href={withBase(e.href)}
+        class="quick-card glass-card clickable group"
+        aria-label={`${e.label}，${counts[e.key]} 条`}
+      >
+        <span class="quick-card-icon" aria-hidden="true">
+          <Icon name={e.icon} size={17} />
+        </span>
+        <span class="quick-card-count mono" aria-hidden="true">
+          {counts[e.key]}
+        </span>
+        <span class="mt-auto flex items-baseline gap-1.5">
+          <b class="text-[13px] font-semibold text-[var(--ia-ink)]">{e.label}</b>
+          <span class="mono text-[9px] tracking-[0.14em] text-[var(--ia-mist)]">{e.labelEn}</span>
+        </span>
+        <span class="truncate text-[10.5px] leading-tight text-[var(--ia-mist)]">{e.hint}</span>
+      </a>
+    ))
+  }
+</nav>

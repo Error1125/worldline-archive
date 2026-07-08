@@ -1,88 +1,216 @@
-﻿---
+---
 import SiteLayout from "@/components/layout/SiteLayout.astro";
-import GlassCard from "@/components/common/GlassCard.astro";
-import SectionTitle from "@/components/common/SectionTitle.astro";
-import Icon from "@/components/common/Icon.astro";
 
+import HeroSearch from "@/components/home/HeroSearch.astro";
 import ProfileCard from "@/components/home/ProfileCard.astro";
-import TerminalLog from "@/components/home/TerminalLog.astro";
-import RecentTimeline from "@/components/home/RecentTimeline.astro";
+import FeaturedDeck from "@/components/home/FeaturedDeck.tsx";
+import type { DeckItem } from "@/components/home/FeaturedDeck.tsx";
+import WorldlineMeter from "@/components/home/WorldlineMeter.astro";
+import QuickArchiveIndex from "@/components/home/QuickArchiveIndex.astro";
+import MiniTerminal from "@/components/home/MiniTerminal.astro";
+import HomeStatusStrip from "@/components/home/HomeStatusStrip.astro";
 import NowPlayingCard from "@/components/home/NowPlayingCard.astro";
-import GitHubActivityCard from "@/components/home/GitHubActivityCard.astro";
 
-import { archiveNav } from "@/config/nav";
+import {
+  getPosts,
+  getProjects,
+  getAnime,
+  getMusic,
+  getPhotos,
+  getBugs,
+  getMoments,
+  TYPE_META,
+  type ContentType,
+} from "@/lib/content";
 import { withBase } from "@/lib/paths";
+import { formatDate } from "@/lib/format";
+import { mockNowPlaying } from "@/lib/apple-music/mock";
+
+/**
+ * index.astro —— 首页「世界线观测室」。
+ *
+ * 构建期聚合所有集合：
+ * - counts：喂给 ProfileCard / QuickArchiveIndex；
+ * - deckItems：精选大卡数据（href / image 已带 base，日期已格式化）；
+ * - startDate：最早一条存档日期，用于底部状态条 running days。
+ *
+ * 桌面（lg+）一屏网格：左列 Profile / Meter / Terminal，右列 Deck / QuickIndex；
+ * 移动端用 order-* 重排为单列沉浸流。
+ */
+
+const [posts, projects, anime, music, photos, bugs, moments] = await Promise.all([
+  getPosts(),
+  getProjects(),
+  getAnime(),
+  getMusic(),
+  getPhotos(),
+  getBugs(),
+  getMoments(),
+]);
+
+const counts = {
+  posts: posts.length,
+  projects: projects.length,
+  bugs: bugs.length,
+  anime: anime.length,
+  music: music.length,
+  photos: photos.length,
+  moments: moments.length,
+};
+const totalArchives =
+  counts.posts + counts.projects + counts.bugs + counts.anime + counts.music + counts.photos + counts.moments;
+
+const label = (t: ContentType) => `${TYPE_META[t].labelEn} // ${TYPE_META[t].labelZh}`;
+
+const ACCENT: Record<ContentType, string> = {
+  post: "var(--ia-neon)",
+  project: "var(--ia-nebula)",
+  photo: "var(--ia-blue)",
+  anime: "var(--ia-success)",
+  music: "var(--ia-warning)",
+  bug: "var(--ia-danger)",
+  moment: "var(--ia-star)",
+};
+
+const deckItems: DeckItem[] = [];
+
+for (const p of posts.filter((x) => x.data.featured).slice(0, 2)) {
+  deckItems.push({
+    type: "post",
+    typeLabel: label("post"),
+    title: p.data.title,
+    summary: p.data.description,
+    date: formatDate(p.data.date),
+    href: withBase(`/posts/${p.id}`),
+    accent: ACCENT.post,
+    image: p.data.cover ? withBase(p.data.cover) : undefined,
+    imageAlt: p.data.title,
+  });
+}
+
+const featProject = projects.find((x) => x.data.featured) ?? projects[0];
+if (featProject) {
+  deckItems.push({
+    type: "project",
+    typeLabel: label("project"),
+    title: featProject.data.title,
+    summary: featProject.data.description,
+    date: formatDate(featProject.data.date),
+    href: withBase("/projects"),
+    accent: ACCENT.project,
+    image: featProject.data.cover ? withBase(featProject.data.cover) : undefined,
+    imageAlt: featProject.data.title,
+  });
+}
+
+const latestPhoto = photos[0];
+if (latestPhoto) {
+  deckItems.push({
+    type: "photo",
+    typeLabel: label("photo"),
+    title: latestPhoto.data.title,
+    summary: latestPhoto.data.description ?? latestPhoto.data.album ?? "屏幕之外的光。",
+    date: formatDate(latestPhoto.data.date),
+    href: withBase("/photos"),
+    accent: ACCENT.photo,
+    image: withBase(latestPhoto.data.images[0]),
+    imageAlt: latestPhoto.data.title,
+  });
+}
+
+const latestAnime = anime[0];
+if (latestAnime) {
+  deckItems.push({
+    type: "anime",
+    typeLabel: label("anime"),
+    title: latestAnime.data.title,
+    summary:
+      latestAnime.data.thoughts ??
+      (latestAnime.data.score != null ? `观测评分 ${latestAnime.data.score}/10` : "观测名单上的一条世界线。"),
+    date: formatDate(latestAnime.data.date),
+    href: withBase("/anime"),
+    accent: ACCENT.anime,
+    image: latestAnime.data.cover ? withBase(latestAnime.data.cover) : undefined,
+    imageAlt: latestAnime.data.title,
+  });
+}
+
+const latestMusic = music[0];
+if (latestMusic) {
+  const m = latestMusic.data;
+  deckItems.push({
+    type: "music",
+    typeLabel: label("music"),
+    title: m.title,
+    summary: m.comment ?? m.lyricsQuote ?? `${m.artist}${m.album ? ` · ${m.album}` : ""}`,
+    date: formatDate(m.date),
+    href: withBase("/music"),
+    accent: ACCENT.music,
+    image: m.cover ? withBase(m.cover) : undefined,
+    imageAlt: m.title,
+  });
+}
+
+// 最早存档日期（各集合均按日期倒序，取每个集合末尾比较）
+const earliest = [posts, projects, anime, music, photos, bugs, moments]
+  .map((list) => list.at(-1)?.data.date)
+  .filter((d): d is Date => d instanceof Date)
+  .reduce((min, d) => (d < min ? d : min), new Date());
+const startDate = earliest.toISOString();
+
+const npTrack = mockNowPlaying.track;
 ---
 
-<SiteLayout>
-  <!-- Hero・壼ｭ俶｡｣轤ｹ螟ｧ蜴・-->
-  <section class="reveal relative mb-12 overflow-hidden">
-    <div class="flex flex-col gap-4 py-6 sm:py-10">
-      <span class="eyebrow flex items-center gap-2">
-        <span class="inline-block size-1.5 rounded-full bg-[var(--ia-neon)] shadow-[0_0_8px_var(--ia-neon)]"></span>
-        SAVE POINT // 蟄俶｡｣轤ｹ蟾ｲ霑樊磁
-      </span>
-      <h1 class="text-3xl font-bold leading-tight tracking-tight text-[var(--ia-ink)] sm:text-5xl">
-        Welcome back,<br class="sm:hidden" />
-        <span class="bg-gradient-to-r from-[var(--ia-star)] via-[var(--ia-neon)] to-[var(--ia-nebula)] bg-clip-text text-transparent">
-          traveler.
-        </span>
-      </h1>
-      <p class="max-w-2xl text-base leading-relaxed text-[var(--ia-mist)]">
-        这里是我的世界线存档点。<br class="hidden sm:block" />
-        记录生活、番剧、音乐、项目、Bug 和深夜里冒出来的念头。
-      </p>
-      <div class="mt-2 flex flex-wrap gap-3">
-        <a href={withBase("/timeline")} class="clickable inline-flex items-center gap-2 rounded-xl border border-[var(--ia-line-strong)] bg-[var(--ia-panel)] px-4 py-2 text-sm text-[var(--ia-ink)] transition-colors hover:border-[var(--ia-neon)] hover:text-[var(--ia-neon)]">
-          <Icon name="timeline" size={16} /> 查看时间线
-        </a>
-        <a href={withBase("/archive")} class="clickable inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-ink)]">
-          <Icon name="archive" size={16} /> 浏览档案馆
-        </a>
+<SiteLayout home>
+  <div class="flex flex-col gap-4 sm:gap-5 lg:h-full lg:min-h-0">
+    <!-- 顶部：站点身份（移动端）+ 大搜索框 -->
+    <section class="reveal shrink-0">
+      <HeroSearch />
+    </section>
+
+    <!-- 主网格：桌面 5:8 双列三行；移动端 order-* 单列 -->
+    <div
+      class="grid min-h-0 grid-cols-1 gap-4 sm:gap-5 lg:flex-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,8fr)] lg:grid-rows-[auto_minmax(0,1fr)_auto]"
+    >
+      <!-- 档案员 -->
+      <div class="reveal order-1 min-w-0 lg:order-none lg:col-start-1 lg:row-start-1">
+        <ProfileCard
+          counts={{ posts: counts.posts, projects: counts.projects, archives: totalArchives, photos: counts.photos }}
+        />
+      </div>
+
+      <!-- 正在播放：仅移动端在此显示大卡（桌面收进底部状态条） -->
+      <div class="reveal order-2 min-w-0 lg:hidden">
+        <NowPlayingCard />
+      </div>
+
+      <!-- 精选翻页大卡：右列跨两行 -->
+      <div class="reveal order-3 min-h-0 min-w-0 lg:order-none lg:col-start-2 lg:row-start-1 lg:row-span-2">
+        <FeaturedDeck client:visible items={deckItems} className="h-full" />
+      </div>
+
+      <!-- 快速档案索引 -->
+      <div class="reveal order-4 min-w-0 lg:order-none lg:col-start-2 lg:row-start-3">
+        <QuickArchiveIndex counts={{ ...counts, timeline: totalArchives }} />
+      </div>
+
+      <!-- 世界线观测仪 -->
+      <div class="reveal order-5 min-h-0 min-w-0 lg:order-none lg:col-start-1 lg:row-start-2">
+        <WorldlineMeter class="h-full" />
+      </div>
+
+      <!-- 迷你终端 -->
+      <div class="reveal order-6 min-w-0 lg:order-none lg:col-start-1 lg:row-start-3">
+        <MiniTerminal class="h-full" />
       </div>
     </div>
-  </section>
 
-  <!-- 荳ｻ鄂第ｼ -->
-  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
-    <!-- 蟾ｦ蛻・-->
-    <div class="flex flex-col gap-6">
-      <div class="reveal"><ProfileCard /></div>
-      <div class="reveal"><TerminalLog /></div>
-      <div class="reveal"><GitHubActivityCard /></div>
-    </div>
-
-    <!-- 蜿ｳ蛻・-->
-    <div class="flex flex-col gap-6">
-      <div class="reveal"><NowPlayingCard /></div>
-      <GlassCard ticks class="reveal flex flex-col gap-4 p-5">
-        <SectionTitle labelEn="RECENT" title="世界线动态" icon="timeline" href="/timeline" />
-        <RecentTimeline limit={7} />
-      </GlassCard>
-    </div>
+    <!-- 底部状态条（仅桌面） -->
+    <HomeStatusStrip
+      startDate={startDate}
+      trackTitle={npTrack?.title}
+      trackArtist={npTrack?.artist}
+      class="shrink-0"
+    />
   </div>
-
-  <!-- 譯｣譯磯ｦ・ｿｫ謐ｷ蜈･蜿｣ -->
-  <section class="reveal mt-12">
-    <SectionTitle labelEn="ARCHIVE" title="存档分类" icon="archive" href="/archive" class="mb-4" />
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-      {
-        archiveNav.map((item) => (
-          <a
-            href={withBase(item.href)}
-            aria-label={item.label}
-            class="clickable glass-card group flex flex-col items-center gap-2 rounded-xl p-4 text-center"
-          >
-            <span class="grid size-10 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)] transition-colors group-hover:border-[var(--ia-neon)] group-hover:text-[var(--ia-neon)]">
-              <Icon name={item.icon} size={18} />
-            </span>
-            <span class="text-xs font-medium text-[var(--ia-ink)]">{item.label}</span>
-            <span class="mono text-[9px] uppercase tracking-wider text-[var(--ia-mist)] opacity-70">
-              {item.labelEn}
-            </span>
-          </a>
-        ))
-      }
-    </div>
-  </section>
 </SiteLayout>

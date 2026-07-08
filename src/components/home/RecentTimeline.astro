@@ -1,4 +1,5 @@
 ---
+import { withBase } from "@/lib/paths";
 import { getTimelineItems, TYPE_META } from "@/lib/content";
 import Icon from "@/components/common/Icon.astro";
 import TagList from "@/components/common/TagList.astro";
@@ -40,7 +41,7 @@ const dotColor: Record<string, string> = {
               style={`background:${color};box-shadow:0 0 8px ${color}`}
             />
             <Tag
-              {...(it.href ? { href: it.href } : {})}
+              {...(it.href ? { href: withBase(it.href) } : {})}
               class:list={[
                 "group block",
                 it.href && "clickable",

@@ -1,0 +1,87 @@
+---
+import Icon from "@/components/common/Icon.astro";
+import { siteConfig } from "@/config/site";
+import { withBase } from "@/lib/paths";
+
+/**
+ * HomeStatusStrip.astro —— 首页底部状态条（桌面端；移动端隐藏）。
+ * 实时时钟由本组件内的小脚本驱动（无 React island），
+ * 兼容 View Transitions（每秒重查 [data-wl-clock]，元素被替换也能继续走）。
+ */
+interface Props {
+  /** 最早一条存档的日期（ISO 字符串），用来计算 running days */
+  startDate: string;
+  trackTitle?: string;
+  trackArtist?: string;
+  class?: string;
+}
+const { startDate, trackTitle, trackArtist, class: className = "" } = Astro.props;
+
+const days = Math.max(1, Math.floor((Date.now() - new Date(startDate).getTime()) / 86_400_000));
+const year = new Date().getFullYear();
+const tech = ["Astro 5", "React 19", "Tailwind 4"];
+---
+
+<div class:list={["status-strip glass hidden items-center gap-4 lg:flex", className]} role="contentinfo">
+  <span class="mono flex items-center gap-2 text-[12px] text-[var(--ia-star)]">
+    <Icon name="clock" size={13} class="text-[var(--ia-neon)]" />
+    <span data-wl-clock>--:--:--</span>
+  </span>
+
+  <span class="strip-sep" aria-hidden="true"></span>
+
+  <span class="mono flex items-center gap-2 text-[11px] text-[var(--ia-mist)]">
+    worldline <b class="font-semibold text-[var(--ia-ink)]">{siteConfig.profile.worldline}</b>
+    <span class="status-badge" style="--sb-c: var(--ia-success)">stable</span>
+  </span>
+
+  <span class="strip-sep" aria-hidden="true"></span>
+
+  <span class="mono text-[11px] text-[var(--ia-mist)]">
+    running <b class="text-[var(--ia-ink)]">{days}</b> days
+  </span>
+
+  {
+    trackTitle && (
+      <>
+        <span class="strip-sep" aria-hidden="true" />
+        <a
+          href={withBase("/music")}
+          class="clickable group flex min-w-0 items-center gap-2 text-[11px] text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-neon)]"
+          aria-label="正在收听，前往音乐页"
+        >
+          <span class="eq shrink-0" aria-hidden="true">
+            <i /><i /><i /><i />
+          </span>
+          <span class="mono truncate">
+            {trackTitle}
+            {trackArtist && <span class="opacity-70"> — {trackArtist}</span>}
+          </span>
+        </a>
+      </>
+    )
+  }
+
+  <span class="ml-auto flex items-center gap-2">
+    {tech.map((t) => <span class="tag-chip">{t}</span>)}
+    <span class="mono pl-1 text-[10px] text-[var(--ia-mist)] opacity-60">© {year} {siteConfig.author}</span>
+  </span>
+</div>
+
+<script>
+  // 实时时钟：每秒刷新页面上所有 [data-wl-clock]。
+  // 模块脚本只执行一次；用「每次 tick 重查」的方式兼容 View Transitions 的 DOM 替换。
+  function fmt(n: number) {
+    return String(n).padStart(2, "0");
+  }
+  function tick() {
+    const els = document.querySelectorAll<HTMLElement>("[data-wl-clock]");
+    if (els.length === 0) return;
+    const d = new Date();
+    const text = `${fmt(d.getHours())}:${fmt(d.getMinutes())}:${fmt(d.getSeconds())}`;
+    els.forEach((el) => (el.textContent = text));
+  }
+  tick();
+  window.setInterval(tick, 1000);
+  document.addEventListener("astro:page-load", tick);
+</script>
