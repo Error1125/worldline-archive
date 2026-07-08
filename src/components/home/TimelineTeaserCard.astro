@@ -1,5 +1,6 @@
 ---
 import Icon from "@/components/common/Icon.astro";
+import { siteConfig } from "@/config/site";
 import { withBase } from "@/lib/paths";
 
 interface Props {
@@ -9,46 +10,44 @@ interface Props {
   class?: string;
 }
 
-const { count, latest, recent = [], class: className = "" } = Astro.props;
+const { count, class: className = "" } = Astro.props;
+const worldline = siteConfig.profile.worldline;
 ---
 
 <a
   href={withBase("/timeline")}
   class:list={["teaser-card glass-card corner-ticks clickable group flex flex-col", className]}
-  aria-label={`查看世界线动态，共 ${count} 条记录`}
+  aria-label={`查看世界线仪表卡，当前世界线 ${worldline}，共 ${count} 条时间线记录`}
 >
   <div class="teaser-scan" aria-hidden="true"></div>
 
   <div class="flex items-center justify-between gap-3">
     <span class="eyebrow flex items-center gap-2">
       <Icon name="timeline" size={14} class="text-[var(--ia-neon)]" />
-      WORLDLINE LOG
+      WORLDLINE DIVERGENCE
     </span>
-    <span class="teaser-state mono">OBSERVATION</span>
+    <span class="teaser-state mono">OBS-07</span>
   </div>
 
-  <div class="teaser-metrics">
-    <div class="teaser-count-block">
-      <b class="teaser-count mono">{count}</b>
-      <span>records</span>
-    </div>
-    {latest && <span class="teaser-latest mono">latest signal {latest}</span>}
+  <div class="teaser-readout" aria-hidden="true">
+    <span class="teaser-readout-glow"></span>
+    <b class="teaser-count mono">{worldline}</b>
   </div>
 
-  <ul class="teaser-recent" aria-label="最近记录">
-    {
-      recent.slice(0, 2).map((r) => (
-        <li>
-          <span class="signal-dot" aria-hidden="true"></span>
-          <span class="teaser-type mono">{r.typeLabel.split(" // ")[0]}</span>
-          <span class="truncate">{r.title}</span>
-        </li>
-      ))
-    }
-  </ul>
+  <div class="teaser-gauge" aria-hidden="true">
+    {Array.from({ length: 17 }).map((_, i) => <i class:list={[i % 4 === 0 && "is-major"]}></i>)}
+    <b class="teaser-needle"></b>
+  </div>
+
+  <div class="teaser-status-row">
+    <span class="status-badge" style="--sb-c: var(--ia-success)">archive stable</span>
+    <span class="teaser-field mono">α attractor field</span>
+  </div>
+
+  <p class="teaser-caption">当前世界线稳定 · 观测值已锁定</p>
 
   <span class="teaser-cta">
-    查看世界线动态
+    进入时间线
     <Icon name="arrow" size={15} class="transition-transform group-hover:translate-x-0.5" />
   </span>
 </a>

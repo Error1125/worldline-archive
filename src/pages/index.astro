@@ -9,7 +9,6 @@ import NowPlayingCard from "@/components/home/NowPlayingCard.astro";
 import TimelineTeaserCard from "@/components/home/TimelineTeaserCard.astro";
 import AnimeHomeCard from "@/components/home/AnimeHomeCard.astro";
 import SceneModeCard from "@/components/home/SceneModeCard.astro";
-import WorldlineMini from "@/components/home/WorldlineMini.astro";
 import HomeStatusStrip from "@/components/home/HomeStatusStrip.astro";
 
 import {
@@ -207,9 +206,6 @@ const startDate = earliest.toISOString();
         </div>
       </div>
 
-      <div class="reveal order-5 min-w-0 lg:hidden">
-        <WorldlineMini />
-      </div>
     </div>
 
     <HomeStatusStrip startDate={startDate} class="shrink-0" />
