@@ -180,8 +180,8 @@ const startDate = earliest.toISOString();
     </section>
 
     <div
-      class="home-grid grid min-h-0 grid-cols-1 gap-5 lg:flex-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:grid-rows-[auto_minmax(0,1fr)] lg:gap-6"
-    >
+  class="home-grid grid min-h-0 grid-cols-1 gap-5 lg:flex-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:grid-rows-[auto_500px] lg:gap-5 xl:grid-rows-[auto_520px] 2xl:grid-rows-[auto_540px]"
+>
       <div class="reveal order-1 min-w-0 lg:order-none lg:col-start-1 lg:row-start-1">
         <ProfileCard counts={counts} />
       </div>
@@ -194,17 +194,25 @@ const startDate = earliest.toISOString();
         <FeaturedDeck client:visible items={deckItems} className="h-full" />
       </div>
 
-      <div class="home-side-stack order-4 flex min-h-0 min-w-0 flex-col gap-5 lg:order-none lg:col-start-2 lg:row-start-2 lg:gap-6">
-        <div class="reveal min-h-0 lg:flex-1">
-          <TimelineTeaserCard count={totalArchives} latest={timelineLatest} recent={timelineRecent} class="h-full" />
-        </div>
-        <div class="reveal min-h-0 lg:flex-1">
-          <AnimeHomeCard count={anime.length} latestTitle={topAnime?.data.title} statusLabel={animeStatus} cover={animeCover} class="h-full" />
-        </div>
-        <div class="reveal min-h-0 lg:flex-1">
-          <SceneModeCard class="h-full" />
-        </div>
-      </div>
+      <div class="home-side-stack order-4 flex min-h-0 min-w-0 flex-col gap-5 lg:order-none lg:col-start-2 lg:row-start-2 lg:gap-5">
+  <div class="reveal min-h-0 lg:h-[145px] xl:h-[150px] 2xl:h-[156px] lg:flex-none">
+    <TimelineTeaserCard count={totalArchives} latest={timelineLatest} recent={timelineRecent} class="h-full" />
+  </div>
+
+  <div class="reveal min-h-0 lg:flex-1">
+    <AnimeHomeCard
+      count={anime.length}
+      latestTitle={topAnime?.data.title}
+      statusLabel={animeStatus}
+      cover={animeCover}
+      class="h-full"
+    />
+  </div>
+
+  <div class="reveal min-h-0 lg:h-[145px] xl:h-[150px] 2xl:h-[156px] lg:flex-none">
+    <SceneModeCard class="h-full" />
+  </div>
+</div>
 
     </div>
 
