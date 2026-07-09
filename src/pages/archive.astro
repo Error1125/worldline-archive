@@ -1,29 +1,49 @@
 ---
-import SiteLayout from "@/components/layout/SiteLayout.astro";
-import PageHeader from "@/components/common/PageHeader.astro";
-import ArchiveGrid from "@/components/archive/ArchiveGrid.astro";
-import ArchiveExplorer from "@/components/archive/ArchiveExplorer.astro";
-import SectionTitle from "@/components/common/SectionTitle.astro";
+import { withBase } from "@/lib/paths";
+
+/**
+ * /archive —— v4.1 兼容跳转页。
+ * 「档案」已并入「世界线记录 · 观测索引」；此路由保留为兼容入口，
+ * 跳转到 /timeline?view=index（若带 ?q= 则一并透传）。不改 astro.config / Actions。
+ */
+const target = withBase("/timeline");
+const targetIndex = `${target}?view=index`;
 ---
 
-<SiteLayout title="档案馆" description="番剧、音乐、项目、Bug、照片与说说的分区入口，以及全站聚合搜索。">
-  <PageHeader
-    eyebrow="ARCHIVE // 档案馆"
-    title="存档分区"
-    subtitle="把不同类型的记忆分门别类地存好。选一个分区进去慢慢翻，或直接在下方聚合搜索全站记录。"
-    icon="archive"
-    class="mb-8"
-  />
-
-  <!-- 聚合搜索：全站记录关键词检索 + 类型过滤 + 排序（支持 ?q= 预填） -->
-  <section class="reveal mb-14">
-    <SectionTitle labelEn="SEARCH // 聚合检索" title="搜索全部存档" class="mb-5" />
-    <ArchiveExplorer />
-  </section>
-
-  <!-- 分区入口九宫格 -->
-  <section class="reveal">
-    <SectionTitle labelEn="SECTIONS // 存档分区" title="按分区浏览" class="mb-5" />
-    <ArchiveGrid />
-  </section>
-</SiteLayout>
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <meta http-equiv="refresh" content={`0;url=${targetIndex}`} />
+    <title>正在跳转 · 世界线记录</title>
+    <script is:inline define:vars={{ target }}>
+      (function () {
+        try {
+          var q = new URLSearchParams(location.search).get("q");
+          location.replace(target + "?view=index" + (q ? "&q=" + encodeURIComponent(q) : ""));
+        } catch (e) {
+          location.replace(target + "?view=index");
+        }
+      })();
+    </script>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #070a16;
+        color: #c7d0e6;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+      }
+      a { color: #7aa2ff; }
+    </style>
+  </head>
+  <body>
+    <p>
+      「档案」已并入 <a href={targetIndex}>世界线记录 · 观测索引</a>，正在跳转…
+    </p>
+  </body>
+</html>

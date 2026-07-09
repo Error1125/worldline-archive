@@ -6,12 +6,16 @@ export interface NavItem {
   description?: string;
 }
 
+// v4.1：主导航信息架构调整——
+//   1) 移除独立「档案」主入口（其聚合检索已并入「世界线记录 / 观测索引」，/archive 保留为兼容跳转）；
+//   2)「时间线」升级为核心浏览页「记录」（世界线记录 = 时间轴 + 观测索引双视图）；
+//   3) 补回「番剧」主入口（此前只在归档子列表里，导航层漏掉了）。
 export const mainNav: NavItem[] = [
   { label: "首页", labelEn: "HOME", href: "/", icon: "home" },
-  { label: "时间线", labelEn: "TIMELINE", href: "/timeline", icon: "timeline" },
+  { label: "记录", labelEn: "RECORDS", href: "/timeline", icon: "timeline" },
   { label: "文章", labelEn: "POSTS", href: "/posts", icon: "post" },
   { label: "项目", labelEn: "PROJECTS", href: "/projects", icon: "project" },
-  { label: "档案", labelEn: "ARCHIVE", href: "/archive", icon: "archive" },
+  { label: "番剧", labelEn: "ANIME", href: "/anime", icon: "anime" },
   { label: "照片", labelEn: "PHOTOS", href: "/photos", icon: "photo" },
   { label: "音乐", labelEn: "MUSIC", href: "/music", icon: "music" },
   { label: "说说", labelEn: "MOMENTS", href: "/moments", icon: "moment" },

@@ -2,20 +2,28 @@
 import SiteLayout from "@/components/layout/SiteLayout.astro";
 import PageHeader from "@/components/common/PageHeader.astro";
 import TimelineView from "@/components/timeline/TimelineView.astro";
+import ArchiveExplorer from "@/components/archive/ArchiveExplorer.astro";
+import Icon from "@/components/common/Icon.astro";
 import { getTimelineItems, getWorldlineStatus } from "@/lib/content";
 import EmptyState from "@/components/common/EmptyState.astro";
 
+/**
+ * 世界线记录（Worldline Records）—— v4.1 核心内容浏览页。
+ * 合并原「时间线」与「档案聚合检索」为同页双视图：
+ *   · 时间轴 / Timeline —— 按时间倒序浏览世界线故事（TimelineView）；
+ *   · 观测索引 / Observation Index —— 按关键词/类型/标签检索全部内容（ArchiveExplorer，支持 ?q= 预填）。
+ * 视图由 URL ?view= 决定（index → 观测索引），切换逻辑见 SiteLayout 的 view-toggle 控制器。
+ */
 const count = (await getTimelineItems()).length;
-// v4 §11：复用世界线状态计算，在时间线页顶部做一个轻量状态徽标
 const wl = await getWorldlineStatus();
 ---
 
-<SiteLayout title="时间线" description="这条世界线上的全部记录，按时间倒序排列。">
-  <div class="mb-10 flex flex-wrap items-end justify-between gap-4">
+<SiteLayout title="世界线记录" description="这条世界线上的全部记录：按时间浏览，或按关键词检索。">
+  <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
     <PageHeader
-      eyebrow="TIMELINE // 时间线"
+      eyebrow="WORLDLINE RECORDS // 世界线记录"
       title="世界线记录"
-      subtitle="把文章、说说、番剧、音乐、项目与 Bug 混在一起，按时间倒序，像一条连续的存档轨迹。"
+      subtitle="把文章、说说、番剧、音乐、项目与 Bug 混在一起——用「时间轴」顺着看故事，或用「观测索引」按关键词检索。"
       icon="timeline"
       class="!mb-0"
     />
@@ -24,5 +32,43 @@ const wl = await getWorldlineStatus();
     </span>
   </div>
 
-  {count > 0 ? <TimelineView /> : <EmptyState icon="timeline" />}
+  {
+    count > 0 ? (
+      <div id="wl-records" data-view-root data-active-view="timeline">
+        {/* 防闪烁：解析到此立即依据 ?view= 设定初始视图，避免先显示时间轴再跳到索引 */}
+        <script is:inline>
+          (function () {
+            try {
+              if (new URLSearchParams(location.search).get("view") === "index") {
+                var r = document.getElementById("wl-records");
+                if (r) r.dataset.activeView = "index";
+              }
+            } catch (e) {}
+          })();
+        </script>
+
+        <div class="mb-8 flex justify-center sm:justify-start">
+          <div class="view-toggle" role="tablist" aria-label="记录视图切换">
+            <button type="button" class="view-toggle-btn clickable" role="tab" data-view-tab="timeline" aria-selected="true">
+              <Icon name="timeline" size={15} />
+              时间轴
+            </button>
+            <button type="button" class="view-toggle-btn clickable" role="tab" data-view-tab="index" aria-selected="false">
+              <Icon name="search" size={15} />
+              观测索引
+            </button>
+          </div>
+        </div>
+
+        <div data-view-panel="timeline" role="tabpanel">
+          <TimelineView />
+        </div>
+        <div data-view-panel="index" role="tabpanel">
+          <ArchiveExplorer />
+        </div>
+      </div>
+    ) : (
+      <EmptyState icon="timeline" />
+    )
+  }
 </SiteLayout>

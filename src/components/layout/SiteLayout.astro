@@ -3,6 +3,7 @@ import "@/styles/global.css";
 import { ClientRouter } from "astro:transitions";
 import { siteConfig } from "@/config/site";
 import { withBase } from "@/lib/paths";
+import { getSearchIndex } from "@/lib/content";
 
 import Header from "@/components/layout/Header.astro";
 import MobileRadialMenu from "@/components/layout/MobileRadialMenu.tsx";
@@ -34,6 +35,22 @@ interface Props {
 const { title, description, home = false } = Astro.props;
 const pageTitle = title ? `${title} · ${siteConfig.title}` : `${siteConfig.title} · ${siteConfig.subtitle}`;
 const pageDesc = description ?? siteConfig.description;
+
+// v4.1：为「浏览器式站内搜索」（HeroSearch / Header）准备可 JSON 序列化的检索索引。
+// href 预先经 withBase() 处理，客户端可直接跳转；indexHref 指向「世界线记录 · 观测索引」。
+const rawIndex = await getSearchIndex();
+const searchPayload = {
+  indexHref: withBase("/timeline"),
+  docs: rawIndex.map((d) => ({
+    type: d.type,
+    title: d.title,
+    desc: d.description,
+    typeLabel: d.typeLabelZh,
+    href: withBase(d.href),
+    date: d.date,
+    search: d.search,
+  })),
+};
 ---
 
 <!doctype html>
@@ -139,6 +156,14 @@ const pageDesc = description ?? siteConfig.description;
         <div class="lightbox-counter mono"></div>
       </div>
     </div>
+
+    <!-- v4.1：站内搜索索引（HeroSearch / Header 读取；type=application/json 不作为脚本执行） -->
+    <script
+      id="wl-search-index"
+      type="application/json"
+      is:inline
+      set:html={JSON.stringify(searchPayload).replace(/</g, "\\u003c")}
+    />
 
     <!--
       SSR-safe 的客户端增强脚本：
@@ -445,6 +470,193 @@ const pageDesc = description ?? siteConfig.description;
         });
         // 换页时关闭，避免残留
         document.addEventListener("astro:before-swap", close);
-      }</script>
+      }
+
+      // 5) 浏览器式站内搜索（HeroSearch / Header 共用）
+      //    数据来自 #wl-search-index（构建期注入，href 已经过 withBase）。
+      //    输入即出建议；↑↓ 选择，Enter 打开选中项，未选中则进入「观测索引」并带上 q；Esc 关闭。
+      interface WLDoc {
+        type: string;
+        title: string;
+        desc: string;
+        typeLabel: string;
+        href: string;
+        date: string;
+        search: string;
+      }
+      const SEARCH_ACCENT: Record<string, string> = {
+        post: "var(--ia-neon)",
+        project: "var(--ia-nebula)",
+        photo: "var(--ia-blue)",
+        anime: "var(--ia-success)",
+        music: "var(--ia-warning)",
+        bug: "var(--ia-danger)",
+        moment: "var(--ia-star)",
+      };
+      let SEARCH_DATA: { indexHref: string; docs: WLDoc[] } = { indexHref: "/", docs: [] };
+      function loadSearchData() {
+        const el = document.getElementById("wl-search-index");
+        if (!el || !el.textContent) return;
+        try {
+          SEARCH_DATA = JSON.parse(el.textContent);
+        } catch {}
+      }
+      loadSearchData();
+      document.addEventListener("astro:page-load", loadSearchData);
+
+      function fmtDate(iso: string): string {
+        try {
+          return new Date(iso).toISOString().slice(0, 10);
+        } catch {
+          return "";
+        }
+      }
+      function escapeHtml(s: string): string {
+        return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] || c);
+      }
+      function searchDocs(q: string, limit = 8): WLDoc[] {
+        const query = q.trim().toLowerCase();
+        if (!query) return [];
+        const tokens = query.split(/\s+/).filter(Boolean);
+        const scored: { d: WLDoc; score: number }[] = [];
+        for (const d of SEARCH_DATA.docs) {
+          const hayTitle = d.title.toLowerCase();
+          const hay = (d.search || d.title + " " + d.desc).toLowerCase();
+          if (!tokens.every((t) => hay.includes(t))) continue;
+          let score = 0;
+          for (const t of tokens) {
+            if (hayTitle.includes(t)) score += 5;
+            if (hayTitle.startsWith(t)) score += 3;
+          }
+          scored.push({ d, score });
+        }
+        scored.sort((a, b) => b.score - a.score || +new Date(b.d.date) - +new Date(a.d.date));
+        return scored.slice(0, limit).map((s) => s.d);
+      }
+      function initSearchBox(root: HTMLElement) {
+        if (root.dataset.wlSearchReady === "1") return;
+        root.dataset.wlSearchReady = "1";
+        const input = root.querySelector<HTMLInputElement>("[data-wl-search-input]");
+        const panel = root.querySelector<HTMLElement>("[data-wl-search-panel]");
+        if (!input) return;
+        let results: WLDoc[] = [];
+        let active = -1;
+
+        function goIndex() {
+          const q = input!.value.trim();
+          const base = SEARCH_DATA.indexHref || "/";
+          window.location.href = base + "?view=index" + (q ? "&q=" + encodeURIComponent(q) : "");
+        }
+        function hide() {
+          if (panel) {
+            panel.hidden = true;
+            panel.innerHTML = "";
+          }
+          active = -1;
+          results = [];
+        }
+        function render() {
+          if (!panel) return;
+          if (!results.length) {
+            hide();
+            return;
+          }
+          let html = "";
+          results.forEach((d, i) => {
+            const acc = SEARCH_ACCENT[d.type] || "var(--ia-neon)";
+            html +=
+              `<a class="search-suggest-item" role="option" href="${d.href}" data-i="${i}" data-active="${i === active}" style="--ss-acc:${acc}">` +
+              `<span class="search-suggest-badge">${escapeHtml(d.typeLabel)}</span>` +
+              `<span class="search-suggest-main"><span class="search-suggest-title">${escapeHtml(d.title)}</span>` +
+              (d.desc ? `<span class="search-suggest-desc">${escapeHtml(d.desc)}</span>` : "") +
+              `</span>` +
+              `<span class="search-suggest-meta"><span>${escapeHtml(d.typeLabel)}</span><time>${fmtDate(d.date)}</time></span>` +
+              `</a>`;
+          });
+          html += `<div class="search-suggest-hint">↑↓ 选择 · Enter 打开 / 进入观测索引 · Esc 关闭</div>`;
+          panel.innerHTML = html;
+          panel.hidden = false;
+        }
+        function update() {
+          results = searchDocs(input!.value, 8);
+          active = -1;
+          render();
+        }
+        input.addEventListener("input", update);
+        input.addEventListener("focus", () => {
+          if (input!.value.trim()) update();
+        });
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "ArrowDown") {
+            if (results.length) {
+              e.preventDefault();
+              active = (active + 1) % results.length;
+              render();
+            }
+          } else if (e.key === "ArrowUp") {
+            if (results.length) {
+              e.preventDefault();
+              active = (active - 1 + results.length) % results.length;
+              render();
+            }
+          } else if (e.key === "Enter") {
+            if (active >= 0 && results[active]) {
+              e.preventDefault();
+              window.location.href = results[active].href;
+            } else {
+              e.preventDefault();
+              goIndex();
+            }
+          } else if (e.key === "Escape") {
+            hide();
+          }
+        });
+        const form = root.tagName === "FORM" ? (root as HTMLFormElement) : root.querySelector("form");
+        form?.addEventListener("submit", (e) => {
+          if (active >= 0 && results[active]) {
+            e.preventDefault();
+            window.location.href = results[active].href;
+            return;
+          }
+          e.preventDefault();
+          goIndex();
+        });
+        document.addEventListener("click", (e) => {
+          if (!root.contains(e.target as Node)) hide();
+        });
+      }
+      function setupSearchBoxes() {
+        document.querySelectorAll<HTMLElement>("[data-wl-search]").forEach((r) => initSearchBox(r));
+      }
+      setupSearchBoxes();
+      document.addEventListener("astro:page-load", setupSearchBoxes);
+
+      // 6) 视图切换（世界线记录：时间轴 / 观测索引）；以 URL ?view= 为准，兼容 View Transitions。
+      function initViewRoot(root: HTMLElement) {
+        if (root.dataset.viewReady === "1") return;
+        root.dataset.viewReady = "1";
+        const tabs = Array.from(root.querySelectorAll<HTMLElement>("[data-view-tab]"));
+        function setView(v: string) {
+          root.dataset.activeView = v;
+          tabs.forEach((t) => t.setAttribute("aria-selected", t.dataset.viewTab === v ? "true" : "false"));
+          try {
+            const url = new URL(window.location.href);
+            if (v === "index") url.searchParams.set("view", "index");
+            else url.searchParams.delete("view");
+            window.history.replaceState(null, "", url);
+          } catch {}
+        }
+        tabs.forEach((t) => t.addEventListener("click", () => setView(t.dataset.viewTab || "timeline")));
+        let initial = root.dataset.activeView || "timeline";
+        try {
+          if (new URLSearchParams(window.location.search).get("view") === "index") initial = "index";
+        } catch {}
+        setView(initial);
+      }
+      function setupViewRoots() {
+        document.querySelectorAll<HTMLElement>("[data-view-root]").forEach((r) => initViewRoot(r));
+      }
+      setupViewRoots();
+      document.addEventListener("astro:page-load", setupViewRoots);</script>
   </body>
 </html>

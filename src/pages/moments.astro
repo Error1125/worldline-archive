@@ -37,7 +37,7 @@ const tagList = [...tagMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).m
     moments.length > 0 ? (
       <div data-filter-root data-filter-kind="moments">
         {(moods.length > 0 || tagList.length > 0) && (
-          <div class="glass-card mb-8 flex flex-col gap-4 p-4 sm:p-5">
+          <div class="filter-panel mb-8 flex flex-col gap-4 p-4 sm:p-5">
             {moods.length > 0 && (
               <div class="filter-bar">
                 <span class="mono shrink-0 text-[11px] uppercase tracking-wider text-[var(--ia-mist)]">心情</span>

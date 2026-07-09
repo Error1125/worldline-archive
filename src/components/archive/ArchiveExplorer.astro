@@ -30,7 +30,7 @@ const typeCounts = typeOrder
 ---
 
 <div data-filter-root data-filter-kind="archive" data-filter-query-param="q">
-  <div class="glass-card mb-8 flex flex-col gap-4 p-4 sm:p-5">
+  <div class="filter-panel mb-8 flex flex-col gap-4 p-4 sm:p-5">
     <div class="filter-bar">
       <label class="filter-search">
         <Icon name="search" size={16} class="shrink-0 text-[var(--ia-mist)]" />
@@ -81,7 +81,7 @@ const typeCounts = typeOrder
             data-filter-item
             data-type={doc.type}
             data-date={doc.date}
-            data-search={[doc.title, doc.description, doc.typeLabelZh, ...doc.tags].join(" ")}
+            data-search={doc.search}
           >
             <span
               class="shrink-0 rounded-md px-2 py-0.5 mono text-[10px] uppercase tracking-wider"

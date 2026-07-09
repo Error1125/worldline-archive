@@ -29,6 +29,8 @@ export interface TimelineItem {
   icon: string;
   /** 双语类型标签，例如 "BUG // 战斗记录" */
   typeLabel: string;
+  /** 全文检索语料（标题/描述/标签/领域字段拼接，仅用于搜索，不展示） */
+  searchText?: string;
 }
 
 /** 类型 → 展示信息映射 */
@@ -43,6 +45,28 @@ export const TYPE_META: Record<
   anime: { icon: "anime", labelEn: "ANIME", labelZh: "番剧" },
   music: { icon: "music", labelEn: "MUSIC", labelZh: "音乐" },
   photo: { icon: "photo", labelEn: "PHOTO", labelZh: "相册" },
+};
+
+/** 领域状态 → 中文标签（供番剧筛选、搜索语料与建议展示复用） */
+export const ANIME_STATUS_ZH: Record<string, string> = {
+  watching: "观测中",
+  completed: "已看完",
+  planned: "想看",
+  paused: "暂停",
+  dropped: "搁置",
+};
+export const PROJECT_STATUS_ZH: Record<string, string> = {
+  idea: "构想",
+  building: "建造中",
+  paused: "暂停",
+  done: "已完成",
+  archived: "已归档",
+};
+export const BUG_STATUS_ZH: Record<string, string> = {
+  fixed: "已修复",
+  investigating: "排查中",
+  wontfix: "不修",
+  note: "笔记",
 };
 
 function isVisible(v: "public" | "hidden" | "private"): boolean {
@@ -95,6 +119,17 @@ function typeLabelOf(t: ContentType): string {
   return `${m.labelEn} // ${m.labelZh}`;
 }
 
+/** 把标题 / 描述 / 标签 / 领域字段拼成一段可 includes 匹配的检索语料 */
+function joinSearch(
+  ...parts: Array<string | number | undefined | null | string[]>
+): string {
+  return parts
+    .flat()
+    .filter((x): x is string | number => x !== undefined && x !== null && x !== "")
+    .map((x) => String(x))
+    .join(" ");
+}
+
 export async function getTimelineItems(): Promise<TimelineItem[]> {
   const [posts, moments, bugs, projects, anime, music, photos] = await Promise.all([
     getPosts(),
@@ -119,6 +154,7 @@ export async function getTimelineItems(): Promise<TimelineItem[]> {
       tags: e.data.tags,
       icon: TYPE_META.post.icon,
       typeLabel: typeLabelOf("post"),
+      searchText: joinSearch(e.data.title, e.data.description, e.data.tags, e.data.category, e.data.mood, "文章 post"),
     });
   }
   for (const e of moments) {
@@ -133,6 +169,7 @@ export async function getTimelineItems(): Promise<TimelineItem[]> {
       tags: e.data.tags ?? [],
       icon: TYPE_META.moment.icon,
       typeLabel: typeLabelOf("moment"),
+      searchText: joinSearch(text, e.data.mood, e.data.weather, e.data.locationText, e.data.tags, "说说 moment"),
     });
   }
   for (const e of bugs) {
@@ -147,6 +184,7 @@ export async function getTimelineItems(): Promise<TimelineItem[]> {
       status: e.data.status,
       icon: TYPE_META.bug.icon,
       typeLabel: typeLabelOf("bug"),
+      searchText: joinSearch(e.data.title, e.data.summary, BUG_STATUS_ZH[e.data.status], e.data.status, e.data.project, e.data.tags, "bug 战斗记录"),
     });
   }
   for (const e of projects) {
@@ -161,6 +199,7 @@ export async function getTimelineItems(): Promise<TimelineItem[]> {
       status: e.data.status,
       icon: TYPE_META.project.icon,
       typeLabel: typeLabelOf("project"),
+      searchText: joinSearch(e.data.title, e.data.description, e.data.tags, e.data.techStack, PROJECT_STATUS_ZH[e.data.status], e.data.status, "项目 造物 project"),
     });
   }
   for (const e of anime) {
@@ -175,6 +214,7 @@ export async function getTimelineItems(): Promise<TimelineItem[]> {
       status: e.data.status,
       icon: TYPE_META.anime.icon,
       typeLabel: typeLabelOf("anime"),
+      searchText: joinSearch(e.data.title, e.data.titleJP, e.data.thoughts, ANIME_STATUS_ZH[e.data.status], e.data.status, e.data.tags, e.data.score, e.data.season, e.data.year, "番剧 anime"),
     });
   }
   for (const e of music) {
@@ -188,6 +228,7 @@ export async function getTimelineItems(): Promise<TimelineItem[]> {
       tags: e.data.tags,
       icon: TYPE_META.music.icon,
       typeLabel: typeLabelOf("music"),
+      searchText: joinSearch(e.data.title, e.data.artist, e.data.album, e.data.comment, e.data.mood, e.data.lyricsQuote, e.data.tags, e.data.type, "音乐 music"),
     });
   }
   for (const e of photos) {
@@ -201,6 +242,7 @@ export async function getTimelineItems(): Promise<TimelineItem[]> {
       tags: e.data.tags ?? [],
       icon: TYPE_META.photo.icon,
       typeLabel: typeLabelOf("photo"),
+      searchText: joinSearch(e.data.title, e.data.description, e.data.album, e.data.tags, e.data.mood, "照片 相册 photo"),
     });
   }
 
@@ -217,6 +259,10 @@ export interface SearchDoc {
   href: string;
   date: string; // ISO
   typeLabelZh: string;
+  /** 领域状态（如番剧 watching / 项目 building），可空 */
+  status?: string;
+  /** 全文检索语料（标题/描述/标签/领域字段），供 includes 匹配 */
+  search: string;
 }
 
 export async function getSearchIndex(): Promise<SearchDoc[]> {
@@ -229,6 +275,8 @@ export async function getSearchIndex(): Promise<SearchDoc[]> {
     href: it.href ?? "/",
     date: it.date.toISOString(),
     typeLabelZh: TYPE_META[it.type].labelZh,
+    status: it.status,
+    search: it.searchText ?? joinSearch(it.title, it.description, it.tags, TYPE_META[it.type].labelZh),
   }));
 }
 

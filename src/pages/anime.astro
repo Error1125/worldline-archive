@@ -3,17 +3,37 @@ import SiteLayout from "@/components/layout/SiteLayout.astro";
 import PageHeader from "@/components/common/PageHeader.astro";
 import AnimeCard from "@/components/cards/AnimeCard.astro";
 import EmptyState from "@/components/common/EmptyState.astro";
-import { getAnime } from "@/lib/content";
+import Icon from "@/components/common/Icon.astro";
+import { getAnime, ANIME_STATUS_ZH } from "@/lib/content";
 
+/**
+ * 番剧观测记录 —— v4.1 补上轻量筛选 / 检索：
+ *   状态筛选（观测中 / 已看完 / 想看 / 暂停 / 搁置）+ 标签筛选 + 关键词搜索 + 排序。
+ * 交互复用 SiteLayout 的通用 filter-bar 控制器（data-* 约定）；筛选容器用 .filter-panel（不整块发光）。
+ */
 const anime = await getAnime();
 
-// 简单统计
-const watching = anime.filter((a) => a.data.status === "watching").length;
-const completed = anime.filter((a) => a.data.status === "completed").length;
-const planned = anime.filter((a) => a.data.status === "planned").length;
+// 状态选项（按固定顺序，仅保留有数据的）
+const statusOrder = ["watching", "completed", "planned", "paused", "dropped"] as const;
+const statusCounts = statusOrder
+  .map((s) => ({ value: s, label: ANIME_STATUS_ZH[s], count: anime.filter((a) => a.data.status === s).length }))
+  .filter((s) => s.count > 0);
+
+// 标签选项（去重 + 计数）
+const tagMap = new Map<string, number>();
+for (const a of anime) for (const t of a.data.tags ?? []) tagMap.set(t, (tagMap.get(t) ?? 0) + 1);
+const tags = [...tagMap.entries()].sort((a, b) => b[1] - a[1]).map(([value, count]) => ({ value, count }));
+
+const statusColor: Record<string, string> = {
+  watching: "var(--ia-neon)",
+  completed: "var(--ia-success)",
+  planned: "var(--ia-nebula)",
+  paused: "var(--ia-warning)",
+  dropped: "var(--ia-mist)",
+};
 ---
 
-<SiteLayout title="番剧" description="看过、在看、想看的作品与观测记录。">
+<SiteLayout title="番剧观测" description="看过、在看、想看的作品与观测记录。">
   <PageHeader
     eyebrow="ANIME // 番剧观测"
     title="番剧观测记录"
@@ -22,20 +42,87 @@ const planned = anime.filter((a) => a.data.status === "planned").length;
     class="mb-6"
   />
 
-  <div class="mb-8 flex flex-wrap gap-3 mono text-xs">
-    <span class="rounded-lg border border-[var(--ia-line)] bg-[var(--ia-panel)] px-3 py-1.5 text-[var(--ia-neon)]">在看 {watching}</span>
-    <span class="rounded-lg border border-[var(--ia-line)] bg-[var(--ia-panel)] px-3 py-1.5 text-[var(--ia-success)]">看完 {completed}</span>
-    <span class="rounded-lg border border-[var(--ia-line)] bg-[var(--ia-panel)] px-3 py-1.5 text-[var(--ia-nebula)]">想看 {planned}</span>
-  </div>
-
   {
     anime.length > 0 ? (
-      <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {anime.map((entry) => (
-          <div class="reveal">
-            <AnimeCard entry={entry} />
+      <div data-filter-root data-filter-kind="anime">
+        <div class="filter-panel mb-8 flex flex-col gap-4 p-4 sm:p-5">
+          <div class="filter-bar">
+            <div class="filter-group" role="group" aria-label="按观看状态筛选">
+              <button type="button" class="filter-chip" data-filter-chip data-key="status" data-value="all" data-active="true">
+                全部 <span class="chip-count">{anime.length}</span>
+              </button>
+              {statusCounts.map((s) => (
+                <button
+                  type="button"
+                  class="filter-chip"
+                  data-filter-chip
+                  data-key="status"
+                  data-value={s.value}
+                  style={`--acc:${statusColor[s.value] ?? "var(--ia-neon)"}`}
+                >
+                  <span class="chip-dot" />
+                  {s.label} <span class="chip-count">{s.count}</span>
+                </button>
+              ))}
+            </div>
           </div>
-        ))}
+
+          {tags.length > 0 && (
+            <div class="filter-bar">
+              <span class="mono shrink-0 text-[11px] uppercase tracking-wider text-[var(--ia-mist)]">标签</span>
+              <div class="filter-group" role="group" aria-label="按标签筛选">
+                <button type="button" class="filter-chip" data-filter-chip data-key="tag" data-value="all" data-active="true">
+                  全部
+                </button>
+                {tags.map((t) => (
+                  <button type="button" class="filter-chip" data-filter-chip data-key="tag" data-value={t.value}>
+                    {t.value} <span class="chip-count">{t.count}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div class="filter-bar">
+            <label class="filter-search">
+              <Icon name="search" size={15} class="shrink-0 text-[var(--ia-mist)]" />
+              <input type="search" data-filter-search placeholder="搜索标题 / 日文名 / 短评 / 标签…" aria-label="搜索番剧" />
+            </label>
+            <select class="filter-sort" data-filter-sort aria-label="排序方式">
+              <option value="newest">最新优先</option>
+              <option value="oldest">最早优先</option>
+            </select>
+            <span class="filter-count-line" data-filter-count data-filter-count-label="部">{anime.length} 部</span>
+          </div>
+        </div>
+
+        <div class="filter-empty glass" data-filter-empty>
+          <p class="text-sm text-[var(--ia-ink)]">没有匹配的番剧</p>
+          <p class="mono mt-1 text-xs text-[var(--ia-mist)] opacity-70">// no anime match this filter</p>
+        </div>
+
+        <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" data-filter-list>
+          {anime.map((entry) => (
+            <div
+              class="reveal"
+              data-filter-item
+              data-status={entry.data.status}
+              data-tag={(entry.data.tags ?? []).join("|")}
+              data-date={entry.data.date.toISOString()}
+              data-search={[
+                entry.data.title,
+                entry.data.titleJP ?? "",
+                entry.data.thoughts ?? "",
+                ANIME_STATUS_ZH[entry.data.status] ?? "",
+                ...(entry.data.tags ?? []),
+                entry.data.season ?? "",
+                entry.data.year ?? "",
+              ].join(" ")}
+            >
+              <AnimeCard entry={entry} />
+            </div>
+          ))}
+        </div>
       </div>
     ) : (
       <EmptyState icon="anime" />
