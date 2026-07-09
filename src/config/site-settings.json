@@ -7,6 +7,10 @@
   "backgroundDay": "",
   "backgroundNight": "",
   "defaultCover": "",
-  "foundedAt": "2025-06-01",
-  "footerBadges": ["Astro", "GitHub Pages", "Worldline OS"]
+  "foundedAt": "2026-07-09",
+  "footerBadges": [
+    "Astro",
+    "GitHub Pages",
+    "Worldline OS"
+  ]
 }
