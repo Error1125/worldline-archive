@@ -1,0 +1,63 @@
+---
+import { getCollection, render } from "astro:content";
+import RecordDetailLayout from "@/components/detail/RecordDetailLayout.astro";
+import { isVisiblePublic } from "@/lib/visibility";
+import { resolveRelatedRecords, ANIME_STATUS_ZH } from "@/lib/content";
+
+export async function getStaticPaths() {
+  const list = await getCollection("anime", ({ data }) => isVisiblePublic(data.visibility) && !data.draft);
+  return list.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const d = entry.data;
+const { Content } = await render(entry);
+const related = await resolveRelatedRecords({ type: "anime", id: entry.id, tags: d.tags }, d.related);
+
+const statusTone: Record<string, string> = {
+  watching: "var(--ia-neon)", completed: "var(--ia-success)",
+  planned: "var(--ia-nebula)", paused: "var(--ia-warning)", dropped: "var(--ia-mist)",
+};
+const progress = d.episodes
+  ? `${d.currentEpisode ?? (d.status === "completed" ? d.episodes : 0)} / ${d.episodes} 话`
+  : d.currentEpisode ? `第 ${d.currentEpisode} 话` : undefined;
+const metas = [
+  d.titleJP && { label: "原名", value: d.titleJP },
+  typeof d.score === "number" && { label: "评分", value: `${d.score} / 10`, tone: "var(--ia-warning)" },
+  progress && { label: "进度", value: progress },
+  (d.season || d.year) && { label: "季度", value: [d.season, d.year].filter(Boolean).join(" ") },
+].filter(Boolean) as { label: string; value: string; tone?: string }[];
+const external = d.externalUrl ?? d.externalLinks?.bangumi ?? d.externalLinks?.anilist;
+---
+
+<RecordDetailLayout
+  type="anime"
+  title={d.title}
+  summary={d.summary ?? d.thoughts}
+  date={d.date}
+  updated={d.updatedAt}
+  tags={d.tags}
+  cover={d.cover}
+  coverDay={d.coverDay}
+  coverNight={d.coverNight}
+  badge={{ label: ANIME_STATUS_ZH[d.status] ?? d.status, tone: statusTone[d.status] }}
+  metas={metas}
+  impact={d.worldlineImpact}
+  featured={d.featured}
+  worldlineWeight={d.worldlineWeight}
+  related={related}
+  backHref="/anime"
+  backLabel="返回番剧观测"
+>
+  {external && (
+    <p class="mb-8">
+      <a href={external} target="_blank" rel="noopener" class="clickable inline-flex items-center gap-2 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] px-4 py-2 text-sm text-[var(--ia-ink)] transition-colors hover:border-[var(--ia-neon)] hover:text-[var(--ia-neon)]">
+        ⛩ 外部条目页
+      </a>
+    </p>
+  )}
+
+  <div class="ia-prose">
+    <Content />
+  </div>
+</RecordDetailLayout>

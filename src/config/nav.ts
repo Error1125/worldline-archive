@@ -70,8 +70,9 @@ export const archiveNav: NavItem[] = [
   },
 ];
 
+// v5.0：访客导航不再展示「后台」。控制台入口仅在登录后于 Footer 低调出现（观测台 / console），
+// 直达地址 /admin（未登录会被引导到 /admin/login）。
 export const utilityNav: NavItem[] = [
   { label: "搜索", labelEn: "SEARCH", href: "/search", icon: "search" },
   { label: "登录", labelEn: "LOGIN", href: "/login", icon: "lock" },
-  { label: "后台", labelEn: "ADMIN", href: "/admin", icon: "user" },
 ];

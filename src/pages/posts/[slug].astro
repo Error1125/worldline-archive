@@ -6,6 +6,9 @@ import TagList from "@/components/common/TagList.astro";
 import Icon from "@/components/common/Icon.astro";
 import { formatDate } from "@/lib/format";
 import { isVisiblePublic } from "@/lib/visibility";
+import RelatedRecords from "@/components/detail/RelatedRecords.astro";
+import WorldlineContext from "@/components/detail/WorldlineContext.astro";
+import { resolveRelatedRecords } from "@/lib/content";
 
 export async function getStaticPaths() {
   const posts = await getCollection("posts", ({ data }) => isVisiblePublic(data.visibility) && !data.draft);
@@ -18,6 +21,7 @@ export async function getStaticPaths() {
 const { entry } = Astro.props;
 const { title, description, date, updated, tags, mood, category } = entry.data;
 const { Content } = await render(entry);
+const related = await resolveRelatedRecords({ type: "post", id: entry.id, tags }, entry.data.related);
 ---
 
 <SiteLayout title={title} description={description}>
@@ -50,8 +54,21 @@ const { Content } = await render(entry);
       <Content />
     </div>
 
+    <!-- v5：相关记录 + 世界线上下文 -->
+    <div class="mt-12 flex flex-col gap-6 border-t border-[var(--ia-line)] pt-8">
+      <RelatedRecords items={related} />
+      <WorldlineContext
+        type="post"
+        date={date}
+        impact={entry.data.worldlineImpact}
+        featured={entry.data.featured}
+        worldlineWeight={entry.data.worldlineWeight}
+        relatedCount={related.length}
+      />
+    </div>
+
     <!-- 页脚彩蛋 -->
-    <footer class="mt-12 border-t border-[var(--ia-line)] pt-6 mono text-xs text-[var(--ia-mist)] opacity-70">
+    <footer class="mt-8 mono text-xs text-[var(--ia-mist)] opacity-70">
       <p>// end of record — 这段记忆已存档</p>
     </footer>
   </article>

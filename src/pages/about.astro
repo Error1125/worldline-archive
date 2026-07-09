@@ -5,9 +5,10 @@ import PageHeader from "@/components/common/PageHeader.astro";
 import GlassCard from "@/components/common/GlassCard.astro";
 import Icon from "@/components/common/Icon.astro";
 import { siteConfig } from "@/config/site";
-import { features } from "@/config/features";
 
 const p = siteConfig.profile;
+/** 头像：配置了 avatar URL 则显示图片，否则回退到 user 图标 */
+const avatar = (p.avatar ?? "").trim();
 const stack = ["Astro 5", "TypeScript", "Tailwind CSS v4", "React 19", "MDX", "Motion", "Canvas"];
 const links = siteConfig.links;
 ---
@@ -25,8 +26,22 @@ const links = siteConfig.links;
     <!-- 存档者 -->
     <GlassCard ticks class="reveal flex flex-col gap-4 p-6">
       <div class="flex items-center gap-3">
-        <span class="grid size-12 place-items-center rounded-2xl icon-badge !text-[var(--ia-star)]">
-          <Icon name="user" size={24} />
+        <span class="grid size-12 place-items-center overflow-hidden rounded-2xl icon-badge !text-[var(--ia-star)]">
+          {
+            avatar ? (
+              <img
+                class="avatar-img"
+                src={withBase(avatar)}
+                alt={siteConfig.author}
+                width={48}
+                height={48}
+                loading="lazy"
+                decoding="async"
+              />
+            ) : (
+              <Icon name="user" size={24} />
+            )
+          }
         </span>
         <div>
           <div class="text-lg font-semibold text-[var(--ia-ink)]">{siteConfig.author}</div>
@@ -77,22 +92,31 @@ const links = siteConfig.links;
     </div>
   </div>
 
-  <!-- 低调的后台入口（放页面角落，受 features.auth 控制） -->
+  <!-- v5.0 低调控制台入口：仅登录后（wl-admin-hint）可见；权限在后端校验 -->
   <div class="mt-12 flex items-center justify-center gap-4 border-t border-[var(--ia-line)] pt-6 mono text-[11px] text-[var(--ia-mist)] opacity-60">
     <span class="diamond">worldline {p.worldline}</span>
-    {
-      features.auth && (
-        <a href={withBase("/admin")} class="clickable inline-flex items-center gap-1 transition-opacity hover:opacity-100">
-          <Icon name="lock" size={11} /> admin
-        </a>
-      )
-    }
-    {
-      !features.auth && (
-        <a href={withBase("/login")} class="clickable inline-flex items-center gap-1 transition-opacity hover:opacity-100">
-          <Icon name="lock" size={11} /> 登录（soon）
-        </a>
-      )
-    }
+    <a
+      id="wl-console-entry-about"
+      href={withBase("/admin/dashboard")}
+      class="clickable hidden items-center gap-1 transition-opacity hover:opacity-100"
+    >
+      <Icon name="lock" size={11} /> 观测台 / console
+    </a>
+    <script is:inline>
+      (function () {
+        function apply() {
+          var el = document.getElementById("wl-console-entry-about");
+          if (!el) return;
+          var on = false;
+          try {
+            on = localStorage.getItem("wl-admin-hint") === "1";
+          } catch (e) {}
+          el.classList.toggle("hidden", !on);
+          el.classList.toggle("inline-flex", on);
+        }
+        apply();
+        document.addEventListener("astro:after-swap", apply);
+      })();
+    </script>
   </div>
 </SiteLayout>

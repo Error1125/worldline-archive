@@ -1,0 +1,86 @@
+---
+import { withBase } from "@/lib/paths";
+import Icon from "@/components/common/Icon.astro";
+import { formatDate } from "@/lib/format";
+import { getRecordContribution, WORLDLINE_STATUS_META } from "@/lib/worldline";
+import type { ContentType } from "@/lib/content";
+import { TYPE_META } from "@/lib/content";
+
+/**
+ * WorldlineContext.astro —— 详情页底部「世界线上下文」。
+ * 展示：记录日期 / 内容类型 / worldline impact / 该记录对世界线的贡献 / 返回时间线。
+ */
+interface Props {
+  type: ContentType;
+  date: Date;
+  impact?: "low" | "medium" | "high" | "critical";
+  featured?: boolean;
+  worldlineWeight?: number;
+  relatedCount?: number;
+  class?: string;
+}
+const {
+  type,
+  date,
+  impact = "medium",
+  featured = false,
+  worldlineWeight,
+  relatedCount = 0,
+  class: className = "",
+} = Astro.props;
+
+const { contribution, daysAgo } = getRecordContribution(
+  { type, date, featured, worldlineImpact: impact, worldlineWeight },
+);
+const impactTone: Record<string, string> = {
+  low: "var(--ia-mist)",
+  medium: "var(--ia-neon)",
+  high: "var(--ia-warning)",
+  critical: "var(--ia-danger)",
+};
+const meta = TYPE_META[type];
+const active = contribution > 0;
+---
+
+<section class:list={["reveal rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] p-4", className]} aria-label="世界线上下文">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <span class="eyebrow flex items-center gap-2">
+      <span class="wl-meter-lamp" aria-hidden="true" style={`background:${impactTone[impact]}; box-shadow:0 0 8px ${impactTone[impact]}`}></span>
+      WORLDLINE CONTEXT // 世界线上下文
+    </span>
+    <span class="mono text-[10px] text-[var(--ia-mist)] opacity-70">{WORLDLINE_STATUS_META.stable ? "OBS-07" : ""}</span>
+  </div>
+
+  <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 mono text-[11px] text-[var(--ia-mist)] sm:grid-cols-4">
+    <div>
+      <dt class="opacity-60">记录日期</dt>
+      <dd class="mt-0.5 text-[var(--ia-ink)]">{formatDate(date)}</dd>
+    </div>
+    <div>
+      <dt class="opacity-60">内容类型</dt>
+      <dd class="mt-0.5 text-[var(--ia-ink)]">{meta.labelEn} · {meta.labelZh}</dd>
+    </div>
+    <div>
+      <dt class="opacity-60">worldline impact</dt>
+      <dd class="mt-0.5 uppercase" style={`color:${impactTone[impact]}`}>{impact}{featured && " · featured"}</dd>
+    </div>
+    <div>
+      <dt class="opacity-60">当前贡献</dt>
+      <dd class="mt-0.5 text-[var(--ia-ink)]">
+        {active ? `+${contribution.toFixed(2)}（${Math.round(daysAgo)} 天前）` : "已超出观测窗口"}
+      </dd>
+    </div>
+  </dl>
+
+  <div class="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--ia-line)] pt-3">
+    <span class="mono text-[10px] text-[var(--ia-mist)] opacity-70">
+      {relatedCount > 0 ? `已关联 ${relatedCount} 条相邻节点` : "暂无关联节点"}
+    </span>
+    <a
+      href={withBase("/timeline")}
+      class="clickable inline-flex items-center gap-1.5 mono text-xs text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-neon)]"
+    >
+      返回世界线记录 <Icon name="arrow" size={13} />
+    </a>
+  </div>
+</section>

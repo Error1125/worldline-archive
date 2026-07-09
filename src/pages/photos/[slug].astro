@@ -1,0 +1,65 @@
+---
+import { getCollection, render } from "astro:content";
+import RecordDetailLayout from "@/components/detail/RecordDetailLayout.astro";
+import { withBase } from "@/lib/paths";
+import { isVisiblePublic } from "@/lib/visibility";
+import { resolveRelatedRecords } from "@/lib/content";
+import { formatDate } from "@/lib/format";
+
+export async function getStaticPaths() {
+  const list = await getCollection("photos", ({ data }) => isVisiblePublic(data.visibility) && !data.draft);
+  return list.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const d = entry.data;
+const { Content } = await render(entry);
+const related = await resolveRelatedRecords({ type: "photo", id: entry.id, tags: d.tags ?? [] }, d.related);
+const metas = [
+  d.album && { label: "相册", value: d.album },
+  d.location && { label: "◎", value: d.location },
+  d.camera && { label: "📷", value: d.camera },
+  d.takenAt && { label: "拍摄于", value: formatDate(d.takenAt) },
+  d.mood && { label: "◇", value: d.mood },
+].filter(Boolean) as { label: string; value: string }[];
+---
+
+<RecordDetailLayout
+  type="photo"
+  title={d.title}
+  summary={d.summary ?? d.description}
+  date={d.date}
+  updated={d.updatedAt}
+  tags={d.tags ?? []}
+  metas={metas}
+  impact={d.worldlineImpact}
+  featured={d.featured}
+  worldlineWeight={d.worldlineWeight}
+  related={related}
+  backHref="/photos"
+  backLabel="返回照片墙"
+>
+  <!-- 拍立得式相片网格（与 Photos 页面气质一致，不复用其复杂交互以免互相影响） -->
+  <div class="photo-detail-grid grid gap-4 sm:grid-cols-2">
+    {
+      d.images.map((img, i) => (
+        <figure class="polaroid-frame rounded-lg border border-[var(--ia-line)] bg-[var(--ia-panel)] p-2 pb-6 shadow-lg" style={`--tilt:${(i % 3) - 1}deg`}>
+          <img src={withBase(img)} alt={`${d.title} · ${i + 1}`} loading="lazy" class="block aspect-[4/3] w-full rounded object-cover" />
+          <figcaption class="mt-2 px-1 mono text-[10px] text-[var(--ia-mist)]">
+            {d.album ?? d.title} · #{String(i + 1).padStart(2, "0")}
+          </figcaption>
+        </figure>
+      ))
+    }
+  </div>
+
+  <div class="ia-prose mt-8">
+    <Content />
+  </div>
+</RecordDetailLayout>
+
+<style>
+  .polaroid-frame { transform: rotate(var(--tilt, 0deg)); transition: transform 0.25s ease; }
+  .polaroid-frame:hover { transform: rotate(0deg) scale(1.02); }
+  @media (prefers-reduced-motion: reduce) { .polaroid-frame, .polaroid-frame:hover { transform: none; } }
+</style>

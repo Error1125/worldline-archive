@@ -19,6 +19,8 @@ interface Props {
 const { counts, class: className = "" } = Astro.props;
 const p = siteConfig.profile;
 const links = siteConfig.links;
+/** 头像：配置了 avatar URL 则显示图片，否则回退到 user 图标 */
+const avatar = (p.avatar ?? "").trim();
 
 const stats = [
   { label: "文章", labelEn: "POSTS", value: counts.posts, href: "/posts" },
@@ -64,7 +66,21 @@ if (links.bilibili)
   <div class="profile-main">
     <a href={withBase("/about")} class="clickable avatar-ring profile-avatar shrink-0" aria-label="查看关于页面">
       <span class="avatar-core">
-        <Icon name="user" size={42} class="text-[var(--ia-star)]" />
+        {
+          avatar ? (
+            <img
+              class="avatar-img"
+              src={withBase(avatar)}
+              alt={siteConfig.author}
+              width={88}
+              height={88}
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <Icon name="user" size={42} class="text-[var(--ia-star)]" />
+          )
+        }
       </span>
       <span class="profile-online" aria-hidden="true">
         <span></span>

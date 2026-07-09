@@ -1,62 +1,151 @@
 /**
  * scripts/sync-github.ts
  *
- * GitHub 数据同步脚本（第一版为 mock）。
- * 运行：`pnpm sync:github`（package.json 中已注册，使用 tsx 执行）。
+ * GitHub 数据同步脚本（v5：真实 API 版）。
+ * 运行：`pnpm sync:github`
  *
- * 第一版行为：
- * - 直接把 src/lib/github/mock.ts 里的 mock 数据写到 src/data/github/*.json，
- *   证明「构建期生成静态 JSON、页面只读 JSON」这条链路是通的。
+ * 行为：
+ * - 用 GitHub REST API 拉取 GITHUB_USER 的仓库列表与公开动态，
+ *   生成 src/data/github/{repos,activity}.json（形状与页面层约定一致）。
+ * - GITHUB_TOKEN 可选：无 token 走匿名请求（限流 60 次/时，个人站足够）。
+ * - 任一环节失败：保留现有 JSON、打印警告、以 0 退出——绝不中断构建。
  *
- * TODO(未来接真实服务)：
- * - [ ] 用 GitHub GraphQL API 拉 repository 列表 + contributionsCollection；
- * - [ ] 用 GitHub REST API 拉 commits / issues / pull requests / releases；
- * - [ ] 用环境变量 GITHUB_TOKEN 注入只读 token（切勿写死）；
- * - [ ] 用 GitHub Actions schedule（cron）定时运行本脚本并提交生成的 JSON；
- * - [ ] 失败时保留上一次的 JSON，避免构建因网络问题中断。
+ * 与控制台的关系：/api/admin/github/sync（Worker 端）做同一件事并直接
+ * commit 回仓库；本脚本供本地 / CI 定时刷新使用，两者可并存。
  */
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { mockActivity, mockRepos } from "../src/lib/github/mock.ts";
+import type { GitHubActivity, GitHubRepo } from "../src/lib/github/types.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataDir = resolve(__dirname, "../src/data/github");
 
-const now = new Date().toISOString();
+const USER = process.env.GITHUB_USER || "Error1125";
+const TOKEN = process.env.GITHUB_TOKEN || "";
+const API = "https://api.github.com";
+
+function headers(): Record<string, string> {
+  const h: Record<string, string> = {
+    Accept: "application/vnd.github+json",
+    "User-Agent": "worldline-archive-sync",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+  if (TOKEN) h.Authorization = `Bearer ${TOKEN}`;
+  return h;
+}
+
+async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${API}${path}`, { headers: headers() });
+  if (!res.ok) throw new Error(`GitHub API ${path} -> HTTP ${res.status}`);
+  return (await res.json()) as T;
+}
+
+/* ---------- 组装（与 worker/src/index.ts 的形状保持一致） ---------- */
+
+function toRepos(raw: any[]): GitHubRepo[] {
+  return raw
+    .filter((r) => !r.fork)
+    .slice(0, 8)
+    .map((r) => ({
+      owner: r.owner?.login ?? USER,
+      repo: r.name ?? "",
+      description: r.description ?? "",
+      url: r.html_url ?? "",
+      language: r.language ?? null,
+      stars: r.stargazers_count ?? 0,
+      forks: r.forks_count ?? 0,
+      lastCommitAt: r.pushed_at ?? r.updated_at ?? new Date().toISOString(),
+      topics: Array.isArray(r.topics) ? r.topics : [],
+    }));
+}
+
+function toActivity(raw: any[]): GitHubActivity[] {
+  const out: GitHubActivity[] = [];
+  for (const ev of raw) {
+    if (out.length >= 12) break;
+    const repo: string = ev.repo?.name ?? "";
+    const createdAt: string = ev.created_at ?? new Date().toISOString();
+    const id = `evt_${ev.id ?? out.length}`;
+    switch (ev.type) {
+      case "PushEvent": {
+        const commits = ev.payload?.commits ?? [];
+        const head = commits[commits.length - 1];
+        if (!head) break;
+        out.push({
+          id,
+          type: "commit",
+          repo,
+          title: String(head.message ?? "").split("\n")[0].slice(0, 96) || "commit",
+          createdAt,
+          url: `https://github.com/${repo}/commit/${head.sha ?? ""}`,
+        });
+        break;
+      }
+      case "IssuesEvent":
+        out.push({ id, type: "issue", repo, title: ev.payload?.issue?.title ?? "issue", createdAt, url: ev.payload?.issue?.html_url });
+        break;
+      case "PullRequestEvent":
+        out.push({ id, type: "pull_request", repo, title: ev.payload?.pull_request?.title ?? "pull request", createdAt, url: ev.payload?.pull_request?.html_url });
+        break;
+      case "ReleaseEvent":
+        out.push({ id, type: "release", repo, title: ev.payload?.release?.name ?? ev.payload?.release?.tag_name ?? "release", createdAt, url: ev.payload?.release?.html_url });
+        break;
+      case "WatchEvent":
+        out.push({ id, type: "star", repo, title: `Starred ${repo}`, createdAt, url: `https://github.com/${repo}` });
+        break;
+      default:
+        break;
+    }
+  }
+  return out;
+}
+
+/* ---------- 主流程 ---------- */
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await readFile(path, "utf8");
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function main() {
   await mkdir(dataDir, { recursive: true });
+  const now = new Date().toISOString();
+
+  const [rawRepos, rawEvents] = await Promise.all([
+    getJson<any[]>(`/users/${USER}/repos?sort=updated&per_page=12&type=owner`),
+    getJson<any[]>(`/users/${USER}/events/public?per_page=30`).catch(() => [] as any[]),
+  ]);
 
   const reposPayload = {
-    _note: "MOCK 数据，由 scripts/sync-github.ts 生成。未来替换为真实 GitHub 数据。",
+    _note: "由 scripts/sync-github.ts 生成（真实 GitHub 数据）。",
     generatedAt: now,
-    repos: mockRepos,
+    repos: toRepos(rawRepos),
   };
-
   const activityPayload = {
-    _note: "MOCK 数据，由 scripts/sync-github.ts 生成。未来替换为真实 GitHub 数据。",
+    _note: "由 scripts/sync-github.ts 生成（真实 GitHub 数据）。",
     generatedAt: now,
-    activity: mockActivity,
+    activity: toActivity(rawEvents),
   };
 
-  await writeFile(
-    resolve(dataDir, "repos.json"),
-    JSON.stringify(reposPayload, null, 2) + "\n",
-    "utf8",
-  );
-  await writeFile(
-    resolve(dataDir, "activity.json"),
-    JSON.stringify(activityPayload, null, 2) + "\n",
-    "utf8",
-  );
+  await writeFile(resolve(dataDir, "repos.json"), JSON.stringify(reposPayload, null, 2) + "\n", "utf8");
+  await writeFile(resolve(dataDir, "activity.json"), JSON.stringify(activityPayload, null, 2) + "\n", "utf8");
 
-  console.log("[sync-github] 已写入 mock 数据到 src/data/github/（repos.json, activity.json）");
-  console.log("[sync-github] 提示：这是第一版 mock；接真实 API 的 TODO 见脚本顶部注释。");
+  console.log(`[sync-github] OK：${reposPayload.repos.length} 个仓库、${activityPayload.activity.length} 条动态（用户：${USER}${TOKEN ? "，带 token" : "，匿名"}）。`);
 }
 
-main().catch((err) => {
-  console.error("[sync-github] 失败：", err);
-  process.exit(1);
+main().catch(async (err) => {
+  const kept =
+    (await fileExists(resolve(dataDir, "repos.json"))) &&
+    (await fileExists(resolve(dataDir, "activity.json")));
+  console.warn(`[sync-github] 拉取失败：${err instanceof Error ? err.message : err}`);
+  console.warn(kept
+    ? "[sync-github] 已保留现有 JSON，构建继续。"
+    : "[sync-github] 警告：本地没有现有 JSON，页面将缺少 GitHub 数据。");
+  process.exit(0); // 永不阻断构建
 });

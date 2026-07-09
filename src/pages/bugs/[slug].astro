@@ -7,9 +7,12 @@ import StatusBadge from "@/components/common/StatusBadge.astro";
 import Icon from "@/components/common/Icon.astro";
 import { formatDate } from "@/lib/format";
 import { isVisiblePublic } from "@/lib/visibility";
+import RelatedRecords from "@/components/detail/RelatedRecords.astro";
+import WorldlineContext from "@/components/detail/WorldlineContext.astro";
+import { resolveRelatedRecords } from "@/lib/content";
 
 export async function getStaticPaths() {
-  const bugs = await getCollection("bugs", ({ data }) => isVisiblePublic(data.visibility));
+  const bugs = await getCollection("bugs", ({ data }) => isVisiblePublic(data.visibility) && !data.draft);
   return bugs.map((entry) => ({
     params: { slug: entry.id },
     props: { entry },
@@ -20,6 +23,7 @@ const { entry } = Astro.props;
 const { title, date, status, severity, summary, project, cause, solution, tags, relatedFiles } =
   entry.data;
 const { Content } = await render(entry);
+const related = await resolveRelatedRecords({ type: "bug", id: entry.id, tags }, entry.data.related);
 
 const meta: { label: string; value: string }[] = [
   { label: "STATUS", value: status },
@@ -97,6 +101,19 @@ const meta: { label: string; value: string }[] = [
     <!-- 正文（完整复盘） -->
     <div class="ia-prose reveal mt-8">
       <Content />
+    </div>
+
+    <!-- v5：相关记录 + 世界线上下文 -->
+    <div class="mt-12 flex flex-col gap-6 border-t border-[var(--ia-line)] pt-8">
+      <RelatedRecords items={related} />
+      <WorldlineContext
+        type="bug"
+        date={date}
+        impact={entry.data.worldlineImpact}
+        featured={entry.data.featured}
+        worldlineWeight={entry.data.worldlineWeight}
+        relatedCount={related.length}
+      />
     </div>
 
     <footer class="mt-12 border-t border-[var(--ia-line)] pt-6 mono text-xs text-[var(--ia-mist)] opacity-70">

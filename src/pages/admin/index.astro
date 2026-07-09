@@ -1,0 +1,27 @@
+---
+import AdminLayout from "@/components/admin/AdminLayout.astro";
+import { withBase } from "@/lib/paths";
+
+/**
+ * /admin —— 入口重定向页。
+ * 静态站没有服务端 session，可用性跳转在客户端完成：
+ * 有登录提示（wl-admin-hint）→ dashboard（AdminApp 会再向后端核验 session）；
+ * 否则 → login。真正的权限校验永远在后端。
+ */
+const siteBase = withBase("/").replace(/\/$/, "");
+---
+
+<AdminLayout title="观测台">
+  <div class="grid min-h-[100dvh] place-items-center">
+    <p class="mono text-xs text-[var(--ia-mist)]">redirecting…</p>
+  </div>
+  <script is:inline define:vars={{ siteBase }}>
+    (function () {
+      var hint = false;
+      try {
+        hint = localStorage.getItem("wl-admin-hint") === "1";
+      } catch (e) {}
+      location.replace(siteBase + (hint ? "/admin/dashboard" : "/admin/login"));
+    })();
+  </script>
+</AdminLayout>

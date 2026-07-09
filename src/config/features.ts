@@ -4,6 +4,8 @@
  */
 export const features = {
   auth: false,
+  /** v5.0 观测台控制台（/admin，配合 Cloudflare Worker 后端） */
+  adminConsole: true,
   comments: false,
   onlineEditor: false,
   appleMusic: false,

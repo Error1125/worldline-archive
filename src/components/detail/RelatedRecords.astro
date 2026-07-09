@@ -1,0 +1,49 @@
+---
+import { withBase } from "@/lib/paths";
+import Icon from "@/components/common/Icon.astro";
+import { formatDate } from "@/lib/format";
+import type { TimelineItem } from "@/lib/content";
+
+/**
+ * RelatedRecords.astro —— 详情页「相关记录」。
+ * 数据来自 lib/content.resolveRelatedRecords（related 字段优先，否则同类/同标签回退）。
+ */
+interface Props {
+  items: TimelineItem[];
+  class?: string;
+}
+const { items, class: className = "" } = Astro.props;
+---
+
+{
+  items.length > 0 && (
+    <section class:list={["reveal", className]} aria-label="相关记录">
+      <div class="eyebrow mb-3 flex items-center gap-1.5">
+        <Icon name="timeline" size={13} class="text-[var(--ia-nebula)]" /> RELATED // 相关记录
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        {items.map((it) => (
+          <a
+            href={withBase(it.href ?? "/timeline")}
+            class="clickable glass-card group flex items-start gap-3 p-4 transition-colors hover:border-[var(--ia-neon)]"
+          >
+            <span class="grid size-8 shrink-0 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-neon)]">
+              <Icon name={it.icon} size={15} />
+            </span>
+            <div class="min-w-0">
+              <div class="mono text-[10px] uppercase tracking-[0.14em] text-[var(--ia-mist)]">
+                {it.typeLabel} · {formatDate(it.date)}
+              </div>
+              <div class="mt-0.5 truncate text-sm font-semibold text-[var(--ia-ink)] group-hover:text-[var(--ia-neon)]">
+                {it.title}
+              </div>
+              {it.description && (
+                <p class="mt-1 line-clamp-2 text-xs leading-relaxed text-[var(--ia-mist)]">{it.description}</p>
+              )}
+            </div>
+          </a>
+        ))}
+      </div>
+    </section>
+  )
+}

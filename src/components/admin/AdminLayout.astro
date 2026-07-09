@@ -1,0 +1,49 @@
+---
+import "@/styles/global.css";
+import { siteConfig } from "@/config/site";
+import { withBase } from "@/lib/paths";
+
+/**
+ * AdminLayout.astro —— 控制台专用极简布局（v5.0）。
+ *
+ * 与 SiteLayout 的区别：
+ * - 不加载 Header / Footer / 星空 / 弹幕 / 光标 / MiniPlayer 等任何前台组件与特效；
+ * - 不使用 View Transitions（控制台是工具页，直接整页跳转更稳）；
+ * - noindex：控制台页面不进搜索引擎；
+ * - 保留 global.css 设计令牌 + 无闪烁昼夜模式（与前台共享 wl-scene-mode）。
+ */
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang={siteConfig.language}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex, nofollow" />
+    <script is:inline>
+      (function () {
+        function readMode() {
+          try {
+            return localStorage.getItem("wl-scene-mode") === "day" ? "day" : "night";
+          } catch (e) {
+            return "night";
+          }
+        }
+        document.documentElement.dataset.sceneMode = readMode();
+      })();
+    </script>
+    <link rel="icon" href={withBase("/favicon.svg")} type="image/svg+xml" />
+    <title>{title} · Console · {siteConfig.title}</title>
+  </head>
+
+  <body class="min-h-screen bg-[var(--ia-bg)] text-[var(--ia-ink)] antialiased">
+    <div class="ia-nebula" aria-hidden="true"></div>
+    <div class="relative z-10">
+      <slot />
+    </div>
+  </body>
+</html>

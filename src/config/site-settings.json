@@ -1,0 +1,12 @@
+{
+  "title": "Worldline Archive",
+  "subtitle": "Worldline Save Point",
+  "description": "A personal digital garden for life notes, anime, music, projects, bugs, and late-night thoughts.",
+  "language": "zh-CN",
+  "heroTagline": "记录、观测、存档 —— 这条世界线的一切。",
+  "backgroundDay": "",
+  "backgroundNight": "",
+  "defaultCover": "",
+  "foundedAt": "2025-06-01",
+  "footerBadges": ["Astro", "GitHub Pages", "Worldline OS"]
+}

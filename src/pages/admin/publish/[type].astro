@@ -1,0 +1,25 @@
+---
+import AdminLayout from "@/components/admin/AdminLayout.astro";
+import AdminApp from "@/components/admin/AdminApp.tsx";
+import { withBase } from "@/lib/paths";
+import { RECORD_TYPES } from "@/components/admin/adminFields";
+
+export function getStaticPaths() {
+  return RECORD_TYPES.map((t) => ({ params: { type: t.type } }));
+}
+
+const { type } = Astro.params;
+const def = RECORD_TYPES.find((t) => t.type === type);
+const siteBase = withBase("/").replace(/\/$/, "");
+const summaryUrl = withBase("/data/summary.json");
+---
+
+<AdminLayout title={`发布${def?.label ?? ""}`}>
+  <AdminApp
+    client:only="react"
+    screen="publish-form"
+    publishType={type}
+    siteBase={siteBase}
+    summaryUrl={summaryUrl}
+  />
+</AdminLayout>

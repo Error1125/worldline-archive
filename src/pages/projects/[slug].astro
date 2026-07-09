@@ -1,0 +1,88 @@
+---
+import { getCollection, render } from "astro:content";
+import RecordDetailLayout from "@/components/detail/RecordDetailLayout.astro";
+import Icon from "@/components/common/Icon.astro";
+import { isVisiblePublic } from "@/lib/visibility";
+import { resolveRelatedRecords, PROJECT_STATUS_ZH } from "@/lib/content";
+import { formatDate } from "@/lib/format";
+
+export async function getStaticPaths() {
+  const list = await getCollection("projects", ({ data }) => isVisiblePublic(data.visibility) && !data.draft);
+  return list.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const d = entry.data;
+const { Content } = await render(entry);
+const related = await resolveRelatedRecords({ type: "project", id: entry.id, tags: d.tags }, d.related);
+
+const statusTone: Record<string, string> = {
+  building: "var(--ia-neon)", active: "var(--ia-neon)",
+  done: "var(--ia-success)", completed: "var(--ia-success)",
+  paused: "var(--ia-warning)", idea: "var(--ia-nebula)", prototype: "var(--ia-nebula)",
+  archived: "var(--ia-mist)",
+};
+const metas = [
+  d.role && { label: "角色", value: d.role },
+  d.startedAt && { label: "启动", value: formatDate(d.startedAt) },
+  d.endedAt && { label: "收束", value: formatDate(d.endedAt) },
+].filter(Boolean) as { label: string; value: string }[];
+---
+
+<RecordDetailLayout
+  type="project"
+  title={d.title}
+  summary={d.summary ?? d.description}
+  date={d.date}
+  updated={d.updatedAt}
+  tags={d.tags}
+  cover={d.cover}
+  coverDay={d.coverDay}
+  coverNight={d.coverNight}
+  badge={{ label: PROJECT_STATUS_ZH[d.status] ?? d.status, tone: statusTone[d.status] }}
+  metas={metas}
+  impact={d.worldlineImpact}
+  featured={d.featured}
+  worldlineWeight={d.worldlineWeight}
+  related={related}
+  backHref="/projects"
+  backLabel="返回项目列表"
+>
+  {d.techStack.length > 0 && (
+    <div class="mb-6 flex flex-wrap items-center gap-2">
+      <span class="eyebrow mr-1">STACK //</span>
+      {d.techStack.map((t) => (
+        <span class="rounded-full border border-[var(--ia-line)] px-2.5 py-1 mono text-[11px] text-[var(--ia-neon)]">{t}</span>
+      ))}
+    </div>
+  )}
+
+  {(d.repo || d.demo) && (
+    <div class="mb-8 flex flex-wrap gap-3">
+      {d.repo && (
+        <a href={d.repo} target="_blank" rel="noopener" class="clickable inline-flex items-center gap-2 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] px-4 py-2 text-sm text-[var(--ia-ink)] transition-colors hover:border-[var(--ia-neon)] hover:text-[var(--ia-neon)]">
+          <Icon name="github" size={15} /> 源码仓库
+        </a>
+      )}
+      {d.demo && (
+        <a href={d.demo} target="_blank" rel="noopener" class="clickable inline-flex items-center gap-2 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] px-4 py-2 text-sm text-[var(--ia-ink)] transition-colors hover:border-[var(--ia-neon)] hover:text-[var(--ia-neon)]">
+          <Icon name="arrow" size={15} /> 在线演示
+        </a>
+      )}
+    </div>
+  )}
+
+  {d.github && (
+    <div class="mb-8 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] p-4 mono text-[11px] text-[var(--ia-mist)]">
+      <span class="text-[var(--ia-neon)]">github://</span> {d.github.owner}/{d.github.repo}
+      {typeof d.github.stars === "number" && <span> · ★ {d.github.stars}</span>}
+      {typeof d.github.forks === "number" && <span> · ⑂ {d.github.forks}</span>}
+      {d.github.language && <span> · {d.github.language}</span>}
+      {d.github.lastCommitAt && <span> · 最近提交 {d.github.lastCommitAt.slice(0, 10)}</span>}
+    </div>
+  )}
+
+  <div class="ia-prose">
+    <Content />
+  </div>
+</RecordDetailLayout>

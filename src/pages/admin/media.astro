@@ -1,0 +1,12 @@
+---
+import AdminLayout from "@/components/admin/AdminLayout.astro";
+import AdminApp from "@/components/admin/AdminApp.tsx";
+import { withBase } from "@/lib/paths";
+
+const siteBase = withBase("/").replace(/\/$/, "");
+const summaryUrl = withBase("/data/summary.json");
+---
+
+<AdminLayout title="媒体">
+  <AdminApp client:only="react" screen="media" siteBase={siteBase} summaryUrl={summaryUrl} />
+</AdminLayout>

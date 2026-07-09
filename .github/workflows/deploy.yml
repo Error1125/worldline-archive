@@ -26,6 +26,11 @@ jobs:
 
       - name: Install, build, and upload your site
         uses: withastro/action@v6
+        env:
+          # 控制台后端地址（可选）：仓库 Settings → Secrets and variables → Actions → Variables
+          # 新增 PUBLIC_ADMIN_API_BASE = https://worldline-admin-api.<子域>.workers.dev
+          # 不配也行——登录页手填地址会存 localStorage，优先级更高。
+          PUBLIC_ADMIN_API_BASE: ${{ vars.PUBLIC_ADMIN_API_BASE }}
         with:
           package-manager: pnpm@9.15.9
           build-cmd: pnpm run build

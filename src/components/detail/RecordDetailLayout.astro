@@ -1,0 +1,147 @@
+---
+import { withBase } from "@/lib/paths";
+import SiteLayout from "@/components/layout/SiteLayout.astro";
+import Icon from "@/components/common/Icon.astro";
+import TagList from "@/components/common/TagList.astro";
+import RelatedRecords from "@/components/detail/RelatedRecords.astro";
+import WorldlineContext from "@/components/detail/WorldlineContext.astro";
+import { formatDate } from "@/lib/format";
+import { TYPE_META, type ContentType, type TimelineItem } from "@/lib/content";
+
+/**
+ * RecordDetailLayout.astro —— 统一记录详情页骨架（v5.0）。
+ *
+ * 结构：BackLink → RecordHero（类型 eyebrow / 标题 / 摘要 / 封面）
+ *      → RecordMetaBar（日期 / 状态 / 自定义 meta / 标签）
+ *      → RecordBody（默认 slot）
+ *      → RelatedRecords → WorldlineContext（含返回世界线记录）。
+ *
+ * posts / bugs 详情页保持原有版式，仅在底部复用 Related + WorldlineContext；
+ * projects / photos / music / anime / moments 详情页整页使用本布局。
+ */
+interface MetaEntry {
+  label: string;
+  value: string;
+  tone?: string;
+}
+interface Props {
+  type: ContentType;
+  title: string;
+  summary?: string;
+  date: Date;
+  updated?: Date;
+  tags?: string[];
+  cover?: string;
+  coverDay?: string;
+  coverNight?: string;
+  /** 状态徽章（如番剧观测中 / 项目建造中） */
+  badge?: { label: string; tone?: string };
+  metas?: MetaEntry[];
+  impact?: "low" | "medium" | "high" | "critical";
+  featured?: boolean;
+  worldlineWeight?: number;
+  related?: TimelineItem[];
+  backHref: string;
+  backLabel: string;
+}
+const {
+  type,
+  title,
+  summary,
+  date,
+  updated,
+  tags = [],
+  cover,
+  coverDay,
+  coverNight,
+  badge,
+  metas = [],
+  impact = "medium",
+  featured = false,
+  worldlineWeight,
+  related = [],
+  backHref,
+  backLabel,
+} = Astro.props;
+
+const meta = TYPE_META[type];
+const dayCover = coverDay ?? cover;
+const nightCover = coverNight ?? cover;
+const hasCover = !!(dayCover || nightCover);
+---
+
+<SiteLayout title={title} description={summary}>
+  <article class="mx-auto max-w-3xl">
+    <!-- 返回 -->
+    <a
+      href={withBase(backHref)}
+      class="clickable mb-6 inline-flex items-center gap-1.5 mono text-xs text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-neon)]"
+    >
+      <Icon name="arrow" size={13} class="rotate-180" /> {backLabel}
+    </a>
+
+    <!-- RecordHero -->
+    <header class="reveal border-b border-[var(--ia-line)] pb-6">
+      <div class="eyebrow flex items-center gap-1.5">
+        <Icon name={meta.icon} size={13} class="text-[var(--ia-neon)]" /> {meta.labelEn} // {meta.labelZh}
+        {featured && <span class="ml-1 text-[var(--ia-warning)]">★ featured</span>}
+      </div>
+      <h1 class="mt-3 text-3xl font-bold leading-tight tracking-tight text-[var(--ia-ink)] sm:text-4xl">
+        {title}
+      </h1>
+      {summary && <p class="mt-3 text-base leading-relaxed text-[var(--ia-mist)]">{summary}</p>}
+
+      <!-- RecordMetaBar -->
+      <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 mono text-[11px] text-[var(--ia-mist)]">
+        <time datetime={date.toISOString()}>发布 {formatDate(date)}</time>
+        {updated && <time datetime={updated.toISOString()}>· 更新 {formatDate(updated)}</time>}
+        {badge && (
+          <span class="status-badge" style={`--sb-c: ${badge.tone ?? "var(--ia-neon)"}`}>{badge.label}</span>
+        )}
+        {metas.map((m) => (
+          <span style={m.tone ? `color:${m.tone}` : undefined}>· {m.label} {m.value}</span>
+        ))}
+      </div>
+      {tags.length > 0 && <div class="mt-4"><TagList tags={tags} /></div>}
+
+      {hasCover && (
+        <figure class="record-cover mt-6 overflow-hidden rounded-xl border border-[var(--ia-line)]">
+          {dayCover && <img class="cover-day block w-full object-cover" src={withBase(dayCover)} alt={title} loading="lazy" />}
+          {nightCover && nightCover !== dayCover && (
+            <img class="cover-night block w-full object-cover" src={withBase(nightCover)} alt={title} loading="lazy" />
+          )}
+        </figure>
+      )}
+    </header>
+
+    <!-- RecordBody -->
+    <div class="reveal mt-8">
+      <slot />
+    </div>
+
+    <!-- Related + Worldline Context -->
+    <div class="mt-12 flex flex-col gap-6 border-t border-[var(--ia-line)] pt-8">
+      <RelatedRecords items={related} />
+      <WorldlineContext
+        type={type}
+        date={date}
+        impact={impact}
+        featured={featured}
+        worldlineWeight={worldlineWeight}
+        relatedCount={related.length}
+      />
+    </div>
+
+    <footer class="mt-8 mono text-xs text-[var(--ia-mist)] opacity-70">
+      <p>// end of record — 这段记忆已存档</p>
+    </footer>
+  </article>
+</SiteLayout>
+
+<style>
+  /* 昼夜双封面：跟随 html[data-scene-mode] 切换 */
+  .record-cover img { max-height: 420px; }
+  .record-cover .cover-night { display: none; }
+  :global(html[data-scene-mode="night"]) .record-cover .cover-day:not(:only-child) { display: none; }
+  :global(html[data-scene-mode="night"]) .record-cover .cover-night { display: block; }
+</style>

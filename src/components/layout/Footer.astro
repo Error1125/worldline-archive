@@ -1,13 +1,12 @@
 ---
 import { siteConfig } from "@/config/site";
-import { features } from "@/config/features";
 import Icon from "@/components/common/Icon.astro";
 import { withBase } from "@/lib/paths";
 
 /**
  * Footer.astro —— 小型页脚。
  * - worldline rate 彩蛋；
- * - /admin 低调入口，受 features.auth 控制（关闭时不显示）。
+ * - /admin 控制台入口（观测台）：仅登录后（localStorage wl-admin-hint）低调显示；权限在后端校验。
  */
 const year = new Date().getFullYear();
 const worldline = siteConfig.profile.worldline;
@@ -33,18 +32,33 @@ const worldline = siteConfig.profile.worldline;
         worldline {worldline}
       </span>
 
-      {
-        features.auth && (
-          <a
-            href={withBase("/admin")}
-            class="clickable inline-flex items-center gap-1 text-[var(--ia-mist)] opacity-60 transition-opacity hover:opacity-100"
-            aria-label="后台入口"
-          >
-            <Icon name="lock" size={12} />
-            <span class="mono">admin</span>
-          </a>
-        )
-      }
+      <!-- v5.0 隐藏控制台入口：默认不渲染可见；登录成功后（localStorage wl-admin-hint=1）
+           由下方 inline script 点亮。真正权限在后端逐请求校验，这里只是 UI 显隐。 -->
+      <a
+        id="wl-console-entry"
+        href={withBase("/admin/dashboard")}
+        class="clickable hidden items-center gap-1 text-[var(--ia-mist)] opacity-60 transition-opacity hover:opacity-100"
+        aria-label="观测台入口"
+      >
+        <Icon name="lock" size={12} />
+        <span class="mono">观测台 / console</span>
+      </a>
+      <script is:inline>
+        (function () {
+          function applyConsoleEntry() {
+            var el = document.getElementById("wl-console-entry");
+            if (!el) return;
+            var on = false;
+            try {
+              on = localStorage.getItem("wl-admin-hint") === "1";
+            } catch (e) {}
+            el.classList.toggle("hidden", !on);
+            el.classList.toggle("inline-flex", on);
+          }
+          applyConsoleEntry();
+          document.addEventListener("astro:after-swap", applyConsoleEntry);
+        })();
+      </script>
     </div>
   </div>
 </footer>

@@ -1,0 +1,61 @@
+---
+import { getCollection, render } from "astro:content";
+import RecordDetailLayout from "@/components/detail/RecordDetailLayout.astro";
+import { isVisiblePublic } from "@/lib/visibility";
+import { resolveRelatedRecords } from "@/lib/content";
+
+export async function getStaticPaths() {
+  const list = await getCollection("music", ({ data }) => isVisiblePublic(data.visibility) && !data.draft);
+  return list.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const d = entry.data;
+const { Content } = await render(entry);
+const related = await resolveRelatedRecords({ type: "music", id: entry.id, tags: d.tags }, d.related);
+const TYPE_ZH = { song: "单曲", album: "专辑", playlist: "歌单" } as const;
+const external = d.externalUrl ?? d.appleMusicUrl;
+const metas = [
+  { label: "♪", value: `${TYPE_ZH[d.type]} · ${d.artist}` },
+  d.album && { label: "收录于", value: d.album },
+  d.mood && { label: "◇", value: d.mood },
+].filter(Boolean) as { label: string; value: string }[];
+---
+
+<RecordDetailLayout
+  type="music"
+  title={d.title}
+  summary={d.summary ?? d.comment}
+  date={d.date}
+  updated={d.updatedAt}
+  tags={d.tags}
+  cover={d.cover}
+  coverDay={d.coverDay}
+  coverNight={d.coverNight}
+  metas={metas}
+  impact={d.worldlineImpact}
+  featured={d.featured}
+  worldlineWeight={d.worldlineWeight}
+  related={related}
+  backHref="/music"
+  backLabel="返回音乐碎片"
+>
+  {d.lyricsQuote && (
+    <blockquote class="mb-8 border-l-2 border-[var(--ia-nebula)] pl-4 text-lg italic leading-relaxed text-[var(--ia-ink)]">
+      「{d.lyricsQuote}」
+      <span class="mt-1 block mono text-[10px] not-italic text-[var(--ia-mist)] opacity-70">// 原创氛围句 · 非歌词引用</span>
+    </blockquote>
+  )}
+
+  {external && (
+    <p class="mb-8">
+      <a href={external} target="_blank" rel="noopener" class="clickable inline-flex items-center gap-2 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] px-4 py-2 text-sm text-[var(--ia-ink)] transition-colors hover:border-[var(--ia-neon)] hover:text-[var(--ia-neon)]">
+        ♪ 前往试听
+      </a>
+    </p>
+  )}
+
+  <div class="ia-prose">
+    <Content />
+  </div>
+</RecordDetailLayout>

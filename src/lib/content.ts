@@ -26,6 +26,10 @@ export interface TimelineItem {
   tags: string[];
   /** 领域状态（bug/anime/project 会用到），用于 type indicator */
   status?: string;
+  /** v5：世界线引擎输入 */
+  featured?: boolean;
+  worldlineImpact?: "low" | "medium" | "high" | "critical";
+  worldlineWeight?: number;
   icon: string;
   /** 双语类型标签，例如 "BUG // 战斗记录" */
   typeLabel: string;
@@ -69,8 +73,10 @@ export const BUG_STATUS_ZH: Record<string, string> = {
   note: "笔记",
 };
 
-function isVisible(v: "public" | "hidden" | "private"): boolean {
+function isVisible(v: "public" | "hidden" | "private" | "unlisted"): boolean {
   if (v === "public") return true;
+  // unlisted：详情页存在但不进任何列表 / 时间线
+  if (v === "unlisted") return false;
   // 未来：登录后放行 hidden / private
   return features.privatePosts ? v !== "private" : false;
 }
@@ -83,32 +89,32 @@ export async function getPosts() {
 }
 
 export async function getMoments() {
-  const list = await getCollection("moments", ({ data }) => isVisible(data.visibility));
+  const list = await getCollection("moments", ({ data }) => isVisible(data.visibility) && !data.draft);
   return list.sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
 }
 
 export async function getBugs() {
-  const list = await getCollection("bugs", ({ data }) => isVisible(data.visibility));
+  const list = await getCollection("bugs", ({ data }) => isVisible(data.visibility) && !data.draft);
   return list.sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
 }
 
 export async function getProjects() {
-  const list = await getCollection("projects", ({ data }) => isVisible(data.visibility));
+  const list = await getCollection("projects", ({ data }) => isVisible(data.visibility) && !data.draft);
   return list.sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
 }
 
 export async function getAnime() {
-  const list = await getCollection("anime", ({ data }) => isVisible(data.visibility));
+  const list = await getCollection("anime", ({ data }) => isVisible(data.visibility) && !data.draft);
   return list.sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
 }
 
 export async function getMusic() {
-  const list = await getCollection("music", ({ data }) => isVisible(data.visibility));
+  const list = await getCollection("music", ({ data }) => isVisible(data.visibility) && !data.draft);
   return list.sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
 }
 
 export async function getPhotos() {
-  const list = await getCollection("photos", ({ data }) => isVisible(data.visibility));
+  const list = await getCollection("photos", ({ data }) => isVisible(data.visibility) && !data.draft);
   return list.sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
 }
 
@@ -148,10 +154,13 @@ export async function getTimelineItems(): Promise<TimelineItem[]> {
       type: "post",
       id: e.id,
       title: e.data.title,
-      description: e.data.description,
+      description: e.data.summary ?? e.data.description,
       date: e.data.date,
       href: `/posts/${e.id}`,
       tags: e.data.tags,
+      featured: e.data.featured,
+      worldlineImpact: e.data.worldlineImpact,
+      worldlineWeight: e.data.worldlineWeight,
       icon: TYPE_META.post.icon,
       typeLabel: typeLabelOf("post"),
       searchText: joinSearch(e.data.title, e.data.description, e.data.tags, e.data.category, e.data.mood, "文章 post"),
@@ -163,10 +172,13 @@ export async function getTimelineItems(): Promise<TimelineItem[]> {
       type: "moment",
       id: e.id,
       title: text.length > 32 ? text.slice(0, 32) + "…" : text,
-      description: e.data.mood ? `心情：${e.data.mood}` : undefined,
+      description: e.data.summary ?? (e.data.mood ? `心情：${e.data.mood}` : undefined),
       date: e.data.date,
-      href: "/moments",
+      href: `/moments/${e.id}`,
       tags: e.data.tags ?? [],
+      featured: e.data.featured,
+      worldlineImpact: e.data.worldlineImpact,
+      worldlineWeight: e.data.worldlineWeight,
       icon: TYPE_META.moment.icon,
       typeLabel: typeLabelOf("moment"),
       searchText: joinSearch(text, e.data.mood, e.data.weather, e.data.locationText, e.data.tags, "说说 moment"),
@@ -182,6 +194,9 @@ export async function getTimelineItems(): Promise<TimelineItem[]> {
       href: `/bugs/${e.id}`,
       tags: e.data.tags,
       status: e.data.status,
+      featured: e.data.featured,
+      worldlineImpact: e.data.worldlineImpact,
+      worldlineWeight: e.data.worldlineWeight,
       icon: TYPE_META.bug.icon,
       typeLabel: typeLabelOf("bug"),
       searchText: joinSearch(e.data.title, e.data.summary, BUG_STATUS_ZH[e.data.status], e.data.status, e.data.project, e.data.tags, "bug 战斗记录"),
@@ -192,11 +207,14 @@ export async function getTimelineItems(): Promise<TimelineItem[]> {
       type: "project",
       id: e.id,
       title: e.data.title,
-      description: e.data.description,
+      description: e.data.summary ?? e.data.description,
       date: e.data.date,
-      href: "/projects",
+      href: `/projects/${e.id}`,
       tags: e.data.tags,
       status: e.data.status,
+      featured: e.data.featured,
+      worldlineImpact: e.data.worldlineImpact,
+      worldlineWeight: e.data.worldlineWeight,
       icon: TYPE_META.project.icon,
       typeLabel: typeLabelOf("project"),
       searchText: joinSearch(e.data.title, e.data.description, e.data.tags, e.data.techStack, PROJECT_STATUS_ZH[e.data.status], e.data.status, "项目 造物 project"),
@@ -207,11 +225,14 @@ export async function getTimelineItems(): Promise<TimelineItem[]> {
       type: "anime",
       id: e.id,
       title: e.data.title,
-      description: e.data.thoughts ?? e.data.titleJP,
+      description: e.data.summary ?? e.data.thoughts ?? e.data.titleJP,
       date: e.data.date,
-      href: "/anime",
+      href: `/anime/${e.id}`,
       tags: e.data.tags,
       status: e.data.status,
+      featured: e.data.featured,
+      worldlineImpact: e.data.worldlineImpact,
+      worldlineWeight: e.data.worldlineWeight,
       icon: TYPE_META.anime.icon,
       typeLabel: typeLabelOf("anime"),
       searchText: joinSearch(e.data.title, e.data.titleJP, e.data.thoughts, ANIME_STATUS_ZH[e.data.status], e.data.status, e.data.tags, e.data.score, e.data.season, e.data.year, "番剧 anime"),
@@ -222,10 +243,13 @@ export async function getTimelineItems(): Promise<TimelineItem[]> {
       type: "music",
       id: e.id,
       title: `${e.data.title} — ${e.data.artist}`,
-      description: e.data.comment ?? e.data.mood,
+      description: e.data.summary ?? e.data.comment ?? e.data.mood,
       date: e.data.date,
-      href: "/music",
+      href: `/music/${e.id}`,
       tags: e.data.tags,
+      featured: e.data.featured,
+      worldlineImpact: e.data.worldlineImpact,
+      worldlineWeight: e.data.worldlineWeight,
       icon: TYPE_META.music.icon,
       typeLabel: typeLabelOf("music"),
       searchText: joinSearch(e.data.title, e.data.artist, e.data.album, e.data.comment, e.data.mood, e.data.lyricsQuote, e.data.tags, e.data.type, "音乐 music"),
@@ -236,10 +260,13 @@ export async function getTimelineItems(): Promise<TimelineItem[]> {
       type: "photo",
       id: e.id,
       title: e.data.title,
-      description: e.data.description,
+      description: e.data.summary ?? e.data.description,
       date: e.data.date,
-      href: "/photos",
+      href: `/photos/${e.id}`,
       tags: e.data.tags ?? [],
+      featured: e.data.featured,
+      worldlineImpact: e.data.worldlineImpact,
+      worldlineWeight: e.data.worldlineWeight,
       icon: TYPE_META.photo.icon,
       typeLabel: typeLabelOf("photo"),
       searchText: joinSearch(e.data.title, e.data.description, e.data.album, e.data.tags, e.data.mood, "照片 相册 photo"),
@@ -280,7 +307,15 @@ export async function getSearchIndex(): Promise<SearchDoc[]> {
   }));
 }
 
-// ---- Worldline Divergence 状态机制（v3 彩蛋） ----
+// ---- Worldline Divergence 状态（v5：委托给 src/lib/worldline.ts 引擎） ----
+
+import {
+  getWorldlineActivityScore,
+  scoreToStatus,
+  worldlineConfig,
+  WORLDLINE_STATUS_META,
+  type WorldlineStatus as WorldlineEngineStatus,
+} from "@/lib/worldline";
 
 export type WorldlineLevel = "stable" | "observing" | "unstable" | "shift";
 
@@ -296,62 +331,75 @@ export interface WorldlineStatus {
   windowDays: number;
 }
 
-/** 内容更新对世界线的扰动权重（见 v3 改修文档 §8） */
-export const WORLDLINE_WEIGHTS: Record<ContentType, number> = {
-  project: 5,
-  post: 4,
-  photo: 3,
-  bug: 3,
-  moment: 2,
-  anime: 1,
-  music: 1,
+const LEVEL_CAPTION: Record<WorldlineEngineStatus, string> = {
+  stable: "当前世界线稳定 · 观测值已锁定",
+  observing: "持续观测中 · 存档同步正常",
+  unstable: "档案更新频繁 · 观测值轻微扰动",
+  divergence: "检测到密集存档写入 · 世界线漂移中",
 };
 
 /**
- * 根据最近 windowDays 天内的内容更新计算世界线状态。
- * 分级：0-3 Stable / 4-8 Observing / 9-14 Unstable / 15+ Divergence Shift。
+ * 根据最近内容更新计算世界线状态（v3 兼容形状，内部使用 v5 引擎：
+ * 类型权重 × impact 倍率 × featured 倍率 × 指数时间衰减）。
  * 纯构建期计算，不依赖任何后台。
  */
-export async function getWorldlineStatus(windowDays = 30): Promise<WorldlineStatus> {
+export async function getWorldlineStatus(windowDays = worldlineConfig.windowDays): Promise<WorldlineStatus> {
   const items = await getTimelineItems();
-  const since = Date.now() - windowDays * 86_400_000;
-  const score = items.reduce(
-    (acc, it) => acc + (it.date.getTime() >= since ? WORLDLINE_WEIGHTS[it.type] : 0),
-    0,
-  );
-
-  if (score >= 15) {
-    return {
-      score,
-      level: "shift",
-      badge: "divergence shifting",
-      caption: "检测到密集存档写入 · 世界线漂移中",
-      windowDays,
-    };
-  }
-  if (score >= 9) {
-    return {
-      score,
-      level: "unstable",
-      badge: "archive unstable",
-      caption: "档案更新频繁 · 观测值轻微扰动",
-      windowDays,
-    };
-  }
-  if (score >= 4) {
-    return {
-      score,
-      level: "observing",
-      badge: "observation active",
-      caption: "持续观测中 · 存档同步正常",
-      windowDays,
-    };
-  }
+  const score = getWorldlineActivityScore(items);
+  const engineStatus = scoreToStatus(score);
+  const level: WorldlineLevel = engineStatus === "divergence" ? "shift" : engineStatus;
   return {
-    score,
-    level: "stable",
-    badge: "archive stable",
-    caption: "当前世界线稳定 · 观测值已锁定",
+    score: Math.round(score * 10) / 10,
+    level,
+    badge: WORLDLINE_STATUS_META[engineStatus].label,
+    caption: LEVEL_CAPTION[engineStatus],
     windowDays,
   };
+}
+
+// ---- 相关记录（v5：详情页 Related Records） ----
+
+/**
+ * 解析一条记录的 related 列表：
+ * - 同类型直接写 slug；跨类型写 "type:slug"；
+ * - 未配置或解析为空时，回退到「同类型 + 共同标签」推荐（最多 fallbackLimit 条）。
+ */
+export async function resolveRelatedRecords(
+  current: { type: ContentType; id: string; tags?: string[] },
+  related: string[] | undefined,
+  fallbackLimit = 3,
+): Promise<TimelineItem[]> {
+  const items = await getTimelineItems();
+  const out: TimelineItem[] = [];
+  const seen = new Set<string>();
+  const key = (t: string, i: string) => `${t}:${i}`;
+  seen.add(key(current.type, current.id));
+
+  for (const ref of related ?? []) {
+    const [maybeType, ...rest] = ref.split(":");
+    const wantType = rest.length > 0 ? (maybeType as ContentType) : current.type;
+    const wantId = rest.length > 0 ? rest.join(":") : ref;
+    const hit = items.find((it) => it.type === wantType && it.id === wantId);
+    if (hit && !seen.has(key(hit.type, hit.id))) {
+      out.push(hit);
+      seen.add(key(hit.type, hit.id));
+    }
+  }
+
+  if (out.length === 0) {
+    const tags = new Set(current.tags ?? []);
+    const scored = items
+      .filter((it) => !seen.has(key(it.type, it.id)))
+      .map((it) => ({
+        it,
+        s:
+          (it.type === current.type ? 2 : 0) +
+          it.tags.reduce((acc, t) => acc + (tags.has(t) ? 1 : 0), 0),
+      }))
+      .filter((x) => x.s > 0)
+      .sort((a, b) => b.s - a.s || b.it.date.getTime() - a.it.date.getTime());
+    for (const { it } of scored.slice(0, fallbackLimit)) out.push(it);
+  }
+
+  return out.slice(0, 4);
 }
