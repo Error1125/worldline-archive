@@ -1,39 +1,39 @@
-﻿{
-  "_note": "Mock GitHub repository data. Replace with scripts/sync-github.ts output later.",
-  "generatedAt": "2025-06-28T21:20:00.000Z",
+{
+  "_note": "由控制台 GitHub 同步生成（真实数据）。",
+  "generatedAt": "2026-07-09T05:18:37.555Z",
   "repos": [
     {
       "owner": "Error1125",
       "repo": "worldline-archive",
-      "description": "A personal Worldline Archive built with Astro.",
+      "description": "Worldline Archive｜一个记录生活、番剧、音乐、项目、Bug 和深夜念头的个人世界线存档点。Astro + TypeScript + Tailwind CSS 构建，带星空、弹幕、毛玻璃与终端风格 UI。",
       "url": "https://github.com/Error1125/worldline-archive",
-      "language": "Astro",
-      "stars": 128,
-      "forks": 9,
-      "lastCommitAt": "2025-06-28T21:14:00.000Z",
-      "topics": ["astro", "personal-site", "archive"]
+      "language": "TypeScript",
+      "stars": 1,
+      "forks": 0,
+      "lastCommitAt": "2026-07-09T05:18:07Z",
+      "topics": []
     },
     {
       "owner": "Error1125",
-      "repo": "bug-battle-log",
-      "description": "Bug review notes and postmortems.",
-      "url": "https://github.com/Error1125/bug-battle-log",
-      "language": "TypeScript",
-      "stars": 64,
-      "forks": 5,
-      "lastCommitAt": "2025-06-20T15:02:00.000Z",
-      "topics": ["cli", "logging", "postmortem"]
+      "repo": "pocket-travel",
+      "description": "",
+      "url": "https://github.com/Error1125/pocket-travel",
+      "language": "HTML",
+      "stars": 2,
+      "forks": 0,
+      "lastCommitAt": "2026-07-07T07:11:21Z",
+      "topics": []
     },
     {
       "owner": "Error1125",
-      "repo": "anime-memory-shelf",
-      "description": "Anime watching status and notes.",
-      "url": "https://github.com/Error1125/anime-memory-shelf",
-      "language": "TypeScript",
-      "stars": 37,
-      "forks": 2,
-      "lastCommitAt": "2025-05-30T08:41:00.000Z",
-      "topics": ["anime", "schema", "experiment"]
+      "repo": "singleTestAutoExcel",
+      "description": "个人项目使用，单体test文档制作工具",
+      "url": "https://github.com/Error1125/singleTestAutoExcel",
+      "language": "Python",
+      "stars": 0,
+      "forks": 0,
+      "lastCommitAt": "2026-03-15T12:39:44Z",
+      "topics": []
     }
   ]
 }
