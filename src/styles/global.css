@@ -5023,3 +5023,83 @@ html[data-scene-mode="day"] .photo-stack-back {
 /* 照片墙留白：给旋转的拍立得更多呼吸空间，营造"散落"感（不影响其它 masonry 用途） */
 [data-filter-kind="photos"] .photo-masonry { column-gap: 1.5rem; }
 [data-filter-kind="photos"] .photo-masonry > * { margin-bottom: 1.6rem; }
+
+/* ============================================================================
+   v4.1.3 Hotfix —— 搜索浮层做实 / 照片墙错落 / 输入框文本光标
+   ============================================================================ */
+
+/* ---- §3 搜索建议浮层：作为最高层浮层"做实"，底层内容不再透出（保留既有 z-index）---- */
+.search-suggest {
+  background: rgba(8, 12, 28, 0.96);
+  border: 1px solid rgba(132, 170, 255, 0.28);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.45),
+    0 0 36px rgba(80, 220, 255, 0.16);
+  backdrop-filter: blur(22px) saturate(1.2);
+  -webkit-backdrop-filter: blur(22px) saturate(1.2);
+}
+.search-suggest-item { background: transparent; }
+.search-suggest-item:hover,
+.search-suggest-item[data-active="true"],
+.search-suggest-item[aria-selected="true"] {
+  background: rgba(110, 138, 255, 0.18);
+}
+html[data-scene-mode="day"] .search-suggest {
+  background: rgba(255, 255, 255, 0.985);
+  border: 1px solid rgba(184, 156, 255, 0.28);
+  box-shadow:
+    0 24px 56px rgba(162, 130, 190, 0.18),
+    0 0 28px rgba(255, 150, 200, 0.16);
+}
+html[data-scene-mode="day"] .search-suggest-item:hover,
+html[data-scene-mode="day"] .search-suggest-item[data-active="true"],
+html[data-scene-mode="day"] .search-suggest-item[aria-selected="true"] {
+  background: rgba(255, 138, 190, 0.12);
+}
+
+/* ---- §5–§9 照片墙：错落布局（方案 A：CSS grid + nth-child 错位）----
+   位移/旋转作用在 .photo-stack（即 .photo-tile 按钮）本身，不动 .reveal 包裹层，
+   以免与入场动画的 transform 冲突；hover 只作用在内部 .photo-polaroid，不重置错落。 */
+.photo-wall {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(200px, 1fr));
+  gap: clamp(3rem, 6vw, 6rem) clamp(2rem, 4vw, 4rem);
+  align-items: start;
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .photo-wall { grid-template-columns: repeat(2, minmax(200px, 1fr)); }
+}
+.photo-stack { transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.photo-wall [data-filter-item]:nth-child(3n + 1) .photo-stack { transform: translateY(0) rotate(-3deg); }
+.photo-wall [data-filter-item]:nth-child(3n + 2) .photo-stack { transform: translateY(4.5rem) rotate(2deg); }
+.photo-wall [data-filter-item]:nth-child(3n) .photo-stack { transform: translateY(1.5rem) rotate(-1deg); }
+.photo-wall [data-filter-item]:nth-child(6n + 4) .photo-stack { transform: translateY(-1rem) rotate(4deg); }
+.photo-wall [data-filter-item]:nth-child(6n + 5) .photo-stack { transform: translateY(5.5rem) rotate(-4deg); }
+.photo-wall [data-filter-item]:nth-child(6n) .photo-stack { transform: translateY(2.5rem) rotate(3deg); }
+
+/* 错落已由 .photo-stack 承担：中和 v4.1.2 里 .photo-polaroid 的 --rot 基础位移 */
+.photo-polaroid { transform: none; }
+@media (hover: hover) and (pointer: fine) {
+  .photo-tile:hover .photo-polaroid,
+  .photo-tile:focus-visible .photo-polaroid {
+    transform: translateY(-10px) rotate(0deg);
+  }
+}
+
+/* 移动端：单列、取消错位，避免溢出与布局抖动 */
+@media (max-width: 768px) {
+  .photo-wall { grid-template-columns: 1fr; gap: 2rem; }
+  .photo-wall [data-filter-item] .photo-stack { transform: none !important; }
+}
+
+/* ---- §10 输入框光标语义：系统 text / I-beam 光标（覆盖 .ia-cursor 的全局 cursor:none）---- */
+input,
+textarea,
+[contenteditable="true"],
+.hero-search input,
+.filter-search input { cursor: text; }
+html.ia-cursor input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]),
+html.ia-cursor textarea,
+html.ia-cursor [contenteditable="true"],
+html.ia-cursor .filter-search,
+html.ia-cursor .hero-search { cursor: text !important; }

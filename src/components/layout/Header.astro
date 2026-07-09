@@ -6,24 +6,15 @@ import { withBase } from "@/lib/paths";
 
 /**
  * Header.astro —— 桌面 / 平板端 sticky 顶栏。移动端隐藏（md 以下，由放射菜单承担导航）。
- * v3：去掉整条圆角胶囊外框，改为贴边的系统状态栏形态（毛玻璃 + 底部分割线，无大圆角）；
- * 局部元素（导航项 hover、搜索按钮）仍保留小圆角。
- * tablet（768–1079px）导航压缩为纯图标模式以避免横向挤压。
- * 首页（home）不显示右侧搜索 icon —— 搜索交给首页 HeroSearch。
+ * v4.1.3：顶栏不再渲染任何搜索框——首页有 HeroSearch，世界线记录 / 观测索引 / 照片 /
+ * 项目 / 音乐 / 说说 / 番剧等页面都有各自的检索/筛选区，顶栏再放搜索会重复并挤占导航空间。
+ * 保留 home 传参以兼容布局调用（当前不再据此渲染搜索）。
  */
 interface Props {
   home?: boolean;
 }
-const { home = false } = Astro.props;
 
 const path = Astro.url.pathname;
-
-// v4.1.2 §4：首页只保留 HeroSearch，不显示顶栏搜索。除依赖 home 传参外，
-// 再按路径兜底识别首页（含 GitHub Pages base：/ 与 /worldline-archive/ 都算首页）。
-const baseUrl = import.meta.env.BASE_URL;
-const normalized = path.replace(/\/+$/, "") || "/";
-const baseNorm = baseUrl.replace(/\/+$/, "") || "/";
-const isHome = home || normalized === "/" || normalized === baseNorm;
 
 function isActive(href: string): boolean {
   if (href === "/") return path === "/";
@@ -44,7 +35,7 @@ function isActive(href: string): boolean {
         </span>
       </a>
 
-      <!-- 主导航（全站主索引） -->
+      <!-- 主导航（全站主索引）——顶栏不再包含搜索入口 -->
       <nav class="site-nav ml-auto flex min-w-0 items-center gap-0.5 overflow-x-auto py-1" aria-label="主导航">
         {
           mainNav.map((item) => {
@@ -75,46 +66,6 @@ function isActive(href: string): boolean {
           })
         }
       </nav>
-
-      <!-- 搜索入口：首页隐藏（由 HeroSearch 承担）。内页 lg+ 显示紧凑搜索框
-           （与 HeroSearch 共用建议下拉与键盘逻辑，Enter → /timeline?view=index&q=）；
-           平板（md–lg）空间有限，退回图标入口，直达「观测索引」。 -->
-      {
-        !isHome && (
-          <>
-            <form
-              action={withBase("/timeline")}
-              method="get"
-              role="search"
-              aria-label="站内搜索"
-              class="header-search clickable hidden shrink-0 lg:flex"
-              data-wl-search
-              autocomplete="off"
-            >
-              <input type="hidden" name="view" value="index" />
-              <Icon name="search" size={15} class="shrink-0 opacity-70" />
-              <input
-                type="search"
-                name="q"
-                placeholder="搜索记录…"
-                aria-label="搜索世界线记录"
-                aria-autocomplete="list"
-                aria-controls="header-search-suggest"
-                data-wl-search-input
-              />
-              <div id="header-search-suggest" class="search-suggest" role="listbox" data-wl-search-panel hidden />
-            </form>
-
-            <a
-              href={`${withBase("/timeline")}?view=index`}
-              aria-label="搜索 / 观测索引"
-              class="clickable grid size-9 shrink-0 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-neon)] hover:text-[var(--ia-neon)] lg:hidden"
-            >
-              <Icon name="search" size={16} />
-            </a>
-          </>
-        )
-      }
     </div>
   </div>
 </header>

@@ -10,7 +10,11 @@ import { cursorTheme } from "@/config/theme";
  */
 
 const HOVER_SELECTOR =
-  "a, button, [role='button'], .clickable, input, textarea, select, label, summary";
+  "a, button, [role='button'], .clickable, summary";
+
+// v4.1.3 §10：文本输入类元素上不做 card 式圆圈放大，改用系统 text/I-beam 光标。
+const TEXT_INPUT_SELECTOR =
+  "input:not([type='hidden']):not([type='checkbox']):not([type='radio']):not([type='button']):not([type='submit']), textarea, [contenteditable='true'], .filter-search, .hero-search, .search-input";
 
 export default function CustomCursor() {
   const dotRef = useRef<HTMLDivElement | null>(null);
@@ -43,7 +47,16 @@ export default function CustomCursor() {
         ringEl.style.transform = `translate3d(${mouse.x}px, ${mouse.y}px, 0) translate(-50%, -50%)`;
       }
       const target = e.target as Element | null;
-      hovering = !!target && !!target.closest(HOVER_SELECTOR);
+      // 文本输入元素：隐藏自定义光标（露出系统 text 光标），且不进入 clickable 放大态
+      if (target && target.closest(TEXT_INPUT_SELECTOR)) {
+        hovering = false;
+        dotEl.style.opacity = "0";
+        ringEl.style.opacity = "0";
+      } else {
+        dotEl.style.opacity = "1";
+        ringEl.style.opacity = "1";
+        hovering = !!target && !!target.closest(HOVER_SELECTOR);
+      }
     };
 
     const onDown = () => {
