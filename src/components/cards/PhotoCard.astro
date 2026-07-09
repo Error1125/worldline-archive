@@ -1,15 +1,15 @@
 ---
 import type { CollectionEntry } from "astro:content";
-import TagList from "@/components/common/TagList.astro";
 import Icon from "@/components/common/Icon.astro";
 import { formatDate } from "@/lib/format";
 import { withBase } from "@/lib/paths";
 
 /**
- * PhotoCard.astro（v4.3）—— 照片墙单元，本身是一个 lightbox 触发器（button）。
- * 点击后由 SiteLayout 的全站单例 Lightbox 打开该条目的全部图片（左右切换 / Esc 关闭）。
- * 样式沿用统一 .glass-card（模式感知）+ .photo-tile（zoom 光标 + 图片 hover 放大）+ spotlight。
- * 所有图片路径经 withBase() 处理，兼容 GitHub Pages base path。
+ * PhotoCard.astro（v4.1.2）—— 照片墙单元：拍立得 / 相纸 + 多图堆叠。
+ * 去掉了旧的厚重 .glass-card 外壳，照片本身是主体：
+ *   · 单图 → 一张拍立得相纸（浅色/深色相纸边框 + 标题日期 + 轻微旋转，角度由外层 nth-child 决定）；
+ *   · 多图 → 主相纸下方叠 1~2 张错位照片，hover 时轻微展开。
+ * 仍是全站单例 Lightbox 的触发器（button[data-lightbox]）；所有图片路径经 withBase()。
  */
 interface Props {
   entry: CollectionEntry<"photos">;
@@ -23,7 +23,7 @@ const extra = based.length - 1;
 
 <button
   type="button"
-  class="glass-card photo-tile group flex flex-col gap-3 p-4"
+  class="photo-tile photo-stack group block w-full text-left"
   data-lightbox
   data-images={JSON.stringify(based)}
   data-title={title}
@@ -31,28 +31,25 @@ const extra = based.length - 1;
   data-desc={description ?? ""}
   aria-label={`打开相册预览：${title}`}
 >
-  <div class="photo-stack">
-    {
-      extra >= 2 && (
-        <span
-          class="photo-stack-back b2"
-          style={`background-image:url("${based[2]}")`}
-          aria-hidden="true"
-        />
-      )
-    }
-    {
-      extra >= 1 && (
-        <span
-          class="photo-stack-back b1"
-          style={`background-image:url("${based[1]}")`}
-          aria-hidden="true"
-        />
-      )
-    }
-    <div class="photo-stack-main relative aspect-[4/3] overflow-hidden rounded-xl border border-[var(--ia-line)]">
-      <img src={cover} alt={title} loading="lazy" class="size-full object-cover" />
-      <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+  {
+    extra >= 2 && (
+      <span class="photo-stack-back b2" aria-hidden="true">
+        <span class="photo-stack-back-img" style={`background-image:url("${based[2]}")`} />
+      </span>
+    )
+  }
+  {
+    extra >= 1 && (
+      <span class="photo-stack-back b1" aria-hidden="true">
+        <span class="photo-stack-back-img" style={`background-image:url("${based[1]}")`} />
+      </span>
+    )
+  }
+
+  <figure class="photo-polaroid">
+    <div class="photo-polaroid-frame">
+      <img src={cover} alt={title} loading="lazy" />
+      <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 to-transparent"></div>
       {
         extra > 0 && (
           <div class="absolute bottom-2 right-2 flex items-center gap-1 rounded-full border border-[var(--ia-line-strong)] bg-black/45 px-2 py-0.5 mono text-[11px] text-[var(--ia-star)] backdrop-blur">
@@ -67,21 +64,31 @@ const extra = based.length - 1;
         </span>
       </span>
     </div>
-  </div>
 
-  <div class="flex items-center justify-between gap-3">
-    <h3 class="truncate text-sm font-semibold text-[var(--ia-ink)] transition-colors group-hover:text-[var(--ia-star)]">
-      {title}
-    </h3>
-    <time class="mono text-[11px] text-[var(--ia-mist)]" datetime={date.toISOString()}>
-      {formatDate(date)}
-    </time>
-  </div>
-
-  {description && <p class="line-clamp-2 text-left text-xs leading-relaxed text-[var(--ia-mist)]">{description}</p>}
-
-  <div class="mt-auto flex items-center justify-between gap-2 pt-1">
-    <TagList tags={tags ?? []} max={3} />
-    {mood && <span class="mono text-[11px] text-[var(--ia-nebula)]">◇ {mood}</span>}
-  </div>
+    <figcaption class="photo-polaroid-cap">
+      <span class="photo-polaroid-title">{title}</span>
+      <time class="photo-polaroid-date" datetime={date.toISOString()}>{formatDate(date)}</time>
+    </figcaption>
+    {
+      (description || mood) && (
+        <div class="px-0.5 pt-1 flex items-center justify-between gap-2">
+          {description ? (
+            <span class="line-clamp-1 text-[11px] leading-snug text-[var(--ia-mist)]">{description}</span>
+          ) : (
+            <span />
+          )}
+          {mood && <span class="shrink-0 mono text-[10px] text-[var(--ia-nebula)]">◇ {mood}</span>}
+        </div>
+      )
+    }
+    {
+      tags && tags.length > 0 && (
+        <div class="flex flex-wrap gap-1 px-0.5 pt-1.5">
+          {tags.slice(0, 3).map((t) => (
+            <span class="mono text-[10px] text-[var(--ia-mist)] opacity-70">#{t}</span>
+          ))}
+        </div>
+      )
+    }
+  </figure>
 </button>

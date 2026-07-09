@@ -1,6 +1,7 @@
 ---
 import { getSearchIndex, TYPE_META, type ContentType } from "@/lib/content";
 import Icon from "@/components/common/Icon.astro";
+import TagList from "@/components/common/TagList.astro";
 import { withBase } from "@/lib/paths";
 import { formatDate } from "@/lib/format";
 
@@ -70,36 +71,39 @@ const typeCounts = typeOrder
     <p class="mono mt-1 text-xs text-[var(--ia-mist)] opacity-70">// no records match this query</p>
   </div>
 
-  <div class="flex flex-col gap-3" data-filter-list>
+  <div class="observation-grid" data-filter-list>
     {
       index.map((doc) => {
         const color = ACCENT[doc.type] ?? "var(--ia-mist)";
         return (
           <a
             href={withBase(doc.href)}
-            class="glass-card clickable group flex items-center gap-3 rounded-xl px-4 py-3"
+            class="observation-card glass-card clickable group"
             data-filter-item
             data-type={doc.type}
             data-date={doc.date}
             data-search={doc.search}
           >
-            <span
-              class="shrink-0 rounded-md px-2 py-0.5 mono text-[10px] uppercase tracking-wider"
-              style={`color:${color};border:1px solid color-mix(in srgb, ${color} 40%, transparent)`}
-            >
-              {doc.typeLabelZh}
-            </span>
-            <span class="min-w-0 flex-1">
-              <span class="block truncate text-sm text-[var(--ia-ink)] transition-colors group-hover:text-[var(--ia-star)]">
-                {doc.title}
+            <div class="oc-top">
+              <span
+                class="oc-badge"
+                style={`color:${color};border-color:color-mix(in srgb, ${color} 42%, transparent)`}
+              >
+                {doc.typeLabelZh}
               </span>
-              {doc.description && (
-                <span class="block truncate text-xs text-[var(--ia-mist)]">{doc.description}</span>
-              )}
-            </span>
-            <time class="shrink-0 mono text-[10px] text-[var(--ia-mist)]" datetime={doc.date}>
-              {formatDate(doc.date)}
-            </time>
+              <time class="mono text-[10px] text-[var(--ia-mist)]" datetime={doc.date}>
+                {formatDate(doc.date)}
+              </time>
+            </div>
+            <h3 class="oc-title text-[var(--ia-ink)] transition-colors group-hover:text-[var(--ia-star)]">
+              {doc.title}
+            </h3>
+            {doc.description && <p class="oc-summary text-[var(--ia-mist)]">{doc.description}</p>}
+            {doc.tags.length > 0 && (
+              <div class="mt-auto pt-1">
+                <TagList tags={doc.tags} max={3} />
+              </div>
+            )}
           </a>
         );
       })

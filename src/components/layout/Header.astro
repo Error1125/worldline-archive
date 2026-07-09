@@ -18,6 +18,13 @@ const { home = false } = Astro.props;
 
 const path = Astro.url.pathname;
 
+// v4.1.2 §4：首页只保留 HeroSearch，不显示顶栏搜索。除依赖 home 传参外，
+// 再按路径兜底识别首页（含 GitHub Pages base：/ 与 /worldline-archive/ 都算首页）。
+const baseUrl = import.meta.env.BASE_URL;
+const normalized = path.replace(/\/+$/, "") || "/";
+const baseNorm = baseUrl.replace(/\/+$/, "") || "/";
+const isHome = home || normalized === "/" || normalized === baseNorm;
+
 function isActive(href: string): boolean {
   if (href === "/") return path === "/";
   return path === href || path.startsWith(href + "/");
@@ -73,7 +80,7 @@ function isActive(href: string): boolean {
            （与 HeroSearch 共用建议下拉与键盘逻辑，Enter → /timeline?view=index&q=）；
            平板（md–lg）空间有限，退回图标入口，直达「观测索引」。 -->
       {
-        !home && (
+        !isHome && (
           <>
             <form
               action={withBase("/timeline")}
