@@ -70,11 +70,11 @@ function isActive(href: string): boolean {
         }
       </nav>
 
-      <!-- 搜索入口：首页隐藏（由 HeroSearch 承担），内页保留 -->
+      <!-- 搜索入口：首页隐藏（由 HeroSearch 承担），内页保留；跳转到 /archive 聚合搜索 -->
       {
         !home && search && (
           <a
-            href={withBase(search.href)}
+            href={withBase("/archive")}
             aria-label="搜索"
             class="clickable grid size-9 shrink-0 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-neon)] hover:text-[var(--ia-neon)]"
           >

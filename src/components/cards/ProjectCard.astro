@@ -10,14 +10,14 @@ interface Props {
   entry: CollectionEntry<"projects">;
 }
 const { entry } = Astro.props;
-const { title, description, date, status, tags, techStack, github, repo, demo } = entry.data;
+const { title, description, date, status, tags, techStack, github, repo, demo, featured } = entry.data;
 ---
 
-<GlassCard ticks class="group flex flex-col gap-3 p-5">
+<GlassCard ticks class:list={["group flex flex-col gap-3 p-5", featured && "project-featured"]}>
   <div class="flex items-center justify-between gap-3">
     <span class="eyebrow flex items-center gap-1.5">
       <Icon name="project" size={13} class="text-[var(--ia-neon)]" />
-      PROJECT // 造物
+      {featured ? <span class="featured-flag"><Icon name="star" size={11} /> FEATURED</span> : "PROJECT // 造物"}
     </span>
     <StatusBadge domain="project" status={status} />
   </div>

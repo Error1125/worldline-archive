@@ -5,7 +5,19 @@ import PhotoCard from "@/components/cards/PhotoCard.astro";
 import EmptyState from "@/components/common/EmptyState.astro";
 import { getPhotos } from "@/lib/content";
 
+/**
+ * Photos 页面（v4.3）—— 照片墙 / 相册入口。
+ * masonry 瀑布流 + 相册（album）筛选；点击任意卡片打开全站 Lightbox。
+ */
 const photos = await getPhotos();
+
+// 相册（album）筛选选项（带数量）
+const albumMap = new Map<string, number>();
+for (const p of photos) {
+  const a = p.data.album;
+  if (a) albumMap.set(a, (albumMap.get(a) ?? 0) + 1);
+}
+const albums = [...albumMap.entries()].map(([value, count]) => ({ value, count }));
 ---
 
 <SiteLayout title="照片" description="屏幕之外的光，与一些夜空观测。">
@@ -14,17 +26,49 @@ const photos = await getPhotos();
     title="屏幕之外"
     subtitle="夜空观测、城市漫游、与一些离线的日常。第一版全部是占位图，不含真实照片与 EXIF。"
     icon="photo"
-    class="mb-10"
+    class="mb-8"
   />
 
   {
     photos.length > 0 ? (
-      <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {photos.map((entry) => (
-          <div class="reveal">
-            <PhotoCard entry={entry} />
+      <div data-filter-root data-filter-kind="photos">
+        {albums.length > 1 && (
+          <div class="glass-card mb-8 flex flex-col gap-3 p-4 sm:p-5">
+            <div class="filter-bar">
+              <span class="mono shrink-0 text-[11px] uppercase tracking-wider text-[var(--ia-mist)]">相册</span>
+              <div class="filter-group" role="group" aria-label="按相册筛选">
+                <button type="button" class="filter-chip" data-filter-chip data-key="album" data-value="all" data-active="true">
+                  全部 <span class="chip-count">{photos.length}</span>
+                </button>
+                {albums.map((a) => (
+                  <button type="button" class="filter-chip" data-filter-chip data-key="album" data-value={a.value}>
+                    {a.value} <span class="chip-count">{a.count}</span>
+                  </button>
+                ))}
+              </div>
+              <span class="filter-count-line" data-filter-count data-filter-count-label="photos">{photos.length} photos</span>
+            </div>
           </div>
-        ))}
+        )}
+
+        <div class="filter-empty glass" data-filter-empty>
+          <p class="text-sm text-[var(--ia-ink)]">这个相册还没有照片</p>
+          <p class="mono mt-1 text-xs text-[var(--ia-mist)] opacity-70">// no photos in this album</p>
+        </div>
+
+        <div class="photo-masonry" data-filter-list>
+          {photos.map((entry) => (
+            <div
+              class="reveal"
+              data-filter-item
+              data-album={entry.data.album ?? ""}
+              data-date={entry.data.date.toISOString()}
+              data-search={[entry.data.title, entry.data.description ?? "", entry.data.album ?? "", ...(entry.data.tags ?? [])].join(" ")}
+            >
+              <PhotoCard entry={entry} />
+            </div>
+          ))}
+        </div>
       </div>
     ) : (
       <EmptyState icon="photo" />

@@ -3268,3 +3268,500 @@ html[data-scene-mode="day"] .deck-slide.is-field .deck-arrow {
     padding-bottom: 92px;
   }
 }
+
+/* ============================================================
+   v4.0 — 全站 Card System 统一 & Spotlight 推广
+   目标：以首页为视觉标准，把 timeline / posts / projects / photos /
+   music / moments / archive 等非首页卡片统一为「模式感知」卡片，
+   并保留 / 推广首页已有的 spotlight 光晕 hover 效果。
+   规则：只扩展现有 .glass-card / --spot-x / --spot-y，不重造视觉系统。
+   ============================================================ */
+
+/* --- 1) Spotlight / 光晕 hover：推广为全站共享能力 ---
+   .glass-card 已内建 ::after 光晕；这里把同款能力开放给两个语义别名，
+   让非卡片元素（按钮 / tile 等）也能复用同一套 hover，而不必复制 CSS。
+   SiteLayout 的 pointermove 委托同时匹配这三类，--spot-x/--spot-y 自动生效。 */
+.spotlight-card,
+.interactive-card {
+  position: relative;
+  overflow: hidden;
+}
+.spotlight-card::after,
+.interactive-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  background: radial-gradient(
+    340px circle at var(--spot-x) var(--spot-y),
+    color-mix(in srgb, var(--ia-blue) 22%, transparent),
+    transparent 60%
+  );
+}
+.spotlight-card:hover::after,
+.interactive-card:hover::after,
+.spotlight-card:focus-visible::after,
+.interactive-card:focus-visible::after {
+  opacity: 1;
+}
+
+/* --- 2) Day mode 光晕改用樱花 / 晨光色（夜间保持蓝青霓虹） --- */
+html[data-scene-mode="day"] :where(.glass-card, .spotlight-card, .interactive-card)::after {
+  background: radial-gradient(
+    340px circle at var(--spot-x) var(--spot-y),
+    color-mix(in srgb, var(--ia-star) 20%, transparent),
+    color-mix(in srgb, var(--ia-nebula) 8%, transparent) 42%,
+    transparent 62%
+  );
+}
+
+/* --- 3) 关键修复：Day mode 下「非首页」卡片不再是灰黑渐变 ---
+   基础 .glass-card 走深蓝夜间渐变；此前只有 .home-shell 作用域里补了白天样式，
+   非首页缺这一支，于是 timeline / projects 等在白天仍是灰黑卡。
+   这里为全站（首页由更高优先级的 .home-shell 规则接管，不受影响）补上白天卡面。 */
+html[data-scene-mode="day"] .glass-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.56)),
+    radial-gradient(82% 70% at 18% 0%, rgba(255, 117, 183, 0.10), transparent 72%);
+  border-color: var(--ia-line);
+  box-shadow: var(--ia-card-shadow), 0 1px 0 rgba(255, 255, 255, 0.72) inset;
+  backdrop-filter: blur(18px) saturate(132%);
+  -webkit-backdrop-filter: blur(18px) saturate(132%);
+}
+html[data-scene-mode="day"] .glass-card:hover {
+  border-color: var(--ia-line-strong);
+  box-shadow:
+    var(--ia-card-shadow-hover),
+    0 0 0 1px color-mix(in srgb, var(--ia-star) 22%, transparent) inset;
+}
+/* .glass 空状态 / 面板在白天也统一为柔和白（非首页） */
+html[data-scene-mode="day"] .glass {
+  background: rgba(255, 255, 255, 0.62);
+  border-color: var(--ia-line);
+}
+
+/* --- 4) archive-* 语义别名：给未来手动微调一套统一词汇 ---
+   都以现有系统为底，不额外发明视觉。 */
+.archive-card,
+.archive-list-card,
+.archive-panel {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--ia-radius);
+  border: 1px solid var(--ia-line);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ia-panel) 100%, transparent),
+    rgba(8, 12, 26, 0.5)
+  );
+  backdrop-filter: blur(14px) saturate(130%);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
+}
+html[data-scene-mode="day"] :where(.archive-card, .archive-list-card, .archive-panel) {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.56)),
+    radial-gradient(82% 70% at 18% 0%, rgba(255, 117, 183, 0.10), transparent 72%);
+  box-shadow: var(--ia-card-shadow), 0 1px 0 rgba(255, 255, 255, 0.72) inset;
+}
+.archive-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  color: var(--ia-mist);
+  border: 1px solid var(--ia-line);
+  background: color-mix(in srgb, var(--ia-blue) 6%, transparent);
+}
+.archive-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  color: var(--acc, var(--ia-star));
+  border: 1px solid color-mix(in srgb, var(--acc, var(--ia-star)) 42%, transparent);
+  background: color-mix(in srgb, var(--acc, var(--ia-star)) 10%, transparent);
+}
+
+/* --- 5) 统一图标底座（替换散落的 bg-[#0b1024]，白天不再是黑方块） --- */
+.icon-badge {
+  border: 1px solid var(--ia-line-strong);
+  background: color-mix(in srgb, var(--ia-panel-strong) 66%, transparent);
+  color: var(--ia-neon);
+}
+html[data-scene-mode="day"] .icon-badge {
+  background: color-mix(in srgb, var(--ia-star) 12%, rgba(255, 255, 255, 0.66));
+}
+
+/* ============================================================
+   v4 — 统一筛选栏 filter-bar（timeline / projects / photos /
+   music / moments / archive 共用一套，避免每页各写一套）
+   ============================================================ */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 0.42rem 0.72rem;
+  border-radius: 999px;
+  color: var(--ia-mist);
+  border: 1px solid var(--ia-line);
+  background: color-mix(in srgb, var(--ia-panel) 60%, transparent);
+  transition: color 0.25s ease, border-color 0.25s ease, background 0.25s ease,
+    transform 0.25s ease;
+  user-select: none;
+}
+.filter-chip:hover {
+  color: var(--ia-ink);
+  border-color: var(--ia-line-strong);
+  transform: translateY(-1px);
+}
+.filter-chip .chip-count {
+  font-size: 10px;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  color: var(--ia-mist);
+  background: color-mix(in srgb, var(--ia-blue) 10%, transparent);
+  border: 1px solid var(--ia-line);
+}
+.filter-chip[data-active="true"] {
+  color: var(--ia-ink);
+  border-color: color-mix(in srgb, var(--acc, var(--ia-neon)) 55%, transparent);
+  background: color-mix(in srgb, var(--acc, var(--ia-neon)) 12%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--acc, var(--ia-neon)) 30%, transparent) inset;
+}
+.filter-chip[data-active="true"] .chip-count {
+  color: color-mix(in srgb, var(--acc, var(--ia-neon)) 80%, var(--ia-ink));
+  border-color: color-mix(in srgb, var(--acc, var(--ia-neon)) 40%, transparent);
+}
+.filter-chip .chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex: none;
+  background: var(--acc, var(--ia-mist));
+  box-shadow: 0 0 8px var(--acc, transparent);
+}
+.filter-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: min(280px, 100%);
+  flex: 1 1 220px;
+  padding: 0.5rem 0.85rem;
+  border-radius: 999px;
+  color: var(--ia-ink);
+  border: 1px solid var(--ia-line);
+  background: color-mix(in srgb, var(--ia-panel) 60%, transparent);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.filter-search:focus-within {
+  border-color: color-mix(in srgb, var(--ia-neon) 50%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ia-neon) 24%, transparent);
+}
+.filter-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+}
+.filter-search input::placeholder {
+  color: var(--ia-mist);
+}
+.filter-sort {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ia-mist);
+  padding: 0.42rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--ia-line);
+  background: color-mix(in srgb, var(--ia-panel) 60%, transparent);
+  cursor: pointer;
+}
+.filter-count-line {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ia-mist);
+  opacity: 0.8;
+}
+/* 被筛除的项 */
+[data-filter-item][hidden],
+[data-filter-group][hidden] {
+  display: none !important;
+}
+/* 无匹配空态 */
+.filter-empty {
+  display: none;
+  text-align: center;
+  padding: 3rem 1.5rem;
+}
+.filter-empty[data-show="true"] {
+  display: block;
+}
+@media (prefers-reduced-motion: reduce) {
+  .filter-chip:hover {
+    transform: none;
+  }
+}
+
+/* ============================================================
+   v4.1 — Timeline 世界线状态小徽标（复用 getWorldlineStatus）
+   ============================================================ */
+.wl-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  color: var(--wl-c, var(--ia-neon));
+  border: 1px solid color-mix(in srgb, var(--wl-c, var(--ia-neon)) 40%, transparent);
+  background: color-mix(in srgb, var(--wl-c, var(--ia-neon)) 9%, transparent);
+}
+.wl-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--wl-c, var(--ia-neon));
+  box-shadow: 0 0 8px var(--wl-c, var(--ia-neon));
+}
+.wl-status[data-level="stable"] { --wl-c: var(--ia-success); }
+.wl-status[data-level="observing"] { --wl-c: var(--ia-neon); }
+.wl-status[data-level="unstable"] { --wl-c: var(--ia-warning); }
+.wl-status[data-level="shift"] { --wl-c: var(--ia-danger); }
+
+/* ============================================================
+   v4.3 — Photos 图片墙 masonry + lightbox
+   ============================================================ */
+.photo-masonry {
+  columns: 1;
+  column-gap: 1.15rem;
+}
+@media (min-width: 640px) {
+  .photo-masonry { columns: 2; }
+}
+@media (min-width: 1024px) {
+  .photo-masonry { columns: 3; }
+}
+.photo-masonry > * {
+  break-inside: avoid;
+  margin-bottom: 1.15rem;
+}
+.photo-tile {
+  display: block;
+  width: 100%;
+  text-align: left;
+  cursor: zoom-in;
+}
+.photo-tile img {
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.photo-tile:hover img {
+  transform: scale(1.045);
+}
+
+/* Lightbox overlay（全站单例，默认隐藏） */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9970;
+  display: none;
+  place-items: center;
+  padding: clamp(1rem, 4vw, 3rem);
+  background: rgba(4, 7, 16, 0.86);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+html[data-scene-mode="day"] .lightbox {
+  background: rgba(40, 32, 55, 0.62);
+}
+.lightbox[data-open="true"] {
+  display: grid;
+  animation: lb-in 0.28s ease both;
+}
+@keyframes lb-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.lightbox-frame {
+  position: relative;
+  max-width: min(1100px, 96vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.lightbox-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+}
+.lightbox-img {
+  max-width: 100%;
+  max-height: 74vh;
+  border-radius: 16px;
+  border: 1px solid var(--ia-line-strong);
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.8);
+  background: var(--ia-bg-2);
+}
+.lightbox-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--ia-star);
+}
+.lightbox-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}
+html[data-scene-mode="day"] .lightbox-title { color: #fff; }
+.lightbox-desc {
+  margin-top: 0.2rem;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: rgba(230, 236, 255, 0.78);
+}
+.lightbox-date {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(230, 236, 255, 0.6);
+  white-space: nowrap;
+}
+.lightbox-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  cursor: pointer;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(10, 14, 28, 0.55);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.lightbox-btn:hover {
+  background: rgba(10, 14, 28, 0.8);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+.lightbox-prev { left: -6px; }
+.lightbox-next { right: -6px; }
+.lightbox-close {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  cursor: pointer;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(10, 14, 28, 0.65);
+}
+.lightbox-close:hover { background: rgba(10, 14, 28, 0.9); }
+.lightbox-counter {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(230, 236, 255, 0.72);
+  text-align: center;
+}
+@media (max-width: 640px) {
+  .lightbox-prev { left: 2px; }
+  .lightbox-next { right: 2px; }
+  .lightbox-btn { width: 38px; height: 38px; }
+}
+
+/* ============================================================
+   v4.2 — Projects：Featured 高亮
+   ============================================================ */
+.project-featured {
+  border-color: color-mix(in srgb, var(--ia-nebula) 45%, transparent) !important;
+  box-shadow:
+    var(--ia-card-shadow),
+    0 0 0 1px color-mix(in srgb, var(--ia-nebula) 30%, transparent) inset !important;
+}
+.project-featured .featured-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--ia-nebula);
+}
+
+/* 音乐 / 说说分组小标题 */
+.group-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0.4rem 0 0.9rem;
+}
+.group-heading .gh-line {
+  height: 1px;
+  flex: 1;
+  background: var(--ia-line);
+}
+
+/* ============================================================
+   v4 — reduced-motion 收尾：lightbox / 图片墙 / featured 降级
+   （spotlight 已在各卡片块与 .filter-chip 块内降级；此处补齐 v4 其余动效）
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .lightbox[data-open="true"] {
+    animation: none;
+  }
+  .photo-tile img,
+  .photo-tile:hover img {
+    transition: none;
+    transform: none;
+  }
+  .lightbox-img,
+  .lightbox-btn,
+  .lightbox-close {
+    transition: none;
+  }
+  .project-featured,
+  .archive-card,
+  .spotlight-card,
+  .interactive-card {
+    transition: none;
+  }
+}

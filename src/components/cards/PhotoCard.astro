@@ -1,28 +1,38 @@
 ---
 import type { CollectionEntry } from "astro:content";
-import GlassCard from "@/components/common/GlassCard.astro";
 import TagList from "@/components/common/TagList.astro";
 import Icon from "@/components/common/Icon.astro";
 import { formatDate } from "@/lib/format";
 import { withBase } from "@/lib/paths";
 
+/**
+ * PhotoCard.astro（v4.3）—— 照片墙单元，本身是一个 lightbox 触发器（button）。
+ * 点击后由 SiteLayout 的全站单例 Lightbox 打开该条目的全部图片（左右切换 / Esc 关闭）。
+ * 样式沿用统一 .glass-card（模式感知）+ .photo-tile（zoom 光标 + 图片 hover 放大）+ spotlight。
+ * 所有图片路径经 withBase() 处理，兼容 GitHub Pages base path。
+ */
 interface Props {
   entry: CollectionEntry<"photos">;
 }
 const { entry } = Astro.props;
 const { title, date, album, description, images, tags, mood } = entry.data;
-const cover = images[0];
-const extra = images.length - 1;
+const based = images.map((src) => withBase(src));
+const cover = based[0];
+const extra = based.length - 1;
 ---
 
-<GlassCard class="group flex flex-col gap-3 p-4">
+<button
+  type="button"
+  class="glass-card photo-tile group flex flex-col gap-3 p-4"
+  data-lightbox
+  data-images={JSON.stringify(based)}
+  data-title={title}
+  data-date={formatDate(date)}
+  data-desc={description ?? ""}
+  aria-label={`打开相册预览：${title}`}
+>
   <div class="relative aspect-[4/3] overflow-hidden rounded-xl border border-[var(--ia-line)]">
-    <img
-      src={withBase(cover)}
-      alt={title}
-      loading="lazy"
-      class="size-full object-cover transition-transform duration-500 group-hover:scale-105"
-    />
+    <img src={cover} alt={title} loading="lazy" class="size-full object-cover" />
     <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
     {
       extra > 0 && (
@@ -32,6 +42,11 @@ const extra = images.length - 1;
       )
     }
     {album && <span class="absolute left-2 top-2 tag-chip backdrop-blur">{album}</span>}
+    <span class="pointer-events-none absolute inset-0 grid place-items-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+      <span class="grid size-10 place-items-center rounded-full border border-white/40 bg-black/40 text-white backdrop-blur">
+        <Icon name="search" size={16} />
+      </span>
+    </span>
   </div>
 
   <div class="flex items-center justify-between gap-3">
@@ -43,10 +58,10 @@ const extra = images.length - 1;
     </time>
   </div>
 
-  {description && <p class="line-clamp-2 text-xs leading-relaxed text-[var(--ia-mist)]">{description}</p>}
+  {description && <p class="line-clamp-2 text-left text-xs leading-relaxed text-[var(--ia-mist)]">{description}</p>}
 
   <div class="mt-auto flex items-center justify-between gap-2 pt-1">
     <TagList tags={tags ?? []} max={3} />
     {mood && <span class="mono text-[11px] text-[var(--ia-nebula)]">◇ {mood}</span>}
   </div>
-</GlassCard>
+</button>

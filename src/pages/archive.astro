@@ -2,16 +2,28 @@
 import SiteLayout from "@/components/layout/SiteLayout.astro";
 import PageHeader from "@/components/common/PageHeader.astro";
 import ArchiveGrid from "@/components/archive/ArchiveGrid.astro";
+import ArchiveExplorer from "@/components/archive/ArchiveExplorer.astro";
+import SectionTitle from "@/components/common/SectionTitle.astro";
 ---
 
-<SiteLayout title="档案馆" description="番剧、音乐、项目、Bug、照片与说说的分区入口。">
+<SiteLayout title="档案馆" description="番剧、音乐、项目、Bug、照片与说说的分区入口，以及全站聚合搜索。">
   <PageHeader
     eyebrow="ARCHIVE // 档案馆"
     title="存档分区"
-    subtitle="把不同类型的记忆分门别类地存好。选一个分区，进去慢慢翻。"
+    subtitle="把不同类型的记忆分门别类地存好。选一个分区进去慢慢翻，或直接在下方聚合搜索全站记录。"
     icon="archive"
-    class="mb-10"
+    class="mb-8"
   />
 
-  <ArchiveGrid />
+  <!-- 聚合搜索：全站记录关键词检索 + 类型过滤 + 排序（支持 ?q= 预填） -->
+  <section class="reveal mb-14">
+    <SectionTitle labelEn="SEARCH // 聚合检索" title="搜索全部存档" class="mb-5" />
+    <ArchiveExplorer />
+  </section>
+
+  <!-- 分区入口九宫格 -->
+  <section class="reveal">
+    <SectionTitle labelEn="SECTIONS // 存档分区" title="按分区浏览" class="mb-5" />
+    <ArchiveGrid />
+  </section>
 </SiteLayout>
