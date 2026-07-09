@@ -1,20 +1,27 @@
 /**
- * AdminApp（v5.0）——控制台外壳。
+ * AdminApp（v5.0.2）——控制台外壳。
  *
  * - mount 时 GET /api/admin/session 做门控：
  *     · 非登录页且未登录 → 跳 /admin/login
  *     · 登录页且已登录   → 跳 /admin/dashboard
  *   （这只是体验层跳转；真正的权限在后端逐请求校验 httpOnly cookie。）
- * - mobile-first：单列内容 + 底部 Tab（总览 / 发布 / 媒体 / 设置）；
- *   md 以上出现左侧栏。
+ *
+ * v5.0.2（§4 桌面适配）三档断点：
+ *   mobile  <768px ：单列 + 底部 Tab + fixed 底部操作栏；
+ *   tablet  ≥768px ：左侧 sidebar + 内容区（BottomBar 贴底）；
+ *   desktop ≥1024px：sidebar + 宽幅主区 + 各屏内右侧 rail（Dashboard 部署面板 /
+ *                    发布表单 meta 面板），操作按钮回归文档流。
+ *
+ * v5.0.2（§5）：顶栏加入昼夜切换（与前台共享 wl-scene-mode）；§9：新增草稿箱入口。
  */
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import * as api from "@/lib/admin/api";
 import { setAdminHint } from "@/config/admin";
-import { AdminIcon, Spinner, TabBar, type AdminTab } from "./ui";
+import { AdminIcon, SceneToggle, Spinner, TabBar, type AdminTab } from "./ui";
 import {
   DashboardScreen,
+  DraftsScreen,
   LoginScreen,
   MediaScreen,
   PublishFormScreen,
@@ -29,6 +36,7 @@ export type AdminScreen =
   | "dashboard"
   | "publish-index"
   | "publish-form"
+  | "drafts"
   | "media"
   | "settings-profile"
   | "settings-site"
@@ -46,6 +54,7 @@ const TITLES: Record<AdminScreen, string> = {
   dashboard: "总览",
   "publish-index": "发布",
   "publish-form": "发布",
+  drafts: "草稿箱",
   media: "媒体",
   "settings-profile": "设置",
   "settings-site": "设置",
@@ -106,6 +115,7 @@ export default function AdminApp({ screen, publishType, siteBase, summaryUrl }: 
   const tabs: AdminTab[] = [
     { key: "dashboard", label: "总览", icon: "dashboard", href: `${siteBase}/admin/dashboard` },
     { key: "publish", label: "发布", icon: "publish", href: `${siteBase}/admin/publish` },
+    { key: "drafts", label: "草稿", icon: "drafts", href: `${siteBase}/admin/drafts` },
     { key: "media", label: "媒体", icon: "media", href: `${siteBase}/admin/media` },
     { key: "settings", label: "设置", icon: "settings", href: `${siteBase}/admin/settings/profile` },
   ];
@@ -132,10 +142,10 @@ export default function AdminApp({ screen, publishType, siteBase, summaryUrl }: 
   ];
 
   return (
-    <div className="min-h-[100dvh] pb-[calc(76px+env(safe-area-inset-bottom))] md:pl-[220px]">
+    <div className="min-h-[100dvh] pb-[calc(76px+env(safe-area-inset-bottom))] md:pb-10 md:pl-[220px]">
       {/* 顶栏 */}
       <header className="sticky top-0 z-40 border-b border-[var(--ia-line)] bg-[color-mix(in_srgb,var(--ia-bg)_88%,transparent)] backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-2xl items-center justify-between px-4">
+        <div className="mx-auto flex h-14 w-full max-w-[1280px] items-center justify-between px-4 lg:px-6">
           <a href={`${siteBase}/admin/dashboard`} className="clickable flex items-center gap-2.5">
             <span className="relative flex size-2.5">
               <span
@@ -152,6 +162,8 @@ export default function AdminApp({ screen, publishType, siteBase, summaryUrl }: 
             </span>
           </a>
           <div className="flex items-center gap-2">
+            {/* v5.0.2 §5：昼夜切换，与前台共用同一份 wl-scene-mode 持久化 */}
+            <SceneToggle />
             <a
               href={`${siteBase}/`}
               className="clickable grid size-9 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)]"
@@ -175,7 +187,7 @@ export default function AdminApp({ screen, publishType, siteBase, summaryUrl }: 
 
       {/* 设置子导航 */}
       {activeKey === "settings" && (
-        <div className="mx-auto flex max-w-2xl gap-2 px-4 pt-4">
+        <div className="mx-auto flex w-full max-w-[1280px] gap-2 px-4 pt-4 lg:px-6">
           {settingsTabs.map((t) => (
             <a
               key={t.key}
@@ -196,13 +208,14 @@ export default function AdminApp({ screen, publishType, siteBase, summaryUrl }: 
         </div>
       )}
 
-      {/* 内容区 */}
-      <main className="mx-auto max-w-2xl px-4 py-5">
+      {/* 内容区：mobile 单列；lg 起放宽给各屏做 grid / 右侧 rail */}
+      <main className="mx-auto w-full max-w-[1280px] px-4 py-5 md:px-6 lg:px-6 lg:py-7">
         {screen === "dashboard" && <DashboardScreen siteBase={siteBase} summaryUrl={summaryUrl} />}
         {screen === "publish-index" && <PublishIndexScreen siteBase={siteBase} />}
         {screen === "publish-form" && (
           <PublishFormScreen siteBase={siteBase} type={publishType ?? ""} />
         )}
+        {screen === "drafts" && <DraftsScreen siteBase={siteBase} />}
         {screen === "media" && <MediaScreen />}
         {screen === "settings-profile" && <SettingsProfileScreen />}
         {screen === "settings-site" && <SettingsSiteScreen />}

@@ -32,8 +32,25 @@ export interface AdminStatus {
     createdAt: string;
     url: string;
   } | null;
+  /** v5.0.2（§11.5）：Actions 状态读取失败时的权限 / 网络提示（不代表发布失败） */
+  latestRunError?: string;
   media?: { count: number };
   r2Enabled?: boolean;
+}
+
+/** v5.0.2（§11.3）：/api/health 的配置体检结果（只有布尔 / 枚举，不含任何密钥值） */
+export interface HealthInfo {
+  ok: boolean;
+  service?: string;
+  time?: string;
+  config?: {
+    adminSecret: boolean;
+    sessionSecret: "ok" | "too_short" | "missing";
+    githubToken: boolean;
+    githubRepo: boolean;
+    r2: boolean;
+  };
+  problems?: string[];
 }
 
 export interface MediaItem {
@@ -168,6 +185,23 @@ export function getStatus() {
   return request<AdminStatus>("/api/admin/status");
 }
 
+/** 健康检查：直接 GET {base}/api/health（无需登录）。可显式传入 base 供登录页「测试连接」。 */
+export async function health(baseOverride?: string): Promise<HealthInfo> {
+  const base = (baseOverride ?? resolveApiBase()).replace(/\/+$/, "");
+  if (!base) throw new AdminApiError("NO_API_BASE", "尚未配置后端 API 地址。", 0);
+  let res: Response;
+  try {
+    res = await fetch(base + "/api/health", { cache: "no-store" });
+  } catch (e) {
+    throw new AdminApiError("NETWORK", "无法连接该地址（网络错误或地址不正确）。", 0, e);
+  }
+  const data = (await res.json().catch(() => null)) as HealthInfo | null;
+  if (!data || typeof data.ok !== "boolean") {
+    throw new AdminApiError("NOT_A_WORKER", "该地址有响应，但不是 Worldline Admin Worker。", res.status);
+  }
+  return data;
+}
+
 /* ---------------- media ---------------- */
 
 export function mediaList() {
@@ -178,6 +212,13 @@ export function mediaRegister(url: string, label?: string) {
   return request<PublishResult>("/api/admin/media/register", {
     method: "POST",
     body: JSON.stringify({ url, label }),
+  });
+}
+
+export function mediaRemove(url: string) {
+  return request<PublishResult>("/api/admin/media/remove", {
+    method: "POST",
+    body: JSON.stringify({ url }),
   });
 }
 

@@ -16,6 +16,8 @@ export type FieldKind =
   | "select"
   | "tags"
   | "images"
+  /** v5.0.2 §7：单图 URL + 实时预览（cover / 头像等） */
+  | "image"
   | "toggle";
 
 export interface FieldDef {
@@ -87,9 +89,9 @@ const commonTail: FieldDef[] = [
 ];
 
 const coverFields: FieldDef[] = [
-  { name: "cover", label: "封面 URL", kind: "text", placeholder: "https://…（可选）" },
-  { name: "coverDay", label: "白昼封面（可选）", kind: "text", placeholder: "day 模式覆盖" },
-  { name: "coverNight", label: "黑夜封面（可选）", kind: "text", placeholder: "night 模式覆盖" },
+  { name: "cover", label: "封面 URL", kind: "image", placeholder: "https://…（可选）" },
+  { name: "coverDay", label: "白昼封面（可选）", kind: "image", placeholder: "day 模式覆盖" },
+  { name: "coverNight", label: "黑夜封面（可选）", kind: "image", placeholder: "night 模式覆盖" },
 ];
 
 export const RECORD_TYPES: RecordTypeDef[] = [

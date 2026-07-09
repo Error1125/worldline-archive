@@ -6,7 +6,7 @@
  * - Icon.astro 是 Astro 组件，React 端用这里的内联 SVG（AdminIcon）。
  */
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 
 /* ---------------- icons（内联 SVG，路径与站点 Icon.astro 视觉一致风格） ---------------- */
 
@@ -116,6 +116,30 @@ const ICON_PATHS: Record<string, React.ReactNode> = {
   ),
   worldline: (
     <path d="M3 15c2.5 0 2.5-8 5-8s2.5 10 5 10 2.5-12 5-12 1.5 6 3 6" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+  ),
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M12 2.5v2.4m0 14.2v2.4M2.5 12h2.4m14.2 0h2.4M5 5l1.7 1.7M17.3 17.3 19 19M19 5l-1.7 1.7M6.7 17.3 5 19" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </>
+  ),
+  moon: (
+    <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11Z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+  ),
+  trash: (
+    <path d="M4 6.5h16M9 6.5V4.8c0-.7.6-1.3 1.3-1.3h3.4c.7 0 1.3.6 1.3 1.3v1.7M6.5 6.5 7.4 20h9.2l.9-13.5M10 10.5v6m4-6v6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+  ),
+  save: (
+    <path d="M5 4h11l3 3v13H5Zm3 0v5h7V4M8 13h8v7H8Z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+  ),
+  github: (
+    <path d="M12 2.8a9.2 9.2 0 0 0-2.9 17.9c.5.1.6-.2.6-.5v-1.7c-2.6.6-3.1-1.2-3.1-1.2-.4-1-1-1.3-1-1.3-.9-.6.1-.6.1-.6.9.1 1.4 1 1.4 1 .9 1.4 2.2 1 2.8.8.1-.6.3-1 .6-1.3-2-.2-4.2-1-4.2-4.6 0-1 .4-1.8 1-2.5-.1-.2-.4-1.2.1-2.4 0 0 .8-.3 2.5 1a8.7 8.7 0 0 1 4.6 0c1.7-1.3 2.5-1 2.5-1 .5 1.2.2 2.2.1 2.4.6.7 1 1.5 1 2.5 0 3.6-2.2 4.4-4.3 4.6.4.3.7.9.7 1.8v2.6c0 .3.1.6.6.5A9.2 9.2 0 0 0 12 2.8Z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+  ),
+  drafts: (
+    <>
+      <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5Z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+      <path d="M4 7.5 12 12l8-4.5M12 12v9" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+    </>
   ),
 };
 
@@ -337,6 +361,62 @@ export function TagInput({
   );
 }
 
+/** 图片 URL 是否值得尝试预览（http/https 且非空） */
+function isPreviewableUrl(v: string): boolean {
+  return /^https?:\/\/\S+/i.test(v.trim());
+}
+
+/** 行内图片预览：加载失败显示「无效 URL」占位（§7 验收 5） */
+export function ImageThumb({ url, size = 44 }: { url: string; size?: number }) {
+  const [failed, setFailed] = useState(false);
+  const trimmed = url.trim();
+  useEffect(() => setFailed(false), [trimmed]);
+  if (!trimmed || !isPreviewableUrl(trimmed)) {
+    return (
+      <span
+        className="grid shrink-0 place-items-center rounded-lg border border-dashed border-[var(--ia-line)] text-[var(--ia-mist)]"
+        style={{ width: size, height: size }}
+        aria-hidden="true"
+      >
+        <AdminIcon name="media" size={Math.round(size * 0.42)} />
+      </span>
+    );
+  }
+  if (failed) {
+    return (
+      <span
+        className="grid shrink-0 place-items-center rounded-lg border border-[color-mix(in_srgb,var(--ia-warning)_50%,transparent)] bg-[color-mix(in_srgb,var(--ia-warning)_10%,transparent)] text-[var(--ia-warning)]"
+        style={{ width: size, height: size }}
+        title="图片加载失败：URL 无效或跨域受限"
+      >
+        <AdminIcon name="warn" size={Math.round(size * 0.42)} />
+      </span>
+    );
+  }
+  return (
+    <img
+      src={trimmed}
+      alt=""
+      loading="lazy"
+      className="shrink-0 rounded-lg border border-[var(--ia-line)] object-cover"
+      style={{ width: size, height: size }}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+/**
+ * ImageListInput（v5.0.2 §7 重写）—— 多图 URL 行编辑器。
+ *
+ * 修复点：
+ * - 「+」按钮点击后必须新增一行空的图片 URL 输入框（旧版只在 draft 非空时才 push，
+ *   看起来就像「+ 点不开」）；
+ * - 每一行：实时预览缩略图（无效 URL 显示警示占位）+ 独立删除按钮；
+ * - + / 删除均为 type="button"，绝不触发表单提交；
+ * - 触控目标 ≥ 44px，手机端可随手加图。
+ *
+ * 受控组件：value 中允许存在空字符串行（正在输入），提交侧负责过滤空项。
+ */
 export function ImageListInput({
   value,
   onChange,
@@ -344,59 +424,89 @@ export function ImageListInput({
   value: string[];
   onChange: (v: string[]) => void;
 }) {
-  const [draft, setDraft] = useState("");
-  const add = () => {
-    const v = draft.trim();
-    if (v) onChange([...value, v]);
-    setDraft("");
+  const rows = value.length > 0 ? value : [];
+  const setRow = (i: number, v: string) => {
+    const next = [...rows];
+    next[i] = v;
+    onChange(next);
   };
+  const removeRow = (i: number) => onChange(rows.filter((_, j) => j !== i));
+  const addRow = () => onChange([...rows, ""]);
+
   return (
     <div className="flex flex-col gap-2">
-      {value.map((url, i) => (
+      {rows.map((url, i) => (
         <div
-          key={`${url}-${i}`}
+          key={i}
           className="flex items-center gap-2 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] p-2"
         >
-          <img
-            src={url}
-            alt=""
-            className="size-11 shrink-0 rounded-lg border border-[var(--ia-line)] object-cover"
-            loading="lazy"
-            onError={(e) => ((e.target as HTMLImageElement).style.opacity = "0.25")}
+          <ImageThumb url={url} />
+          <input
+            value={url}
+            onChange={(e) => setRow(i, e.target.value)}
+            placeholder="https://…"
+            inputMode="url"
+            className="min-w-0 flex-1 bg-transparent px-1 py-2.5 text-sm text-[var(--ia-ink)] outline-none placeholder:text-[color-mix(in_srgb,var(--ia-mist)_55%,transparent)]"
           />
-          <span className="mono min-w-0 flex-1 truncate text-[11px] text-[var(--ia-mist)]">{url}</span>
           <button
             type="button"
-            aria-label="移除图片"
-            className="clickable grid size-9 shrink-0 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-danger)]"
-            onClick={() => onChange(value.filter((_, j) => j !== i))}
+            aria-label={`删除第 ${i + 1} 张图片`}
+            className="clickable grid size-11 shrink-0 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-danger)]"
+            onClick={() => removeRow(i)}
           >
-            <AdminIcon name="close" size={13} />
+            <AdminIcon name="close" size={14} />
           </button>
         </div>
       ))}
-      <div className="flex gap-2">
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              add();
-            }
-          }}
-          placeholder="粘贴图片 URL 后回车"
-          className={`${controlCls} flex-1`}
-        />
+      <button
+        type="button"
+        onClick={addRow}
+        className="clickable flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--ia-line)] text-sm font-semibold text-[var(--ia-neon)]"
+      >
+        <AdminIcon name="plus" size={16} /> 添加一张图片 URL
+      </button>
+      {rows.some((r) => r.trim() && !isPreviewableUrl(r)) && (
+        <p className="mono text-[10px] text-[var(--ia-warning)]">
+          // 有条目不是合法的 http(s) URL，提交时会被忽略。
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * ImageUrlInput（v5.0.2 §7）—— 单图 URL 输入 + 实时预览。
+ * 用于 Post / Project / Music / Anime 的 cover 字段、Profile 头像、站点背景等。
+ */
+export function ImageUrlInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <ImageThumb url={value} size={52} />
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder ?? "https://…（可选）"}
+        inputMode="url"
+        className={`${controlCls} flex-1`}
+      />
+      {value.trim() && (
         <button
           type="button"
-          onClick={add}
-          aria-label="添加图片"
-          className="clickable grid min-h-[44px] w-12 shrink-0 place-items-center rounded-xl border border-[var(--ia-line)] text-[var(--ia-neon)]"
+          aria-label="清空该图片 URL"
+          className="clickable grid size-11 shrink-0 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)]"
+          onClick={() => onChange("")}
         >
-          <AdminIcon name="plus" size={16} />
+          <AdminIcon name="close" size={14} />
         </button>
-      </div>
+      )}
     </div>
   );
 }
@@ -488,13 +598,148 @@ export function InfoRow({ k, children }: { k: string; children: React.ReactNode 
   );
 }
 
-/** 底部固定操作栏（发布按钮等） */
-export function BottomBar({ children }: { children: React.ReactNode }) {
+/** 底部固定操作栏（发布按钮等）。
+ *  v5.0.2：md 起底部 Tab 已隐藏 → 贴底；lg 起改为文档流内联（桌面端不需要悬浮条）。 */
+export function BottomBar({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="fixed inset-x-0 bottom-[calc(58px+env(safe-area-inset-bottom))] z-40 border-t border-[var(--ia-line)] bg-[color-mix(in_srgb,var(--ia-bg)_88%,transparent)] px-4 py-3 backdrop-blur-md md:left-[220px]">
-      <div className="mx-auto flex max-w-2xl gap-3">{children}</div>
+    <div
+      className={`fixed inset-x-0 bottom-[calc(58px+env(safe-area-inset-bottom))] z-40 border-t border-[var(--ia-line)] bg-[color-mix(in_srgb,var(--ia-bg)_88%,transparent)] px-4 py-3 backdrop-blur-md md:bottom-0 md:left-[220px] lg:static lg:inset-auto lg:z-auto lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none ${className}`}
+    >
+      <div className="mx-auto flex max-w-2xl gap-3 lg:mx-0 lg:max-w-none">{children}</div>
     </div>
   );
+}
+
+/** 昼夜切换按钮：真正的切换 / 持久化由 AdminLayout 的 [data-scene-toggle] 委托脚本完成，
+ *  这里只负责渲染当前模式图标并在 scene-mode-change 后刷新（§5：与前台同一份状态）。 */
+export function SceneToggle({ className = "" }: { className?: string }) {
+  const [mode, setMode] = useState<"night" | "day">("night");
+  useEffect(() => {
+    const read = () =>
+      setMode(document.documentElement.dataset.sceneMode === "day" ? "day" : "night");
+    read();
+    window.addEventListener("scene-mode-change", read);
+    return () => window.removeEventListener("scene-mode-change", read);
+  }, []);
+  return (
+    <button
+      type="button"
+      data-scene-toggle
+      aria-label="切换昼夜模式"
+      title={mode === "day" ? "切换到夜间模式（与前台同步）" : "切换到白昼模式（与前台同步）"}
+      className={`clickable grid size-9 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)] ${className}`}
+    >
+      <AdminIcon name={mode === "day" ? "sun" : "moon"} size={15} />
+    </button>
+  );
+}
+
+/** 成功 / 提示信息盒（与 ErrorBox 对应） */
+export function Notice({
+  tone = "success",
+  children,
+}: {
+  tone?: "success" | "warning" | "neon" | "nebula";
+  children: React.ReactNode;
+}) {
+  if (!children) return null;
+  const c = `var(--ia-${tone})`;
+  return (
+    <div
+      className="rounded-xl border p-3 text-xs leading-relaxed"
+      style={{
+        borderColor: `color-mix(in srgb, ${c} 45%, transparent)`,
+        background: `color-mix(in srgb, ${c} 10%, transparent)`,
+        color: c,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ---------------- 发布流程步骤（§8：commit / deploy / frontend 拆分展示） ---------------- */
+
+export type StepState = "pending" | "active" | "done" | "warn" | "error";
+
+const STEP_TONE: Record<StepState, string> = {
+  pending: "var(--ia-mist)",
+  active: "var(--ia-neon)",
+  done: "var(--ia-success)",
+  warn: "var(--ia-warning)",
+  error: "var(--ia-danger)",
+};
+
+export function Steps({
+  items,
+}: {
+  items: { label: string; state: StepState; detail?: React.ReactNode }[];
+}) {
+  return (
+    <ol className="flex flex-col">
+      {items.map((s, i) => {
+        const tone = STEP_TONE[s.state];
+        return (
+          <li key={i} className="relative flex gap-3 pb-4 last:pb-0">
+            {i < items.length - 1 && (
+              <span
+                aria-hidden="true"
+                className="absolute left-[11px] top-6 h-[calc(100%-24px)] w-px bg-[var(--ia-line)]"
+              />
+            )}
+            <span
+              className="grid size-6 shrink-0 place-items-center rounded-full border text-[10px]"
+              style={{
+                borderColor: `color-mix(in srgb, ${tone} 60%, transparent)`,
+                background: `color-mix(in srgb, ${tone} 12%, transparent)`,
+                color: tone,
+              }}
+            >
+              {s.state === "done" ? (
+                <AdminIcon name="check" size={12} />
+              ) : s.state === "error" ? (
+                <AdminIcon name="close" size={11} />
+              ) : s.state === "warn" ? (
+                <AdminIcon name="warn" size={12} />
+              ) : s.state === "active" ? (
+                <Spinner size={12} />
+              ) : (
+                i + 1
+              )}
+            </span>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <p className="text-sm font-semibold" style={{ color: s.state === "pending" ? "var(--ia-mist)" : "var(--ia-ink)" }}>
+                {s.label}
+              </p>
+              {s.detail && <div className="mt-1 text-xs leading-relaxed text-[var(--ia-mist)]">{s.detail}</div>}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/** ISO 时间 → 相对时间（草稿箱 / 部署状态展示用） */
+export function timeAgo(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return iso;
+  const diff = Date.now() - t;
+  if (diff < 0) return "刚刚";
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "刚刚";
+  if (m < 60) return `${m} 分钟前`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} 小时前`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `${d} 天前`;
+  return new Date(t).toISOString().slice(0, 10);
 }
 
 /* ---------------- bottom TabBar / desktop sidebar ---------------- */

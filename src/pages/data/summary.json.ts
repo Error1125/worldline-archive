@@ -47,6 +47,11 @@ export const GET: APIRoute = async () => {
 
   const body = {
     generatedAt: new Date().toISOString(),
+    /**
+     * v5.0.2（§16.6）：构建来源 commit。GitHub Actions 构建时 GITHUB_SHA 自动存在；
+     * Admin Dashboard 用它对比最新 commit → 判断「前台是否已同步 / deploy pending」。
+     */
+    buildSha: process.env.GITHUB_SHA ?? "",
     totals: { records: totalAll, drafts: draftAll },
     counts,
     worldline: {
@@ -57,6 +62,10 @@ export const GET: APIRoute = async () => {
       statusZh: wl.statusZh,
       baseValue: wl.baseValue,
       windowDays: wl.windowDays,
+      halfLifeDays: wl.halfLifeDays,
+      stableAfterDays: wl.stableAfterDays,
+      jitterEnabled: wl.jitterEnabled,
+      jitterDigits: wl.jitterDigits,
       recentEvents: wl.recentEvents.map((e) => ({
         title: e.title,
         type: e.type,

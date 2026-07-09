@@ -3,14 +3,28 @@ import "@/styles/global.css";
 import { siteConfig } from "@/config/site";
 import { withBase } from "@/lib/paths";
 
+import SceneBackground from "@/components/effects/SceneBackground.tsx";
+import Starfield from "@/components/effects/Starfield.tsx";
+import SakuraPetals from "@/components/effects/SakuraPetals.tsx";
+import CustomCursor from "@/components/effects/CustomCursor.tsx";
+import ClickSpark from "@/components/effects/ClickSpark.tsx";
+
 /**
- * AdminLayout.astro —— 控制台专用极简布局（v5.0）。
+ * AdminLayout.astro —— 控制台专用布局（v5.0.2）。
  *
- * 与 SiteLayout 的区别：
- * - 不加载 Header / Footer / 星空 / 弹幕 / 光标 / MiniPlayer 等任何前台组件与特效；
- * - 不使用 View Transitions（控制台是工具页，直接整页跳转更稳）；
- * - noindex：控制台页面不进搜索引擎；
- * - 保留 global.css 设计令牌 + 无闪烁昼夜模式（与前台共享 wl-scene-mode）。
+ * v5.0.2（§5 / §6）：控制台不再是「割裂的独立后台」，
+ * 与前台共用同一套视觉系统：
+ * - 复用 scene mode（Night 星空 / Day 樱花晨光），读写同一份 wl-scene-mode 持久化，
+ *   在控制台切换后回到前台模式保持一致；
+ * - 复用 ia-nebula / SceneBackground / Starfield / SakuraPetals 背景层；
+ * - 复用 CustomCursor（含 v4.1.3 输入框 I-beam 语义）与 ClickSpark；
+ * - 复用 glass-card spotlight：pointermove 更新 --spot-x / --spot-y，
+ *   光晕跟随鼠标而不是固定色块（与 SiteLayout 同一逻辑）。
+ *
+ * 与 SiteLayout 的差异（刻意保留）：
+ * - 不加载 Header / Footer / 弹幕 / MiniPlayer / Loader —— 控制台是工具页；
+ * - 不使用 View Transitions（整页跳转更稳），因此脚本无需监听 astro:after-swap；
+ * - noindex：控制台页面不进搜索引擎。
  */
 interface Props {
   title: string;
@@ -40,10 +54,67 @@ const { title } = Astro.props;
     <title>{title} · Console · {siteConfig.title}</title>
   </head>
 
-  <body class="min-h-screen bg-[var(--ia-bg)] text-[var(--ia-ink)] antialiased">
+  <body class="min-h-screen text-[var(--ia-ink)] antialiased">
+    <!-- 背景层：与前台同一套（星云 → 背景图 → 星空 / 樱花） -->
     <div class="ia-nebula" aria-hidden="true"></div>
+    <SceneBackground client:only="react" />
+    <Starfield client:only="react" />
+    <SakuraPetals client:only="react" />
+    <CustomCursor client:only="react" />
+    <ClickSpark client:only="react" />
+
     <div class="relative z-10">
       <slot />
     </div>
+
+    <script>
+      /**
+       * 控制台端复刻 SiteLayout 的两段客户端增强（无 View Transitions，直接跑一次）：
+       * 0) 昼夜模式控制器：委托 [data-scene-toggle] 点击 → 写 wl-scene-mode + 广播事件，
+       *    与前台共用同一份持久化状态（§5 验收：返回前台后模式不丢失）；
+       * 1) 卡片聚光 spotlight：跟随鼠标更新 --spot-x / --spot-y（§6 验收：
+       *    hover 不再是固定死的光晕块，与前台行为一致）。
+       */
+      const SCENE_KEY = "wl-scene-mode";
+      type SceneMode = "night" | "day";
+
+      function currentScene(): SceneMode {
+        return document.documentElement.dataset.sceneMode === "day" ? "day" : "night";
+      }
+      function applyScene(mode: SceneMode) {
+        document.documentElement.dataset.sceneMode = mode;
+        try {
+          localStorage.setItem(SCENE_KEY, mode);
+        } catch {}
+        syncSceneToggles();
+        window.dispatchEvent(new CustomEvent("scene-mode-change", { detail: { mode } }));
+      }
+      function syncSceneToggles() {
+        const mode = currentScene();
+        document
+          .querySelectorAll<HTMLElement>("[data-scene-toggle]")
+          .forEach((b) => b.setAttribute("aria-pressed", mode === "day" ? "true" : "false"));
+      }
+      document.addEventListener("click", (e) => {
+        const btn = (e.target as HTMLElement | null)?.closest?.("[data-scene-toggle]");
+        if (!btn) return;
+        applyScene(currentScene() === "day" ? "night" : "day");
+      });
+      syncSceneToggles();
+
+      const SPOT_SEL = ".glass-card, .spotlight-card, .interactive-card";
+      document.addEventListener(
+        "pointermove",
+        (e: PointerEvent) => {
+          const target = e.target as HTMLElement | null;
+          const card = target?.closest?.(SPOT_SEL) as HTMLElement | null;
+          if (!card) return;
+          const rect = card.getBoundingClientRect();
+          card.style.setProperty("--spot-x", `${e.clientX - rect.left}px`);
+          card.style.setProperty("--spot-y", `${e.clientY - rect.top}px`);
+        },
+        { passive: true },
+      );
+    </script>
   </body>
 </html>

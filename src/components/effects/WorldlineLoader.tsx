@@ -41,7 +41,7 @@ const FADE_MS = 450;
 
 type Phase = "hidden" | "show" | "leave";
 
-export default function WorldlineLoader() {
+export default function WorldlineLoader({ value }: { value?: string } = {}) {
   const [phase, setPhase] = useState<Phase>("hidden");
   const [shown, setShown] = useState(0); // 已显示的行数
   const theme = useMemo(() => THEMES[Math.floor(Math.random() * THEMES.length)], []);
@@ -84,7 +84,8 @@ export default function WorldlineLoader() {
   if (phase === "hidden") return null;
 
   const totalMs = 260 + theme.lines.length * LINE_STEP + HOLD_AFTER;
-  const digits = siteConfig.profile.worldline.split("");
+  /* v5.0.2 §16.6：优先使用 SiteLayout 构建期注入的引擎值；缺省回退旧配置值 */
+  const digits = (value ?? siteConfig.profile.worldline).split("");
 
   return (
     <div

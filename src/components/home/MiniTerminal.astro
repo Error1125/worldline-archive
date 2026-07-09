@@ -1,6 +1,7 @@
 ---
+import { getTimelineItems } from "@/lib/content";
+import { getWorldlineValue } from "@/lib/worldline";
 import GlassCard from "@/components/common/GlassCard.astro";
-import { siteConfig } from "@/config/site";
 
 /**
  * MiniTerminal.astro —— 降权后的小型氛围终端（角落 / 下方）。
@@ -12,10 +13,13 @@ interface Props {
 }
 const { class: className = "" } = Astro.props;
 
+/* v5.0.2 §16.6：divergence 行改用引擎值，与首页状态条 / Footer / summary.json 同源 */
+const wlValue = getWorldlineValue(await getTimelineItems());
+
 const lines: { text: string; tone: "dim" | "ok" | "accent" }[] = [
   { text: "booting worldline archive...", tone: "accent" },
   { text: "loading memory fragments...", tone: "dim" },
-  { text: `divergence: ${siteConfig.profile.worldline}`, tone: "dim" },
+  { text: `divergence: ${wlValue}`, tone: "dim" },
   { text: "archive stable.", tone: "ok" },
 ];
 

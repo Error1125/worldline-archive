@@ -1,6 +1,8 @@
 ---
 import Icon from "@/components/common/Icon.astro";
 import { siteConfig } from "@/config/site";
+import { getTimelineItems } from "@/lib/content";
+import { getWorldlineState } from "@/lib/worldline";
 
 interface Props {
   startDate: string;
@@ -11,7 +13,16 @@ const { startDate, class: className = "" } = Astro.props;
 const days = Math.max(1, Math.floor((Date.now() - new Date(startDate).getTime()) / 86_400_000));
 const year = new Date().getFullYear();
 const tech = ["Astro", "React", "Tailwind"];
-const worldline = siteConfig.profile.worldline;
+// v5.0.2（§16.6）：首页状态条与后台使用同一套世界线引擎，不再读硬编码值
+const wl = getWorldlineState(await getTimelineItems());
+const wlTone =
+  wl.status === "stable"
+    ? "var(--ia-success)"
+    : wl.status === "observing"
+      ? "var(--ia-neon)"
+      : wl.status === "unstable"
+        ? "var(--ia-warning)"
+        : "var(--ia-danger)";
 ---
 
 <div class:list={["status-strip glass flex", className]} role="contentinfo">
@@ -22,8 +33,8 @@ const worldline = siteConfig.profile.worldline;
 
   <div class="status-main">
     <span class="status-signal">
-      <span class="inline-block size-2 rounded-full bg-[var(--ia-success)]"></span>
-      worldline <b>{worldline}</b> stable
+      <span class="inline-block size-2 rounded-full" style={`background:${wlTone}`}></span>
+      worldline <b>{wl.value}</b> {wl.statusLabel.replace("archive ", "")}
     </span>
     <span class="strip-sep"></span>
     <span class="mono">running {days} days</span>

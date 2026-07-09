@@ -1,8 +1,8 @@
 ---
 import Icon from "@/components/common/Icon.astro";
-import { siteConfig } from "@/config/site";
 import { withBase } from "@/lib/paths";
-import type { WorldlineStatus } from "@/lib/content";
+import { getTimelineItems, type WorldlineStatus } from "@/lib/content";
+import { getWorldlineValue } from "@/lib/worldline";
 
 /**
  * TimelineTeaserCard —— WorldlineDivergenceCard（v3）。
@@ -21,7 +21,9 @@ interface Props {
 }
 
 const { count, status, class: className = "" } = Astro.props;
-const worldline = siteConfig.profile.worldline;
+/* v5.0.2 §16.6：数值改由引擎计算（与 summary.json / Admin 同一来源），
+ * 不再读 siteConfig.profile.worldline 硬编码；无近期内容时精确回落 baseValue。 */
+const worldline = getWorldlineValue(await getTimelineItems());
 
 /** 各状态徽章色 */
 const LEVEL_COLOR: Record<string, string> = {

@@ -2,7 +2,10 @@
   "baseValue": 1.048596,
   "windowDays": 30,
   "halfLifeDays": 14,
+  "stableAfterDays": 30,
   "dynamicDisplay": true,
+  "jitterEnabled": true,
+  "jitterDigits": 5,
   "valueScale": 0.000032,
   "weights": {
     "project": 5,

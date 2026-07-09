@@ -36,6 +36,46 @@ export interface WorldlineConfig {
   featuredMultiplier: number;
   typeBonus: { photoAlbum: number; longPost: number; activeProject: number };
   thresholds: { observing: number; unstable: number; divergence: number };
+  /* ---- v5.0.2：时间衰减 / 回归完美世界线（均可选，缺省有合理默认） ---- */
+  /** windowDays 的别名（交接文档命名）；两者都存在时取较小值 */
+  impactWindowDays?: number;
+  /** 多少天后强制回到完美世界线（额外硬截断；默认与窗口相同） */
+  stableAfterDays?: number;
+  /** 显示层跳动开关（dynamicDisplay 的别名；优先级更高） */
+  jitterEnabled?: boolean;
+  /** stable 状态下从小数第几位开始跳动（默认 5 → 只动第 5~6 位） */
+  jitterDigits?: number;
+}
+
+/** score 低于该值视为「已回归完美世界线」：value 精确回到 baseValue */
+export const STABLE_EPSILON = 0.005;
+
+/** 解析 v5.0.2 别名字段，得到实际生效的窗口 / 截断 / 跳动配置 */
+export function resolveWorldlineTiming(cfg: WorldlineConfig = worldlineConfig): {
+  windowDays: number;
+  halfLifeDays: number;
+  stableAfterDays: number;
+  cutoffDays: number;
+  jitterEnabled: boolean;
+  jitterDigits: number;
+} {
+  const windowDays = Math.min(
+    Number.isFinite(cfg.windowDays) ? cfg.windowDays : 30,
+    Number.isFinite(cfg.impactWindowDays as number) ? (cfg.impactWindowDays as number) : Infinity,
+  );
+  const halfLifeDays = Number.isFinite(cfg.halfLifeDays) && cfg.halfLifeDays > 0 ? cfg.halfLifeDays : 14;
+  const stableAfterDays = Number.isFinite(cfg.stableAfterDays as number)
+    ? (cfg.stableAfterDays as number)
+    : windowDays;
+  return {
+    windowDays,
+    halfLifeDays,
+    stableAfterDays,
+    /** 超过该天数的记录贡献直接归零（回归完美世界线的硬边界） */
+    cutoffDays: Math.min(windowDays, stableAfterDays),
+    jitterEnabled: cfg.jitterEnabled ?? cfg.dynamicDisplay ?? true,
+    jitterDigits: Number.isFinite(cfg.jitterDigits as number) ? (cfg.jitterDigits as number) : 5,
+  };
 }
 
 export interface WorldlineEvent {
@@ -61,7 +101,11 @@ export interface WorldlineState {
   baseValue: number;
   recentEvents: WorldlineEvent[];
   windowDays: number;
+  halfLifeDays: number;
+  stableAfterDays: number;
   dynamicDisplay: boolean;
+  jitterEnabled: boolean;
+  jitterDigits: number;
   generatedAt: string;
 }
 
@@ -91,7 +135,9 @@ export function getRecordContribution(
 ): { contribution: number; daysAgo: number } {
   const date = toDate(item.date);
   const daysAgo = Math.max(0, (now.getTime() - date.getTime()) / DAY_MS);
-  if (daysAgo > cfg.windowDays) return { contribution: 0, daysAgo };
+  const timing = resolveWorldlineTiming(cfg);
+  // v5.0.2：超过影响窗口 / stableAfterDays 的记录不再扰动世界线（回归完美世界线）
+  if (daysAgo > timing.cutoffDays) return { contribution: 0, daysAgo };
 
   const weight = item.worldlineWeight ?? cfg.weights[item.type] ?? 1;
   const impact = cfg.impactMultipliers[item.worldlineImpact ?? "medium"] ?? 1;
@@ -105,7 +151,7 @@ export function getRecordContribution(
     bonus *= cfg.typeBonus.activeProject;
   }
 
-  const decay = Math.exp(-daysAgo / cfg.halfLifeDays);
+  const decay = Math.exp(-daysAgo / resolveWorldlineTiming(cfg).halfLifeDays);
   return { contribution: weight * impact * featured * bonus * decay, daysAgo };
 }
 
@@ -135,6 +181,7 @@ export function getWorldlineStatus(records: TimelineItem[], now?: Date): Worldli
 /** 世界线观测值（baseValue + score 映射到小数位；固定 6 位小数展示） */
 export function getWorldlineValue(records: TimelineItem[], now?: Date): string {
   const score = getWorldlineActivityScore(records, now);
+  if (score < STABLE_EPSILON) return worldlineConfig.baseValue.toFixed(6);
   const v = worldlineConfig.baseValue + score * worldlineConfig.valueScale;
   return v.toFixed(6);
 }
@@ -166,10 +213,16 @@ export function getWorldlineRecentEvents(
 
 /** 一次性取得完整世界线状态（供 WorldlineMeter / summary.json / Admin 使用） */
 export function getWorldlineState(records: TimelineItem[], now: Date = new Date()): WorldlineState {
-  const score = getWorldlineActivityScore(records, now);
+  const timing = resolveWorldlineTiming(worldlineConfig);
+  let score = getWorldlineActivityScore(records, now);
+  // v5.0.2 回归逻辑：衰减到近乎为零时，精确回到完美世界线（1.048596 / archive stable）
+  if (score < STABLE_EPSILON) score = 0;
   const status = scoreToStatus(score);
   const meta = WORLDLINE_STATUS_META[status];
-  const valueNumber = worldlineConfig.baseValue + score * worldlineConfig.valueScale;
+  const valueNumber =
+    score === 0
+      ? worldlineConfig.baseValue
+      : worldlineConfig.baseValue + score * worldlineConfig.valueScale;
   return {
     value: valueNumber.toFixed(6),
     valueNumber,
@@ -179,8 +232,12 @@ export function getWorldlineState(records: TimelineItem[], now: Date = new Date(
     statusZh: meta.zh,
     baseValue: worldlineConfig.baseValue,
     recentEvents: getWorldlineRecentEvents(records, 6, now),
-    windowDays: worldlineConfig.windowDays,
-    dynamicDisplay: worldlineConfig.dynamicDisplay,
+    windowDays: timing.windowDays,
+    halfLifeDays: timing.halfLifeDays,
+    stableAfterDays: timing.stableAfterDays,
+    dynamicDisplay: timing.jitterEnabled,
+    jitterEnabled: timing.jitterEnabled,
+    jitterDigits: timing.jitterDigits,
     generatedAt: now.toISOString(),
   };
 }

@@ -44,6 +44,7 @@ import {
   MEDIA_MANIFEST_PATH,
   type RecordType,
 } from "./content-files";
+import { SettingsValidationError, validateSettings } from "./settings-schema";
 
 /* ---------------- Env ---------------- */
 
@@ -237,9 +238,35 @@ async function handle(req: Request, env: Env): Promise<Response> {
   const path = url.pathname.replace(/\/+$/, "") || "/";
   const routeKey = `${req.method} ${path}`;
 
-  /* 健康检查（无需鉴权，便于确认 Worker 存活） */
+  /* 健康检查（无需鉴权，便于确认 Worker 存活）。
+     v5.0.2（§11.3）：附带配置体检（只报「有没有 / 够不够长」，绝不回显任何值），
+     让「Worker 部署了但 secrets 没配全」不再表现为一个模糊错误。 */
   if (req.method === "GET" && (path === "/" || path === "/api/health")) {
-    return json({ ok: true, service: "worldline-admin-api", time: new Date().toISOString() });
+    const problems: string[] = [];
+    if (!env.ADMIN_SECRET) problems.push("ADMIN_SECRET missing");
+    if (!env.SESSION_SECRET) problems.push("SESSION_SECRET missing");
+    else if (!isUsableSessionSecret(env.SESSION_SECRET)) problems.push("SESSION_SECRET too short (need 32+)");
+    if (!env.GITHUB_TOKEN) problems.push("GITHUB_TOKEN missing");
+    if (!env.GITHUB_OWNER) problems.push("GITHUB_OWNER missing");
+    if (!env.GITHUB_REPO) problems.push("GITHUB_REPO missing");
+    if (!env.GITHUB_BRANCH) problems.push("GITHUB_BRANCH missing");
+    return json({
+      ok: problems.length === 0,
+      service: "worldline-admin-api",
+      time: new Date().toISOString(),
+      config: {
+        adminSecret: Boolean(env.ADMIN_SECRET),
+        sessionSecret: !env.SESSION_SECRET
+          ? "missing"
+          : isUsableSessionSecret(env.SESSION_SECRET)
+            ? "ok"
+            : "too_short",
+        githubToken: Boolean(env.GITHUB_TOKEN),
+        githubRepo: Boolean(env.GITHUB_OWNER && env.GITHUB_REPO && env.GITHUB_BRANCH),
+        r2: Boolean(env.MEDIA_BUCKET && env.R2_PUBLIC_BASE_URL),
+      },
+      ...(problems.length > 0 ? { code: "SERVER_MISCONFIGURED", problems } : {}),
+    });
   }
 
   if (!path.startsWith("/api/admin/")) {
@@ -324,6 +351,8 @@ async function handle(req: Request, env: Env): Promise<Response> {
       if (!data || typeof data !== "object" || Array.isArray(data)) {
         return err("MISSING_FIELDS", "请求体需要 { data: {...} }。", 400, { fields: ["data"] });
       }
+      // v5.0.2（§11.2）：schema 校验不通过 → 不写 GitHub，直接 400 逐字段报错
+      validateSettings(name, data);
       const content = JSON.stringify(data, null, 2) + "\n";
       const put = await putFile(env, target.path, content, `config: 更新${target.label} [via console]`);
       return json({
@@ -370,15 +399,25 @@ async function handle(req: Request, env: Env): Promise<Response> {
 
   /* ---- status ---- */
   if (routeKey === "GET /api/admin/status") {
+    // v5.0.2（§11.5）：读取 Actions 状态失败 ≠ 系统失败。
+    // token 缺少 Actions: Read 时返回权限提示字段，发布 commit 不受影响。
+    let latestRunError: string | null = null;
     const [commit, run, media] = await Promise.all([
       latestCommit(env).catch(() => null),
-      latestWorkflowRun(env).catch(() => null),
+      latestWorkflowRun(env).catch((e) => {
+        latestRunError =
+          e instanceof GitHubError && (e.code === "GITHUB_FORBIDDEN" || e.code === "GITHUB_TOKEN_INVALID")
+            ? "GitHub token 可能缺少 Actions: Read 权限，无法读取部署状态；发布 commit 不受影响。"
+            : "Actions 状态暂时不可读（不影响发布）。";
+        return null;
+      }),
       loadMediaManifest(env).catch(() => ({ data: { generatedAt: "", items: [] } as MediaManifest })),
     ]);
     return json({
       repo: await repoInfo(env),
       latestCommit: commit,
       latestRun: run,
+      ...(latestRunError ? { latestRunError } : {}),
       media: { count: media.data.items.length },
       r2Enabled: Boolean(env.MEDIA_BUCKET && env.R2_PUBLIC_BASE_URL),
     });
@@ -414,6 +453,29 @@ async function handle(req: Request, env: Env): Promise<Response> {
       commitSha: put.commitSha,
       commitUrl: put.commitUrl,
       message: "已登记到媒体清单。",
+    });
+  }
+
+  if (routeKey === "POST /api/admin/media/remove") {
+    const body = await readJson(req);
+    const rawUrl = typeof body.url === "string" ? body.url.trim() : "";
+    if (!rawUrl) {
+      return err("MISSING_FIELDS", "需要要移除的图片 URL。", 400, { fields: ["url"] });
+    }
+    const { data } = await loadMediaManifest(env);
+    const before = data.items.length;
+    data.items = data.items.filter((it) => it.url !== rawUrl);
+    if (data.items.length === before) {
+      return err("MEDIA_NOT_FOUND", "媒体清单中不存在该 URL。", 404);
+    }
+    const put = await saveMediaManifest(env, data, "data(media): 移除媒体项 [via console]");
+    return json({
+      success: true,
+      type: "media-remove",
+      path: put.path,
+      commitSha: put.commitSha,
+      commitUrl: put.commitUrl,
+      message: "已从媒体清单移除（不会删除远端图片文件本身）。",
     });
   }
 
@@ -484,6 +546,9 @@ export default {
       return withCors(res, cors);
     } catch (e) {
       if (e instanceof ValidationError) {
+        return withCors(err(e.code, e.message, 400, { fields: e.fields }), cors);
+      }
+      if (e instanceof SettingsValidationError) {
         return withCors(err(e.code, e.message, 400, { fields: e.fields }), cors);
       }
       if (e instanceof GitHubError) {

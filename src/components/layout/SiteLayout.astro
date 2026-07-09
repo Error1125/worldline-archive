@@ -14,6 +14,8 @@ import Starfield from "@/components/effects/Starfield.tsx";
 import SakuraPetals from "@/components/effects/SakuraPetals.tsx";
 import SceneBackground from "@/components/effects/SceneBackground.tsx";
 import WorldlineLoader from "@/components/effects/WorldlineLoader.tsx";
+import { getTimelineItems } from "@/lib/content";
+import { getWorldlineValue } from "@/lib/worldline";
 import DanmakuBackground from "@/components/effects/DanmakuBackground.tsx";
 import CustomCursor from "@/components/effects/CustomCursor.tsx";
 import ClickSpark from "@/components/effects/ClickSpark.tsx";
@@ -33,6 +35,9 @@ interface Props {
   home?: boolean;
 }
 const { title, description, home = false } = Astro.props;
+
+/* v5.0.2 §16.6：进场动画的世界线数值改由引擎在构建期计算（全站单一来源） */
+const wlLoaderValue = getWorldlineValue(await getTimelineItems());
 const pageTitle = title ? `${title} · ${siteConfig.title}` : `${siteConfig.title} · ${siteConfig.subtitle}`;
 const pageDesc = description ?? siteConfig.description;
 
@@ -104,7 +109,7 @@ const searchPayload = {
     <PageEnter client:only="react" transition:persist="page-enter" />
 
     <!-- 开场 Loader（首次会话播放一次，z-9990；sessionStorage 防重播） -->
-    <WorldlineLoader client:only="react" transition:persist="wl-loader" />
+    <WorldlineLoader client:only="react" transition:persist="wl-loader" value={wlLoaderValue} />
 
     <!-- 路由进场扫光条（由 PageEnter 触发 .run） -->
     <div class="page-sweep" aria-hidden="true"></div>

@@ -5,8 +5,12 @@ import PageHeader from "@/components/common/PageHeader.astro";
 import GlassCard from "@/components/common/GlassCard.astro";
 import Icon from "@/components/common/Icon.astro";
 import { siteConfig } from "@/config/site";
+import { getTimelineItems } from "@/lib/content";
+import { getWorldlineState } from "@/lib/worldline";
 
 const p = siteConfig.profile;
+// v5.0.2（§16.6）：关于页世界线值走引擎，不再读硬编码字符串
+const wlValue = getWorldlineState(await getTimelineItems()).value;
 /** 头像：配置了 avatar URL 则显示图片，否则回退到 user 图标 */
 const avatar = (p.avatar ?? "").trim();
 const stack = ["Astro 5", "TypeScript", "Tailwind CSS v4", "React 19", "MDX", "Motion", "Canvas"];
@@ -49,6 +53,7 @@ const links = siteConfig.links;
         </div>
       </div>
       <p class="text-sm leading-relaxed text-[var(--ia-mist)]">{p.signature}</p>
+      {p.bio && <p class="text-sm leading-relaxed text-[var(--ia-mist)]">{p.bio}</p>}
       <div class="flex flex-wrap gap-3 pt-1">
         {
           links.github && (
@@ -94,7 +99,7 @@ const links = siteConfig.links;
 
   <!-- v5.0 低调控制台入口：仅登录后（wl-admin-hint）可见；权限在后端校验 -->
   <div class="mt-12 flex items-center justify-center gap-4 border-t border-[var(--ia-line)] pt-6 mono text-[11px] text-[var(--ia-mist)] opacity-60">
-    <span class="diamond">worldline {p.worldline}</span>
+    <span class="diamond">worldline {wlValue}</span>
     <a
       id="wl-console-entry-about"
       href={withBase("/admin/dashboard")}
