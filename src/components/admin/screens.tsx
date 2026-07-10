@@ -26,6 +26,8 @@ import { AdminApiError } from "@/lib/admin/api";
 import { saveApiBase, resolveApiBase, setAdminHint, ADMIN_API_BASE_ENV } from "@/config/admin";
 import { RECORD_TYPES, getRecordType, type FieldDef } from "./adminFields";
 import * as draftsLib from "@/lib/admin/drafts";
+import { readMarkdownFile } from "@/lib/admin/markdown";
+import githubReposData from "@/data/github/repos.json";
 import {
   AdminIcon,
   Btn,
@@ -66,6 +68,7 @@ export function LoginScreen({ siteBase }: { siteBase: string }) {
   const [healthBusy, setHealthBusy] = useState(false);
   const [healthMsg, setHealthMsg] = useState<string | null>(null);
   const [healthOk, setHealthOk] = useState<boolean | null>(null);
+  const [loginStatus, setLoginStatus] = useState<string | null>(null);
 
   useEffect(() => {
     setApiBase(resolveApiBase());
@@ -86,16 +89,30 @@ export function LoginScreen({ siteBase }: { siteBase: string }) {
       return;
     }
     setBusy(true);
+    setLoginStatus("正在验证访问口令…");
     try {
       persistApiBase();
       await api.login(secret);
+      setLoginStatus("登录成功，正在确认会话…");
+      const session = await api.getSession();
+      if (!session.authenticated) {
+        throw new AdminApiError(
+          "SESSION_NOT_SAVED",
+          "登录成功但浏览器未保存会话，可能是第三方 Cookie / Safari 隐私策略问题。",
+          0,
+        );
+      }
       setAdminHint(true);
-      location.href = `${siteBase}/admin/dashboard`;
+      setLoginStatus("会话已确认，正在进入控制台…");
+      location.assign(`${siteBase}/admin/dashboard`);
     } catch (err) {
       let msg: string;
       if (err instanceof AdminApiError) {
         if (err.code === "UNAUTHORIZED" || err.code === "INVALID_SECRET") {
           msg = "口令错误。El Psy Kongroo.";
+        } else if (err.code === "SESSION_NOT_SAVED") {
+          msg = err.message;
+          setAdvOpen(true);
         } else if (err.code === "NETWORK" || err.code === "NO_API_BASE" || err.code === "NOT_A_WORKER") {
           msg = `Worker 连接失败：${err.message} 可展开下方「高级设置」检查 API 地址并运行健康检查。`;
           setAdvOpen(true);
@@ -109,6 +126,7 @@ export function LoginScreen({ siteBase }: { siteBase: string }) {
         msg = "登录失败，请稍后再试。";
       }
       setError(msg);
+      setLoginStatus(null);
       setBusy(false);
     }
   };
@@ -190,6 +208,7 @@ export function LoginScreen({ siteBase }: { siteBase: string }) {
         )}
 
         <ErrorBox>{error}</ErrorBox>
+        {loginStatus && !error && <Notice tone="neon">{loginStatus}</Notice>}
 
         <Btn kind="primary" type="submit" full disabled={busy}>
           {busy ? <Spinner /> : <AdminIcon name="arrow" size={16} />}
@@ -820,6 +839,19 @@ function FieldControl({
   }
 }
 
+interface AniListSearchItem {
+  id: number;
+  idMal?: number | null;
+  title: { romaji?: string | null; english?: string | null; native?: string | null };
+  coverImage?: { large?: string | null } | null;
+  episodes?: number | null;
+  season?: string | null;
+  seasonYear?: number | null;
+  genres?: string[];
+  studios?: { nodes?: Array<{ name?: string | null }> };
+  siteUrl?: string | null;
+}
+
 /* ---- §8：发布错误分类（每类给不同提示 + 兜底策略） ---- */
 
 type ErrKind = "form" | "worker" | "auth" | "github" | "unknown";
@@ -891,11 +923,18 @@ export function PublishFormScreen({
   const [result, setResult] = useState<api.PublishResult | null>(null);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [autosavedAt, setAutosavedAt] = useState<string | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
+  const [animeQuery, setAnimeQuery] = useState("");
+  const [animeBusy, setAnimeBusy] = useState(false);
+  const [animeResults, setAnimeResults] = useState<AniListSearchItem[]>([]);
+  const [animeError, setAnimeError] = useState<string | null>(null);
+  const [selectedRepo, setSelectedRepo] = useState("");
 
   /* ---- 部署状态轮询（§8：commit 后拆分 deploy / frontend） ---- */
   const [deployStatus, setDeployStatus] = useState<api.AdminStatus | null>(null);
+  const [frontendState, setFrontendState] = useState<"idle" | "checking" | "live" | "not-ready">("idle");
   const [slowHint, setSlowHint] = useState(false);
-  const committedAtRef = useRef(0);
   const pollTimerRef = useRef<number | null>(null);
 
   /* ---- 草稿恢复（?draft=<id>，§9） ---- */
@@ -952,7 +991,6 @@ export function PublishFormScreen({
   /* ---- commit 成功后轮询部署状态（20s 一次，最多 12 分钟） ---- */
   useEffect(() => {
     if (!result) return;
-    committedAtRef.current = Date.now();
     setSlowHint(false);
     const slowTimer = window.setTimeout(() => setSlowHint(true), 90_000);
     const load = () => api.getStatus().then(setDeployStatus).catch(() => {});
@@ -984,9 +1022,7 @@ export function PublishFormScreen({
 
   /* ---- 部署阶段推导 ---- */
   const run = deployStatus?.latestRun ?? null;
-  const runIsOurs = run
-    ? new Date(run.createdAt).getTime() >= committedAtRef.current - 3 * 60_000
-    : false;
+  const runIsOurs = Boolean(run && result && run.headSha === result.commitSha);
   const runPermissionIssue = Boolean(deployStatus?.latestRunError);
   const deployDone = Boolean(runIsOurs && run && run.status === "completed" && run.conclusion === "success");
   const deployFailed = Boolean(
@@ -994,17 +1030,148 @@ export function PublishFormScreen({
   );
 
   useEffect(() => {
-    if (deployDone && pollTimerRef.current) {
+    if (!deployDone || !result?.htmlPath) return;
+    let cancelled = false;
+    let timer = 0;
+    const check = async () => {
+      setFrontendState("checking");
+      try {
+        const separator = result.htmlPath!.includes("?") ? "&" : "?";
+        const response = await fetch(`${siteBase}${result.htmlPath}${separator}deploy=${result.commitSha.slice(0, 8)}`, {
+          method: "GET",
+          cache: "no-store",
+          credentials: "same-origin",
+        });
+        if (!cancelled) {
+          const live = response.status === 200;
+          setFrontendState(live ? "live" : "not-ready");
+          if (live && timer) window.clearInterval(timer);
+        }
+      } catch {
+        if (!cancelled) setFrontendState("not-ready");
+      }
+    };
+    void check();
+    timer = window.setInterval(check, 10_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [deployDone, result, siteBase]);
+
+  useEffect(() => {
+    if (frontendState === "live" && pollTimerRef.current) {
       window.clearInterval(pollTimerRef.current);
       pollTimerRef.current = null;
     }
-  }, [deployDone]);
+  }, [frontendState]);
 
   if (!def) {
     return <ErrorBox>未知的记录类型：{type}</ErrorBox>;
   }
 
   const set = (name: string) => (v: unknown) => setState((s) => ({ ...s, [name]: v }));
+
+  const searchAnime = async () => {
+    const search = animeQuery.trim();
+    if (!search) return;
+    setAnimeBusy(true);
+    setAnimeError(null);
+    try {
+      const query = `query ($search: String) {
+        Page(page: 1, perPage: 6) {
+          media(search: $search, type: ANIME, sort: SEARCH_MATCH) {
+            id idMal title { romaji english native } coverImage { large }
+            episodes season seasonYear genres studios(isMain: true) { nodes { name } } siteUrl
+          }
+        }
+      }`;
+      const response = await fetch("https://graphql.anilist.co", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ query, variables: { search } }),
+      });
+      if (!response.ok) throw new Error(`AniList 返回 HTTP ${response.status}`);
+      const json = await response.json() as { data?: { Page?: { media?: AniListSearchItem[] } }; errors?: Array<{ message?: string }> };
+      if (json.errors?.length) throw new Error(json.errors[0]?.message || "AniList 查询失败");
+      setAnimeResults(json.data?.Page?.media ?? []);
+    } catch (error) {
+      setAnimeResults([]);
+      setAnimeError(`${error instanceof Error ? error.message : "无法连接 AniList"}。可继续手动填写并使用本地 content。`);
+    } finally {
+      setAnimeBusy(false);
+    }
+  };
+
+  const applyAnime = (item: AniListSearchItem) => {
+    setState((current) => ({
+      ...current,
+      title: item.title.english || item.title.romaji || item.title.native || current.title,
+      titleJP: item.title.native || current.titleJP,
+      titleCn: current.titleCn,
+      cover: item.coverImage?.large || current.cover,
+      episodes: item.episodes ?? current.episodes,
+      season: item.season ? item.season.toLowerCase() : current.season,
+      year: item.seasonYear ?? current.year,
+      genres: item.genres ?? current.genres,
+      studio: item.studios?.nodes?.map((node) => node.name).filter(Boolean) ?? current.studio,
+      externalUrl: item.siteUrl || current.externalUrl,
+      externalIds: { anilist: item.id, ...(item.idMal ? { mal: item.idMal } : {}) },
+    }));
+    setAnimeResults([]);
+    setNoticeMsg("已从 AniList 导入真实番剧资料；观看状态、评分与短评仍由你填写。");
+  };
+
+  const applyProjectRepo = () => {
+    const repo = githubReposData.repos.find((item) => item.repo === selectedRepo);
+    if (!repo) return;
+    setState((current) => ({
+      ...current,
+      title: current.title || repo.repo,
+      description: current.description || repo.description,
+      repo: repo.url,
+      techStack: repo.language ? Array.from(new Set([...((current.techStack as string[]) ?? []), repo.language])) : current.techStack,
+      github: {
+        owner: repo.owner, repo: repo.repo, stars: repo.stars, forks: repo.forks,
+        language: repo.language, lastCommitAt: repo.lastCommitAt, topics: repo.topics,
+      },
+    }));
+    setNoticeMsg("已载入 GitHub 仓库事实字段。只有发布此项目后才会在 Projects 展示，不会自动公开全部仓库。");
+  };
+
+  const importMarkdown = async (file?: File) => {
+    if (!file) return;
+    if (body.trim() && !window.confirm("重新导入会覆盖当前正文，是否继续？")) {
+      if (importInputRef.current) importInputRef.current.value = "";
+      return;
+    }
+    setImportBusy(true);
+    setErrorInfo(null);
+    try {
+      const parsed = await readMarkdownFile(file);
+      const aliases: Record<string, string> = { description: "description", summary: "summary" };
+      const allowed = new Set(def.fields.map((field) => field.name));
+      setState((current) => {
+        const next = { ...current };
+        for (const [rawKey, value] of Object.entries(parsed.attributes)) {
+          const key = aliases[rawKey] ?? rawKey;
+          if (allowed.has(key) && value !== "" && value !== undefined) next[key] = value;
+        }
+        return next;
+      });
+      setBody(parsed.body);
+      setNoticeMsg(`已导入 ${file.name}，frontmatter 与正文均可继续编辑。`);
+    } catch (error) {
+      setErrorInfo({
+        kind: "form",
+        title: "Markdown 导入失败",
+        message: error instanceof Error ? error.message : "无法读取该文件；原表单内容未改动。",
+      });
+    } finally {
+      setImportBusy(false);
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  };
 
   const saveDraftNow = () => {
     const id = draftsLib.saveDraft({ id: draftId ?? undefined, type: def.type, state, body, status: "draft" });
@@ -1043,10 +1210,15 @@ export function PublishFormScreen({
       return;
     }
     setBusy(true);
+    let safetyDraftId = draftId;
+    if (draftsLib.hasDraftContent(state, body)) {
+      safetyDraftId = draftsLib.saveDraft({ id: draftId ?? undefined, type: def.type, state, body, status: "draft" });
+      setDraftId(safetyDraftId);
+    }
     /* Step 2：提交 GitHub Commit */
     try {
       const r = await api.publish(def.type, buildPayload());
-      draftsLib.clearDraftAfterPublish(draftId);
+      draftsLib.clearDraftAfterPublish(safetyDraftId);
       setDraftId(null);
       setAutosavedAt(null);
       setResult(r);
@@ -1056,7 +1228,7 @@ export function PublishFormScreen({
       /* §9：任何失败都先把内容写进草稿箱再说 */
       if (draftsLib.hasDraftContent(state, body)) {
         const id = draftsLib.saveDraft({
-          id: draftId ?? undefined,
+          id: safetyDraftId ?? undefined,
           type: def.type,
           state,
           body,
@@ -1149,18 +1321,20 @@ export function PublishFormScreen({
       },
       {
         label: "前台页面可访问",
-        state: deployDone ? "done" : runPermissionIssue ? "warn" : "pending",
-        detail: deployDone ? (
+        state: frontendState === "live" ? "done" : frontendState === "not-ready" ? "warn" : deployDone ? "active" : "pending",
+        detail: frontendState === "live" ? (
           <span>
-            前台已更新到该 commit。
+            已通过 HTTP 200 确认前台页面可访问。
             {viewHref && (
               <a href={viewHref} className="clickable ml-1 underline">打开前台页面 ↗</a>
             )}
           </span>
-        ) : runPermissionIssue ? (
-          <span>无法读取部署进度；一般 1–5 分钟后可直接访问前台确认。</span>
+        ) : frontendState === "not-ready" ? (
+          <span>GitHub Actions 已成功，但 Pages 仍在同步；当前 URL 尚未返回 200，将自动重试。</span>
+        ) : frontendState === "checking" ? (
+          <span>正在确认前台页面是否返回 HTTP 200…</span>
         ) : (
-          <span>部署完成后自动点亮；也可稍后手动刷新前台。</span>
+          <span>等待 Actions 成功后再检查前台页面。</span>
         ),
       },
     ];
@@ -1181,9 +1355,9 @@ export function PublishFormScreen({
 
         <div className="flex flex-col gap-2.5">
           {viewHref && (
-            <Btn kind="primary" full onClick={() => (location.href = viewHref)} disabled={!deployDone}>
+            <Btn kind="primary" full onClick={() => (location.href = viewHref)} disabled={frontendState !== "live"}>
               <AdminIcon name="external" size={15} />
-              {deployDone ? "查看前台页面" : "查看前台页面（部署完成后可用）"}
+              {frontendState === "live" ? "查看前台页面" : "部署中，稍后查看"}
             </Btn>
           )}
           <Btn
@@ -1191,6 +1365,7 @@ export function PublishFormScreen({
             onClick={() => {
               setResult(null);
               setDeployStatus(null);
+              setFrontendState("idle");
               setState(buildInitialState(def.fields));
               setBody("");
               setErrorInfo(null);
@@ -1243,6 +1418,77 @@ export function PublishFormScreen({
           </div>
 
           <div className="glass-card flex flex-col gap-4 rounded-2xl p-4 lg:p-5">
+            {def.type === "project" && (
+              <div className="rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] p-3">
+                <p className="text-sm font-semibold text-[var(--ia-ink)]">从 GitHub 仓库导入</p>
+                <p className="mono mt-0.5 text-[10px] text-[var(--ia-mist)]">缓存同步于 {githubReposData.generatedAt?.slice(0, 10) || "unavailable"} · 手动选择才展示</p>
+                <div className="mt-3 flex gap-2">
+                  <Select value={selectedRepo} onChange={(event) => setSelectedRepo(event.target.value)} options={[{ value: "", label: "选择仓库…" }, ...githubReposData.repos.map((repo) => ({ value: repo.repo, label: `${repo.repo} · ★ ${repo.stars}` }))]} />
+                  <Btn onClick={applyProjectRepo} disabled={!selectedRepo}><AdminIcon name="github" size={14} /> 导入</Btn>
+                </div>
+              </div>
+            )}
+            {def.type === "anime" && (
+              <div className="rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] p-3">
+                <p className="text-sm font-semibold text-[var(--ia-ink)]">AniList 番剧资料导入</p>
+                <p className="mono mt-0.5 text-[10px] text-[var(--ia-mist)]">公开 GraphQL API · 无需密钥 · 失败时保留本地表单</p>
+                <div className="mt-3 flex gap-2">
+                  <Input
+                    value={animeQuery}
+                    onChange={(event) => setAnimeQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") { event.preventDefault(); void searchAnime(); }
+                    }}
+                    placeholder="搜索日文 / 英文标题"
+                    className="flex-1"
+                  />
+                  <Btn onClick={() => void searchAnime()} disabled={animeBusy}>
+                    {animeBusy ? <Spinner size={13} /> : <AdminIcon name="search" size={14} />} 搜索
+                  </Btn>
+                </div>
+                {animeError && <p className="mt-2 text-xs text-[var(--ia-warning)]">{animeError}</p>}
+                {animeResults.length > 0 && (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {animeResults.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => applyAnime(item)}
+                        className="clickable flex min-h-16 items-center gap-2 rounded-lg border border-[var(--ia-line)] p-2 text-left hover:border-[var(--ia-neon)]"
+                      >
+                        {item.coverImage?.large && <img src={item.coverImage.large} alt="" className="h-14 w-10 rounded object-cover" />}
+                        <span className="min-w-0">
+                          <span className="line-clamp-2 text-xs font-semibold text-[var(--ia-ink)]">{item.title.english || item.title.romaji || item.title.native}</span>
+                          <span className="mono text-[10px] text-[var(--ia-mist)]">{item.seasonYear ?? "—"} · {item.episodes ?? "?"} 集</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {(def.type === "post" || def.type === "bug") && (
+              <div className="rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--ia-ink)]">从 Markdown / MDX 导入</p>
+                    <p className="mono text-[10px] text-[var(--ia-mist)]">最大 2 MB · 自动解析 frontmatter</p>
+                  </div>
+                  <label className="clickable inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-[var(--ia-line)] px-3 text-xs text-[var(--ia-ink)]">
+                    {importBusy ? <Spinner size={13} /> : <AdminIcon name="upload" size={14} />}
+                    选择文件
+                    <input
+                      ref={importInputRef}
+                      type="file"
+                      accept=".md,.mdx,text/markdown,text/plain"
+                      className="sr-only"
+                      disabled={importBusy}
+                      onChange={(event) => void importMarkdown(event.target.files?.[0])}
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
             {mainFields.map(renderField)}
             {def.hasBody && (
               <Field label={def.bodyLabel ?? "正文（Markdown）"}>
@@ -1906,7 +2152,18 @@ export function SettingsProfileScreen() {
             <Field label="头像 URL" help="留空时前台回退到默认 user 图标。">
               <ImageUrlInput value={d.avatar ?? ""} onChange={set("avatar")} />
             </Field>
+            <Field label="封面 URL">
+              <ImageUrlInput value={d.cover ?? ""} onChange={set("cover")} />
+            </Field>
             <TextRow label="简介 bio" value={d.bio ?? ""} onChange={set("bio")} textarea />
+            <TextRow label="About 标题" value={d.aboutTitle ?? ""} onChange={set("aboutTitle")} />
+            <TextRow label="About 副标题" value={d.aboutSubtitle ?? ""} onChange={set("aboutSubtitle")} />
+            <TextRow label="About 正文" value={d.aboutBody ?? ""} onChange={set("aboutBody")} textarea />
+            <Field label="研究方向"><TagInput value={d.researchAreas ?? []} onChange={(v) => hook.setData({ ...d, researchAreas: v })} /></Field>
+            <Field label="技术栈"><TagInput value={d.techStack ?? []} onChange={(v) => hook.setData({ ...d, techStack: v })} /></Field>
+            <Field label="兴趣"><TagInput value={d.interests ?? []} onChange={(v) => hook.setData({ ...d, interests: v })} /></Field>
+            <TextRow label="GitHub 用户名" value={d.githubUsername ?? ""} onChange={set("githubUsername")} />
+            <Toggle checked={d.showGithubContributions !== false} onChange={(v) => hook.setData({ ...d, showGithubContributions: v })} label="显示 GitHub Contributions" />
           </Section>
 
           <Section title="LINKS // 联络通道" defaultOpen={false}>
@@ -1994,6 +2251,9 @@ export function SettingsSiteScreen() {
             <TextRow label="描述" value={d.description ?? ""} onChange={set("description")} textarea />
             <TextRow label="Hero 标语" value={d.heroTagline ?? ""} onChange={set("heroTagline")} />
             <TextRow label="建站日期（YYYY-MM-DD）" value={d.foundedAt ?? ""} onChange={set("foundedAt")} />
+            <TextRow label="Archive 起始日期（YYYY-MM-DD）" value={d.archiveStartedAt ?? d.foundedAt ?? ""} onChange={set("archiveStartedAt")} />
+            <TextRow label="同步状态文案" value={d.archiveSyncLabel ?? ""} onChange={set("archiveSyncLabel")} />
+            <TextRow label="版权名称" value={d.copyrightName ?? ""} onChange={set("copyrightName")} />
           </Section>
           <Section title="VISUAL // 背景与封面">
             <Field label="白昼背景 URL">

@@ -34,6 +34,8 @@ import {
   latestWorkflowRun,
   fetchOwnerRepos,
   fetchOwnerEvents,
+  fetchOwnerProfile,
+  fetchContributionCalendar,
   type GitHubEnvLike,
 } from "./github";
 import {
@@ -327,7 +329,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
       path: put.path,
       commitSha: put.commitSha,
       commitUrl: put.commitUrl,
-      htmlPath: built.htmlPath,
+      ...(payload.draft === true ? {} : { htmlPath: built.htmlPath }),
       message: `${built.labelZh}已发布，GitHub Actions 正在部署（约 1-2 分钟后可见）。`,
     });
   }
@@ -369,8 +371,12 @@ async function handle(req: Request, env: Env): Promise<Response> {
   /* ---- github sync ---- */
   if (routeKey === "POST /api/admin/github/sync") {
     const generatedAt = new Date().toISOString();
-    const rawRepos = await fetchOwnerRepos(env);
-    const rawEvents = await fetchOwnerEvents(env);
+    const [rawRepos, rawEvents, rawProfile, contributionCalendar] = await Promise.all([
+      fetchOwnerRepos(env),
+      fetchOwnerEvents(env),
+      fetchOwnerProfile(env),
+      fetchContributionCalendar(env).catch(() => null),
+    ]);
     const reposJson = buildReposJson(rawRepos, generatedAt);
     const activityJson = buildActivityJson(rawEvents, generatedAt);
 
@@ -386,13 +392,44 @@ async function handle(req: Request, env: Env): Promise<Response> {
       JSON.stringify(activityJson, null, 2) + "\n",
       "data(github): 同步动态时间线 [via console]",
     );
+    await putFile(
+      env,
+      "src/data/github/profile.json",
+      JSON.stringify({
+        generatedAt,
+        profile: {
+          login: rawProfile.login,
+          avatarUrl: rawProfile.avatar_url,
+          name: rawProfile.name,
+          bio: rawProfile.bio,
+          url: rawProfile.html_url,
+          publicRepos: rawProfile.public_repos,
+          followers: rawProfile.followers,
+          following: rawProfile.following,
+          location: rawProfile.location,
+          blog: rawProfile.blog,
+          company: rawProfile.company,
+        },
+      }, null, 2) + "\n",
+      "data(github): 同步 Profile [via console]",
+    );
+    const put4 = await putFile(
+      env,
+      "src/data/github/contributions.json",
+      JSON.stringify({
+        generatedAt,
+        available: Boolean(contributionCalendar),
+        ...(contributionCalendar ? { calendar: contributionCalendar } : { reason: "GitHub contributions sync unavailable" }),
+      }, null, 2) + "\n",
+      "data(github): 同步 Contributions [via console]",
+    );
 
     return json({
       success: true,
       type: "github-sync",
       path: "src/data/github/",
-      commitSha: put2.commitSha,
-      commitUrl: put2.commitUrl,
+      commitSha: put4.commitSha,
+      commitUrl: put4.commitUrl,
       message: `已同步 ${reposJson.repos.length} 个仓库、${activityJson.activity.length} 条动态。`,
     });
   }

@@ -220,12 +220,18 @@ function buildFrontmatter(type: RecordType, p: Record<string, unknown>, date: Da
         ...baseLines(p),
       ]);
     case "photo":
+      const photoImages = Array.isArray(p.images)
+        ? p.images.map((url, index) => {
+            const caption = Array.isArray(p.captions) ? p.captions[index] : undefined;
+            return caption ? { url, caption } : url;
+          })
+        : [];
       return renderFrontmatter([
         line("title", p.title),
         line("date", fmtDate(date), "raw"),
         line("album", p.album),
         line("description", p.description),
-        line("images", p.images, "arr"),
+        line("images", JSON.stringify(photoImages), "raw"),
         line("mood", p.mood),
         line("location", p.location),
         line("camera", p.camera),
@@ -244,6 +250,7 @@ function buildFrontmatter(type: RecordType, p: Record<string, unknown>, date: Da
         line("role", p.role),
         p.startedAt ? line("startedAt", fmtDate(parseDate(p.startedAt)), "raw") : null,
         p.endedAt ? line("endedAt", fmtDate(parseDate(p.endedAt)), "raw") : null,
+        p.github && typeof p.github === "object" ? line("github", JSON.stringify(p.github), "raw") : null,
         ...baseLines(p),
       ]);
     case "music":
@@ -265,6 +272,7 @@ function buildFrontmatter(type: RecordType, p: Record<string, unknown>, date: Da
       return renderFrontmatter([
         line("title", p.title),
         line("titleJP", p.titleJP),
+        line("titleCn", p.titleCn),
         line("date", fmtDate(date), "raw"),
         line("status", p.status),
         typeof p.score === "number" ? line("score", p.score, "raw") : null,
@@ -272,8 +280,13 @@ function buildFrontmatter(type: RecordType, p: Record<string, unknown>, date: Da
         typeof p.currentEpisode === "number" ? line("currentEpisode", p.currentEpisode, "raw") : null,
         line("season", p.season),
         typeof p.year === "number" ? line("year", p.year, "raw") : null,
+        line("studio", p.studio, "arr"),
+        line("genres", p.genres, "arr"),
         line("thoughts", p.thoughts),
         line("externalUrl", p.externalUrl),
+        p.externalIds && typeof p.externalIds === "object"
+          ? line("externalIds", JSON.stringify(p.externalIds), "raw")
+          : null,
         ...baseLines(p),
       ]);
     case "bug":

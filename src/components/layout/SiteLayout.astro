@@ -409,12 +409,15 @@ const searchPayload = {
         const btnClose = lb.querySelector<HTMLElement>(".lightbox-close")!;
 
         let images: string[] = [];
+        let captions: string[] = [];
         let idx = 0;
 
         function render() {
           if (!images.length) return;
           idx = (idx + images.length) % images.length;
           imgEl.src = images[idx];
+          descEl.textContent = captions[idx] || "";
+          descEl.style.display = captions[idx] ? "block" : "none";
           counterEl.textContent = `${idx + 1} / ${images.length}`;
           const multi = images.length > 1;
           btnPrev.style.display = multi ? "grid" : "none";
@@ -423,14 +426,15 @@ const searchPayload = {
         const open = (trigger: HTMLElement) => {
           try {
             images = JSON.parse(trigger.dataset.images || "[]");
+            captions = JSON.parse(trigger.dataset.captions || "[]");
           } catch {
             images = [];
+            captions = [];
           }
           if (!images.length) return;
-          idx = 0;
+          idx = Number(trigger.dataset.index || 0);
           titleEl.textContent = trigger.dataset.title || "";
-          descEl.textContent = trigger.dataset.desc || "";
-          descEl.style.display = trigger.dataset.desc ? "block" : "none";
+          if (!captions.length && trigger.dataset.desc) captions = images.map(() => trigger.dataset.desc || "");
           dateEl.textContent = trigger.dataset.date || "";
           render();
           lb.dataset.open = "true";

@@ -22,6 +22,11 @@ const metas = [
   d.takenAt && { label: "拍摄于", value: formatDate(d.takenAt) },
   d.mood && { label: "◇", value: d.mood },
 ].filter(Boolean) as { label: string; value: string }[];
+const images = d.images.map((image, index) => typeof image === "string"
+  ? { url: image, alt: `${d.title} · ${index + 1}`, caption: "", date: "", location: "" }
+  : { url: image.url, alt: image.alt ?? `${d.title} · ${index + 1}`, caption: image.caption ?? "", date: image.date ?? "", location: image.location ?? "" });
+const basedImages = images.map((image) => withBase(image.url));
+const captions = images.map((image) => image.caption);
 ---
 
 <RecordDetailLayout
@@ -42,11 +47,15 @@ const metas = [
   <!-- 拍立得式相片网格（与 Photos 页面气质一致，不复用其复杂交互以免互相影响） -->
   <div class="photo-detail-grid grid gap-4 sm:grid-cols-2">
     {
-      d.images.map((img, i) => (
-        <figure class="polaroid-frame rounded-lg border border-[var(--ia-line)] bg-[var(--ia-panel)] p-2 pb-6 shadow-lg" style={`--tilt:${(i % 3) - 1}deg`}>
-          <img src={withBase(img)} alt={`${d.title} · ${i + 1}`} loading="lazy" class="block aspect-[4/3] w-full rounded object-cover" />
+      images.map((img, i) => (
+        <figure class="polaroid-frame rounded-lg border border-[var(--ia-line)] bg-[var(--ia-panel)] p-2 pb-5 shadow-lg" style={`--tilt:${(i % 3) - 1}deg`}>
+          <button type="button" class="clickable block w-full" data-lightbox data-images={JSON.stringify(basedImages)} data-captions={JSON.stringify(captions)} data-index={String(i)} data-title={d.title} data-date={img.date || (d.takenAt ? formatDate(d.takenAt) : formatDate(d.date))}>
+            <img src={withBase(img.url)} alt={img.alt} loading="lazy" class="block aspect-[4/3] w-full rounded object-cover" />
+          </button>
           <figcaption class="mt-2 px-1 mono text-[10px] text-[var(--ia-mist)]">
             {d.album ?? d.title} · #{String(i + 1).padStart(2, "0")}
+            {img.caption && <span class="mt-1 block font-sans text-xs leading-relaxed text-[var(--ia-ink)]">{img.caption}</span>}
+            {(img.location || img.date) && <span class="mt-1 block">{[img.location, img.date].filter(Boolean).join(" · ")}</span>}
           </figcaption>
         </figure>
       ))
