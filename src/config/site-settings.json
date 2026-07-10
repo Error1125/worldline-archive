@@ -7,9 +7,13 @@
   "backgroundDay": "",
   "backgroundNight": "",
   "defaultCover": "",
-  "foundedAt": "2025-06-01",
-  "archiveStartedAt": "2025-06-01",
+  "foundedAt": "2026-07-09",
+  "archiveStartedAt": "2026-07-09",
   "archiveSyncLabel": "archive sync complete",
-  "copyrightName": "Traveler",
-  "footerBadges": ["Astro", "React", "Tailwind"]
+  "copyrightName": "上天入地小松鼠",
+  "footerBadges": [
+    "Astro",
+    "GitHub Pages",
+    "Worldline OS"
+  ]
 }

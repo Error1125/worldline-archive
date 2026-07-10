@@ -1,11 +1,11 @@
 {
-  "author": "Traveler",
-  "handle": "@traveler_dev",
+  "author": "上天入地小松鼠",
+  "handle": "@Error1125",
   "signature": "Leaving one record among countless worldlines.",
   "status": "Night observation",
   "mood": "Calm / stable",
   "coordinate": "Worldline Archive / Save Point 7",
-  "avatar": "",
+  "avatar": "https://avatars.githubusercontent.com/u/222734808?v=4",
   "cover": "",
   "bio": "在无数条世界线之间，留下属于自己的一条记录。",
   "aboutTitle": "关于我",
@@ -26,5 +26,12 @@
     "bilibili": "https://space.bilibili.com/20269246?spm_id_from=333.1007.0.0",
     "bangumi": "",
     "anilist": ""
+  },
+  "githubStats": {
+    "login": "Error1125",
+    "publicRepos": 4,
+    "followers": 1,
+    "following": 1,
+    "syncedAt": "2026-07-09T06:59:09.599Z"
   }
 }
