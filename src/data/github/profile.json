@@ -1,5 +1,16 @@
 {
-  "generatedAt": null,
-  "profile": null,
-  "reason": "GitHub profile sync unavailable"
+  "generatedAt": "2026-07-10T02:11:40.383Z",
+  "profile": {
+    "login": "Error1125",
+    "avatarUrl": "https://avatars.githubusercontent.com/u/222734808?v=4",
+    "name": "上天入地小松鼠",
+    "bio": null,
+    "url": "https://github.com/Error1125",
+    "publicRepos": 4,
+    "followers": 1,
+    "following": 1,
+    "location": null,
+    "blog": "",
+    "company": null
+  }
 }
