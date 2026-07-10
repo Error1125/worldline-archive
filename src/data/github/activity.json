@@ -1,14 +1,20 @@
 {
   "_note": "由控制台 GitHub 同步生成（真实数据）。",
-  "generatedAt": "2026-07-09T05:18:37.555Z",
+  "generatedAt": "2026-07-10T01:58:08.144Z",
   "activity": [
     {
-      "id": "evt_11491396779",
-      "type": "star",
+      "id": "evt_11592565682",
+      "type": "pull_request",
       "repo": "Error1125/worldline-archive",
-      "title": "Starred Error1125/worldline-archive",
-      "createdAt": "2026-07-08T03:44:58Z",
-      "url": "https://github.com/Error1125/worldline-archive"
+      "title": "pull request",
+      "createdAt": "2026-07-10T01:41:25Z"
+    },
+    {
+      "id": "evt_11592457203",
+      "type": "pull_request",
+      "repo": "Error1125/worldline-archive",
+      "title": "pull request",
+      "createdAt": "2026-07-10T01:36:45Z"
     }
   ]
 }
