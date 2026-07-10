@@ -24,6 +24,9 @@ const STATUS_LABEL: Record<string, string> = {
   paused: "暂停",
   done: "已完成",
   archived: "已归档",
+  active: "活跃维护",
+  completed: "已完成",
+  prototype: "原型",
 };
 
 // 收集出现过的状态与技术栈（带数量）
@@ -40,7 +43,7 @@ const techList = [...techMap.entries()].sort((a, b) => b[1] - a[1]).map(([value,
   <PageHeader
     eyebrow="PROJECTS // 造物记录"
     title="造物档案"
-    subtitle="正在建造、暂停、或已经归档的东西。GitHub 数据目前是 mock，未来接真实 API。"
+    subtitle="正在建造、暂停、或已经归档的东西。技术事实来自 GitHub，同步失败时继续使用站内 content。"
     icon="project"
     class="mb-8"
   />

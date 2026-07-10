@@ -106,7 +106,7 @@ if (latestPhoto) {
     date: formatDate(latestPhoto.data.date),
     href: withBase("/photos"),
     accent: ACCENT.photo,
-    image: withBase(latestPhoto.data.images[0]),
+    image: withBase(typeof latestPhoto.data.images[0] === "string" ? latestPhoto.data.images[0] : latestPhoto.data.images[0].url),
     imageAlt: latestPhoto.data.title,
   });
 }

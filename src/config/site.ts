@@ -32,6 +32,9 @@ export const siteConfig = {
   backgroundNight: settings.backgroundNight,
   defaultCover: settings.defaultCover,
   foundedAt: settings.foundedAt,
+  archiveStartedAt: settings.archiveStartedAt ?? settings.foundedAt,
+  archiveSyncLabel: settings.archiveSyncLabel ?? "archive sync complete",
+  copyrightName: settings.copyrightName ?? profile.author,
   footerBadges: settings.footerBadges,
 
   profile: {
@@ -43,7 +46,16 @@ export const siteConfig = {
     /** 兼容旧字段：世界线基础值改由 worldline.json 提供，此处保留展示串 */
     worldline: "1.048596",
     avatar: profile.avatar,
+    cover: profile.cover,
     bio: profile.bio,
+    aboutTitle: profile.aboutTitle,
+    aboutSubtitle: profile.aboutSubtitle,
+    aboutBody: profile.aboutBody,
+    researchAreas: profile.researchAreas,
+    techStack: profile.techStack,
+    interests: profile.interests,
+    githubUsername: profile.githubUsername,
+    showGithubContributions: profile.showGithubContributions,
   },
 
   links: {

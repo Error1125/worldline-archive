@@ -210,6 +210,7 @@ export async function latestWorkflowRun(env: GitHubEnvLike) {
     conclusion: (r.conclusion ?? null) as string | null,
     createdAt: r.created_at as string,
     url: r.html_url as string,
+    headSha: r.head_sha as string,
   };
 }
 
@@ -225,4 +226,33 @@ export async function fetchOwnerEvents(env: GitHubEnvLike) {
   const res = await gh(env, `/users/${env.GITHUB_OWNER}/events/public?per_page=30`);
   if (!res.ok) return [];
   return (await res.json()) as any[];
+}
+
+export async function fetchOwnerProfile(env: GitHubEnvLike) {
+  const res = await gh(env, `/users/${env.GITHUB_OWNER}`);
+  if (!res.ok) throw new GitHubError("GITHUB_SYNC_FAILED", "拉取 GitHub Profile 失败。", 502);
+  return (await res.json()) as any;
+}
+
+export async function fetchContributionCalendar(env: GitHubEnvLike) {
+  const query = `query($login: String!) {
+    user(login: $login) {
+      contributionsCollection {
+        contributionCalendar {
+          totalContributions
+          weeks { contributionDays { date contributionCount color } }
+        }
+      }
+    }
+  }`;
+  const res = await gh(env, "/graphql", {
+    method: "POST",
+    body: JSON.stringify({ query, variables: { login: env.GITHUB_OWNER } }),
+  });
+  if (!res.ok) throw new GitHubError("GITHUB_CONTRIBUTIONS_FAILED", "拉取 GitHub Contributions 失败。", 502);
+  const data = (await res.json()) as any;
+  if (data.errors?.length) {
+    throw new GitHubError("GITHUB_CONTRIBUTIONS_FAILED", data.errors[0]?.message ?? "GraphQL 查询失败。", 502);
+  }
+  return data.data?.user?.contributionsCollection?.contributionCalendar ?? null;
 }

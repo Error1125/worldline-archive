@@ -121,6 +121,20 @@ async function main() {
     getJson<any[]>(`/users/${USER}/repos?sort=updated&per_page=12&type=owner`),
     getJson<any[]>(`/users/${USER}/events/public?per_page=30`).catch(() => [] as any[]),
   ]);
+  const rawProfile = await getJson<any>(`/users/${USER}`);
+  let contributionCalendar: any = null;
+  if (TOKEN) {
+    const query = `query($login: String!) { user(login: $login) { contributionsCollection { contributionCalendar { totalContributions weeks { contributionDays { date contributionCount color } } } } } }`;
+    const response = await fetch("https://api.github.com/graphql", {
+      method: "POST",
+      headers: { ...headers(), "Content-Type": "application/json" },
+      body: JSON.stringify({ query, variables: { login: USER } }),
+    });
+    if (response.ok) {
+      const json = await response.json() as any;
+      contributionCalendar = json.data?.user?.contributionsCollection?.contributionCalendar ?? null;
+    }
+  }
 
   const reposPayload = {
     _note: "由 scripts/sync-github.ts 生成（真实 GitHub 数据）。",
@@ -135,6 +149,20 @@ async function main() {
 
   await writeFile(resolve(dataDir, "repos.json"), JSON.stringify(reposPayload, null, 2) + "\n", "utf8");
   await writeFile(resolve(dataDir, "activity.json"), JSON.stringify(activityPayload, null, 2) + "\n", "utf8");
+  await writeFile(resolve(dataDir, "profile.json"), JSON.stringify({
+    generatedAt: now,
+    profile: {
+      login: rawProfile.login, avatarUrl: rawProfile.avatar_url, name: rawProfile.name,
+      bio: rawProfile.bio, url: rawProfile.html_url, publicRepos: rawProfile.public_repos,
+      followers: rawProfile.followers, following: rawProfile.following, location: rawProfile.location,
+      blog: rawProfile.blog, company: rawProfile.company,
+    },
+  }, null, 2) + "\n", "utf8");
+  await writeFile(resolve(dataDir, "contributions.json"), JSON.stringify({
+    generatedAt: now,
+    available: Boolean(contributionCalendar),
+    ...(contributionCalendar ? { calendar: contributionCalendar } : { reason: "GitHub contributions sync unavailable (GITHUB_TOKEN required)" }),
+  }, null, 2) + "\n", "utf8");
 
   console.log(`[sync-github] OK：${reposPayload.repos.length} 个仓库、${activityPayload.activity.length} 条动态（用户：${USER}${TOKEN ? "，带 token" : "，匿名"}）。`);
 }
@@ -142,10 +170,12 @@ async function main() {
 main().catch(async (err) => {
   const kept =
     (await fileExists(resolve(dataDir, "repos.json"))) &&
-    (await fileExists(resolve(dataDir, "activity.json")));
+    (await fileExists(resolve(dataDir, "activity.json"))) &&
+    (await fileExists(resolve(dataDir, "profile.json"))) &&
+    (await fileExists(resolve(dataDir, "contributions.json")));
   console.warn(`[sync-github] 拉取失败：${err instanceof Error ? err.message : err}`);
   console.warn(kept
     ? "[sync-github] 已保留现有 JSON，构建继续。"
     : "[sync-github] 警告：本地没有现有 JSON，页面将缺少 GitHub 数据。");
-  process.exit(0); // 永不阻断构建
+  process.exitCode = 0; // 永不阻断构建；让 Windows 上的 fetch handles 自然关闭
 });

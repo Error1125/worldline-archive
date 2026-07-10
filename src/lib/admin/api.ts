@@ -31,6 +31,7 @@ export interface AdminStatus {
     conclusion: string | null;
     createdAt: string;
     url: string;
+    headSha: string;
   } | null;
   /** v5.0.2（§11.5）：Actions 状态读取失败时的权限 / 网络提示（不代表发布失败） */
   latestRunError?: string;

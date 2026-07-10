@@ -1,127 +1,101 @@
 ---
 import { withBase } from "@/lib/paths";
 import SiteLayout from "@/components/layout/SiteLayout.astro";
-import PageHeader from "@/components/common/PageHeader.astro";
 import GlassCard from "@/components/common/GlassCard.astro";
 import Icon from "@/components/common/Icon.astro";
 import { siteConfig } from "@/config/site";
-import { getTimelineItems } from "@/lib/content";
-import { getWorldlineState } from "@/lib/worldline";
+import profileSnapshot from "@/data/github/profile.json";
+import contributionsSnapshot from "@/data/github/contributions.json";
+import repoSnapshot from "@/data/github/repos.json";
 
 const p = siteConfig.profile;
-// v5.0.2（§16.6）：关于页世界线值走引擎，不再读硬编码字符串
-const wlValue = getWorldlineState(await getTimelineItems()).value;
-/** 头像：配置了 avatar URL 则显示图片，否则回退到 user 图标 */
-const avatar = (p.avatar ?? "").trim();
-const stack = ["Astro 5", "TypeScript", "Tailwind CSS v4", "React 19", "MDX", "Motion", "Canvas"];
 const links = siteConfig.links;
+const github = (profileSnapshot as any).profile as any | null;
+const contributionData = contributionsSnapshot as any;
+const calendar = contributionData.available ? contributionData.calendar : null;
+const contributionDays = calendar?.weeks?.flatMap((week: any) => week.contributionDays ?? []) ?? [];
+const avatar = p.avatar || github?.avatarUrl || "";
+const cover = p.cover || "";
+const repos = (repoSnapshot.repos ?? []).slice(0, 4);
 ---
 
-<SiteLayout title="关于" description="关于这个存档点，以及背后的人。">
-  <PageHeader
-    eyebrow="ABOUT // 关于"
-    title="关于这个存档点"
-    subtitle="一个把生活与代码混在一起的地方。既是日记，也是作品集，还是一份写给自己的世界线备份。"
-    icon="about"
-    class="mb-10"
-  />
-
-  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-    <!-- 存档者 -->
-    <GlassCard ticks class="reveal flex flex-col gap-4 p-6">
-      <div class="flex items-center gap-3">
-        <span class="grid size-12 place-items-center overflow-hidden rounded-2xl icon-badge !text-[var(--ia-star)]">
-          {
-            avatar ? (
-              <img
-                class="avatar-img"
-                src={withBase(avatar)}
-                alt={siteConfig.author}
-                width={48}
-                height={48}
-                loading="lazy"
-                decoding="async"
-              />
-            ) : (
-              <Icon name="user" size={24} />
-            )
-          }
+<SiteLayout title={p.aboutTitle || "关于我"} description={p.aboutSubtitle || p.bio}>
+  <section class="reveal overflow-hidden rounded-3xl border border-[var(--ia-line)] bg-[var(--ia-panel)]">
+    <div class="h-36 bg-[linear-gradient(125deg,color-mix(in_srgb,var(--ia-neon)_24%,transparent),color-mix(in_srgb,var(--ia-nebula)_28%,transparent))] sm:h-48">
+      {cover && <img src={withBase(cover)} alt="" class="h-full w-full object-cover" />}
+    </div>
+    <div class="px-5 pb-6 sm:px-8">
+      <div class="-mt-10 flex flex-col gap-4 sm:-mt-12 sm:flex-row sm:items-end">
+        <span class="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl border-4 border-[var(--ia-bg)] bg-[var(--ia-panel)] sm:size-24">
+          {avatar ? <img src={withBase(avatar)} alt={siteConfig.author} class="h-full w-full object-cover" /> : <Icon name="user" size={36} />}
         </span>
-        <div>
-          <div class="text-lg font-semibold text-[var(--ia-ink)]">{siteConfig.author}</div>
-          <div class="mono text-xs text-[var(--ia-neon)]">{p.handle}</div>
+        <div class="min-w-0 pb-1">
+          <h1 class="text-2xl font-bold text-[var(--ia-ink)]">{siteConfig.author}</h1>
+          <p class="mono text-sm text-[var(--ia-neon)]">{p.handle}</p>
+        </div>
+        <div class="flex flex-wrap gap-3 sm:ml-auto sm:pb-2">
+          {links.github && <a href={links.github} target="_blank" rel="noopener noreferrer" class="clickable inline-flex items-center gap-1.5 text-xs text-[var(--ia-mist)] hover:text-[var(--ia-neon)]"><Icon name="github" size={14} /> GitHub</a>}
+          {links.email && <a href={links.email.startsWith("mailto:") ? links.email : `mailto:${links.email}`} class="clickable text-xs text-[var(--ia-mist)] hover:text-[var(--ia-neon)]">Email</a>}
+          {links.bilibili && <a href={links.bilibili} target="_blank" rel="noopener noreferrer" class="clickable text-xs text-[var(--ia-mist)] hover:text-[var(--ia-neon)]">Bilibili</a>}
         </div>
       </div>
-      <p class="text-sm leading-relaxed text-[var(--ia-mist)]">{p.signature}</p>
-      {p.bio && <p class="text-sm leading-relaxed text-[var(--ia-mist)]">{p.bio}</p>}
-      <div class="flex flex-wrap gap-3 pt-1">
-        {
-          links.github && (
-            <a href={links.github} target="_blank" rel="noopener noreferrer" class="clickable inline-flex items-center gap-1.5 mono text-xs text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-neon)]">
-              <Icon name="github" size={14} /> GitHub
-            </a>
-          )
-        }
-        {
-          links.email && (
-            <a href={links.email} class="clickable inline-flex items-center gap-1.5 mono text-xs text-[var(--ia-mist)] transition-colors hover:text-[var(--ia-neon)]">
-              <Icon name="sparkle" size={14} /> Email
-            </a>
-          )
-        }
-      </div>
+      <p class="mt-4 max-w-3xl text-sm leading-7 text-[var(--ia-mist)]">{p.bio}</p>
+    </div>
+  </section>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-[1.2fr_.8fr]">
+    <GlassCard class="reveal p-6">
+      <span class="eyebrow">ABOUT ME</span>
+      <h2 class="mt-2 text-xl font-bold text-[var(--ia-ink)]">{p.aboutTitle}</h2>
+      <p class="mt-1 text-sm text-[var(--ia-neon)]">{p.aboutSubtitle}</p>
+      <p class="mt-4 whitespace-pre-line text-sm leading-7 text-[var(--ia-mist)]">{p.aboutBody}</p>
     </GlassCard>
-
-    <!-- 关于站点 -->
-    <div class="flex flex-col gap-6">
-      <GlassCard class="reveal flex flex-col gap-3 p-6">
-        <span class="eyebrow">STACK // 技术栈</span>
-        <div class="flex flex-wrap gap-2">
-          {stack.map((s) => <span class="tag-chip">{s}</span>)}
-        </div>
-        <p class="mt-1 text-sm leading-relaxed text-[var(--ia-mist)]">
-          纯静态站点，内容用 Content Collections 管理，特效走轻量 React islands。
-          追求「有灵魂」而不是堆功能：深夜、星光、毛玻璃、终端与档案馆的气质。
-        </p>
-      </GlassCard>
-
-      <GlassCard class="reveal flex flex-col gap-3 p-6">
-        <span class="eyebrow">PRINCIPLES // 一些原则</span>
-        <ul class="flex flex-col gap-2 text-sm text-[var(--ia-mist)]">
-          <li class="flex gap-2"><span class="text-[var(--ia-neon)]">▹</span> 生活记录和开发记录混在一起，不刻意分开。</li>
-          <li class="flex gap-2"><span class="text-[var(--ia-neon)]">▹</span> 照片只放占位图，不暴露 EXIF 与地理信息。</li>
-          <li class="flex gap-2"><span class="text-[var(--ia-neon)]">▹</span> 音乐只写原创氛围短句，不搬运真实歌词。</li>
-          <li class="flex gap-2"><span class="text-[var(--ia-neon)]">▹</span> 像是在给自己的世界线做一次存档。</li>
-        </ul>
-      </GlassCard>
+    <div class="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+      {[
+        ["RESEARCH", p.researchAreas],
+        ["TECH STACK", p.techStack],
+        ["INTERESTS", p.interests],
+      ].map(([label, items]) => (
+        <GlassCard class="reveal p-4">
+          <span class="mono text-[10px] tracking-wider text-[var(--ia-mist)]">{label as string}</span>
+          <div class="mt-2 flex flex-wrap gap-1.5">{(items as readonly string[]).map((item) => <span class="tag-chip">{item}</span>)}</div>
+        </GlassCard>
+      ))}
     </div>
   </div>
 
-  <!-- v5.0 低调控制台入口：仅登录后（wl-admin-hint）可见；权限在后端校验 -->
-  <div class="mt-12 flex items-center justify-center gap-4 border-t border-[var(--ia-line)] pt-6 mono text-[11px] text-[var(--ia-mist)] opacity-60">
-    <span class="diamond">worldline {wlValue}</span>
-    <a
-      id="wl-console-entry-about"
-      href={withBase("/admin/dashboard")}
-      class="clickable hidden items-center gap-1 transition-opacity hover:opacity-100"
-    >
-      <Icon name="lock" size={11} /> 观测台 / console
-    </a>
-    <script is:inline>
-      (function () {
-        function apply() {
-          var el = document.getElementById("wl-console-entry-about");
-          if (!el) return;
-          var on = false;
-          try {
-            on = localStorage.getItem("wl-admin-hint") === "1";
-          } catch (e) {}
-          el.classList.toggle("hidden", !on);
-          el.classList.toggle("inline-flex", on);
-        }
-        apply();
-        document.addEventListener("astro:after-swap", apply);
-      })();
-    </script>
+  {p.showGithubContributions && (
+    <GlassCard class="reveal mt-6 overflow-hidden p-5 sm:p-6">
+      <div class="flex flex-wrap items-end justify-between gap-2">
+        <div><span class="eyebrow">GITHUB CONTRIBUTIONS</span><h2 class="mt-1 text-lg font-bold text-[var(--ia-ink)]">代码贡献轨迹</h2></div>
+        {calendar && <span class="mono text-xs text-[var(--ia-mist)]">{calendar.totalContributions} contributions</span>}
+      </div>
+      {calendar ? (
+        <div class="mt-5 overflow-x-auto pb-2">
+          <div class="contribution-grid min-w-[720px]" aria-label={`GitHub contributions: ${calendar.totalContributions}`}>
+            {contributionDays.map((day: any) => <span title={`${day.date}: ${day.contributionCount}`} style={`background:${day.color || "var(--ia-line)"}`} />)}
+          </div>
+          <div class="mt-2 flex items-center justify-end gap-1 mono text-[10px] text-[var(--ia-mist)]"><span>Less</span>{[0,1,2,3,4].map((n) => <i style={`opacity:${.2 + n * .2}`} />)}<span>More</span></div>
+        </div>
+      ) : (
+        <p class="mt-4 rounded-xl border border-[var(--ia-line)] p-4 text-sm text-[var(--ia-mist)]">GitHub contributions sync unavailable。请在 Admin 执行 GitHub 同步，并确保 Worker Token 可读取 GraphQL contributions。</p>
+      )}
+    </GlassCard>
+  )}
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-2">
+    <GlassCard class="reveal p-5">
+      <span class="eyebrow">GITHUB PROFILE</span>
+      {github ? <div class="mt-3 grid grid-cols-3 gap-3 text-center">{[["Repos", github.publicRepos], ["Followers", github.followers], ["Following", github.following]].map(([label, value]) => <div class="rounded-xl border border-[var(--ia-line)] p-3"><strong class="block text-lg text-[var(--ia-ink)]">{value}</strong><span class="mono text-[10px] text-[var(--ia-mist)]">{label}</span></div>)}</div> : <p class="mt-3 text-sm text-[var(--ia-mist)]">GitHub profile sync unavailable</p>}
+    </GlassCard>
+    <GlassCard class="reveal p-5">
+      <span class="eyebrow">RECENT REPOSITORIES</span>
+      <div class="mt-3 flex flex-col divide-y divide-[var(--ia-line)]">{repos.map((repo) => <a href={repo.url} target="_blank" rel="noopener noreferrer" class="clickable flex items-center justify-between gap-3 py-2.5 text-sm"><span class="truncate text-[var(--ia-ink)]">{repo.repo}</span><span class="mono shrink-0 text-[10px] text-[var(--ia-mist)]">★ {repo.stars} · {repo.language || "—"}</span></a>)}</div>
+    </GlassCard>
   </div>
 </SiteLayout>
+
+<style>
+  .contribution-grid { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 11px); grid-auto-columns: 11px; gap: 3px; }
+  .contribution-grid span, .contribution-grid + div i { width: 11px; height: 11px; border-radius: 2px; background: var(--ia-neon); }
+</style>

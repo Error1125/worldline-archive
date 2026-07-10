@@ -7,7 +7,7 @@ import { getPhotos } from "@/lib/content";
 
 /**
  * Photos 页面（v4.3）—— 照片墙 / 相册入口。
- * masonry 瀑布流 + 相册（album）筛选；点击任意卡片打开全站 Lightbox。
+ * masonry 相册墙 + album 筛选；每张卡片代表一个 Album，并进入真实详情路由。
  */
 const photos = await getPhotos();
 
@@ -24,7 +24,7 @@ const albums = [...albumMap.entries()].map(([value, count]) => ({ value, count }
   <PageHeader
     eyebrow="PHOTOS // 相册"
     title="屏幕之外"
-    subtitle="夜空观测、城市漫游、与一些离线的日常。第一版全部是占位图，不含真实照片与 EXIF。"
+    subtitle="每个照片堆栈都是一册独立 Album；进入详情可浏览整组照片、说明与地点。"
     icon="photo"
     class="mb-8"
   />

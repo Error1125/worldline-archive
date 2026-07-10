@@ -8,5 +8,8 @@
   "backgroundNight": "",
   "defaultCover": "",
   "foundedAt": "2025-06-01",
-  "footerBadges": ["Astro", "GitHub Pages", "Worldline OS"]
+  "archiveStartedAt": "2025-06-01",
+  "archiveSyncLabel": "archive sync complete",
+  "copyrightName": "Traveler",
+  "footerBadges": ["Astro", "React", "Tailwind"]
 }

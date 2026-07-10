@@ -78,11 +78,17 @@ function checkNumMap(v: unknown, label: string, out: string[]) {
 
 function validateProfile(d: Obj): string[] {
   const out: string[] = [];
-  for (const k of ["author", "handle", "signature", "status", "mood", "coordinate", "bio"]) {
+  for (const k of ["author", "handle", "signature", "status", "mood", "coordinate", "bio", "aboutTitle", "aboutSubtitle", "aboutBody", "githubUsername"]) {
     checkStr(d, k, out);
   }
   checkStr(d, "author", out, true);
   checkUrl(d, "avatar", out);
+  checkUrl(d, "cover", out);
+  for (const key of ["researchAreas", "techStack", "interests"]) {
+    const value = d[key];
+    if (value !== undefined && (!Array.isArray(value) || value.some((item) => !isStr(item)))) out.push(`${key} 必须是字符串数组`);
+  }
+  if (d.showGithubContributions !== undefined && typeof d.showGithubContributions !== "boolean") out.push("showGithubContributions 必须是布尔值");
   const links = d.links;
   if (links !== undefined && links !== null) {
     if (Array.isArray(links)) {
@@ -108,7 +114,7 @@ function validateProfile(d: Obj): string[] {
 
 function validateSite(d: Obj): string[] {
   const out: string[] = [];
-  for (const k of ["title", "subtitle", "description", "heroTagline", "language", "foundedAt"]) {
+  for (const k of ["title", "subtitle", "description", "heroTagline", "language", "foundedAt", "archiveStartedAt", "archiveSyncLabel", "copyrightName"]) {
     checkStr(d, k, out);
   }
   checkStr(d, "title", out, true);
@@ -126,6 +132,9 @@ function validateSite(d: Obj): string[] {
   }
   if (isStr(d.foundedAt) && d.foundedAt && !/^\d{4}-\d{2}-\d{2}$/.test(d.foundedAt as string)) {
     out.push("foundedAt 必须是 YYYY-MM-DD 格式");
+  }
+  if (isStr(d.archiveStartedAt) && d.archiveStartedAt && !/^\d{4}-\d{2}-\d{2}$/.test(d.archiveStartedAt as string)) {
+    out.push("archiveStartedAt 必须是 YYYY-MM-DD 格式");
   }
   return out;
 }

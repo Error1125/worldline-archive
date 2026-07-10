@@ -167,6 +167,7 @@ export const RECORD_TYPES: RecordTypeDef[] = [
         required: true,
         help: "至少 1 张；≥3 张享受相册加成 ×1.2",
       },
+      { name: "captions", label: "图片说明（与图片顺序一致）", kind: "tags", help: "逐条添加，可留空；发布时与图片 URL 合并为 Album images。" },
       { name: "album", label: "相册名（可选）", kind: "text" },
       { name: "description", label: "描述（可选）", kind: "textarea", rows: 2 },
       { name: "location", label: "地点（可选）", kind: "text" },
@@ -268,6 +269,7 @@ export const RECORD_TYPES: RecordTypeDef[] = [
     fields: [
       { name: "title", label: "作品名", kind: "text", required: true },
       { name: "titleJP", label: "日文原名（可选）", kind: "text" },
+      { name: "titleCn", label: "中文标题（可选）", kind: "text" },
       { name: "date", label: "记录日期", kind: "date", required: true },
       {
         name: "status",
@@ -288,6 +290,8 @@ export const RECORD_TYPES: RecordTypeDef[] = [
       { name: "currentEpisode", label: "当前进度（可选）", kind: "number", min: 0, step: 1 },
       { name: "season", label: "季度（可选）", kind: "text", placeholder: "如 2026冬" },
       { name: "year", label: "年份（可选）", kind: "number", min: 1960, max: 2100, step: 1 },
+      { name: "studio", label: "制作公司", kind: "tags" },
+      { name: "genres", label: "类型", kind: "tags" },
       { name: "thoughts", label: "短评（可选）", kind: "textarea", rows: 2 },
       { name: "externalUrl", label: "外部条目 URL（可选）", kind: "text" },
       ...coverFields,
