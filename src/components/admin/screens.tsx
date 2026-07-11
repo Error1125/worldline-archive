@@ -931,10 +931,25 @@ export function PublishFormScreen({
   const [animeError, setAnimeError] = useState<string | null>(null);
   const [selectedRepo, setSelectedRepo] = useState("");
 
+  useEffect(() => {
+    if (def?.type !== "project" || new URLSearchParams(location.search).get("repoDraft") !== "1") return;
+    try {
+      const raw = sessionStorage.getItem("wl-project-repo-draft");
+      if (!raw) return;
+      const draft = JSON.parse(raw) as { title?: string; description?: string; repo?: string; github?: { owner?: string; repo?: string } };
+      if (!draft.github?.owner || !draft.github.repo) return;
+      setState((current) => ({ ...current, title: current.title || draft.title || "", description: current.description || draft.description || "", repo: current.repo || draft.repo || "", github: { owner: draft.github!.owner, repo: draft.github!.repo } }));
+      sessionStorage.removeItem("wl-project-repo-draft");
+      setNoticeMsg("已创建 Project Draft：只预填 GitHub owner / repo，不写入 stars、forks 或 language。");
+    } catch { /* storage unavailable */ }
+  }, [def]);
+
   /* ---- 部署状态轮询（§8：commit 后拆分 deploy / frontend） ---- */
   const [deployStatus, setDeployStatus] = useState<api.AdminStatus | null>(null);
   const [frontendState, setFrontendState] = useState<"idle" | "checking" | "live" | "not-ready">("idle");
   const [slowHint, setSlowHint] = useState(false);
+  const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const pollTimerRef = useRef<number | null>(null);
 
   /* ---- 草稿恢复（?draft=<id>，§9） ---- */
@@ -988,23 +1003,35 @@ export function PublishFormScreen({
     };
   }, [state, body, def, draftId, result]);
 
-  /* ---- commit 成功后轮询部署状态（20s 一次，最多 12 分钟） ---- */
+  /* ---- commit 成功后轮询部署状态（严格按本次 SHA，每 8 秒，最多 15 分钟） ---- */
   useEffect(() => {
     if (!result) return;
     setSlowHint(false);
+    setStatusError(null);
     const slowTimer = window.setTimeout(() => setSlowHint(true), 90_000);
-    const load = () => api.getStatus().then(setDeployStatus).catch(() => {});
+    const load = () => api.getStatus({ sha: result.commitSha }).then((status) => {
+      setDeployStatus(status);
+      setLastCheckedAt(new Date().toLocaleTimeString());
+      setStatusError(null);
+    }).catch(() => setStatusError("无法刷新部署状态，请检查网络后重新检查。"));
     load();
-    pollTimerRef.current = window.setInterval(load, 20_000);
+    pollTimerRef.current = window.setInterval(load, 8_000);
+    const refreshNow = () => void load();
+    document.addEventListener("visibilitychange", refreshNow);
+    window.addEventListener("focus", refreshNow);
+    window.addEventListener("online", refreshNow);
     const killTimer = window.setTimeout(() => {
       if (pollTimerRef.current) window.clearInterval(pollTimerRef.current);
       pollTimerRef.current = null;
-    }, 12 * 60_000);
+    }, 15 * 60_000);
     return () => {
       if (pollTimerRef.current) window.clearInterval(pollTimerRef.current);
       pollTimerRef.current = null;
       window.clearTimeout(slowTimer);
       window.clearTimeout(killTimer);
+      document.removeEventListener("visibilitychange", refreshNow);
+      window.removeEventListener("focus", refreshNow);
+      window.removeEventListener("online", refreshNow);
     };
   }, [result]);
 
@@ -1037,13 +1064,19 @@ export function PublishFormScreen({
       setFrontendState("checking");
       try {
         const separator = result.htmlPath!.includes("?") ? "&" : "?";
+        const summaryResponse = await fetch(`${siteBase}/data/summary.json?deploy=${result.commitSha.slice(0, 8)}`, { cache: "no-store" });
+        const summary = await summaryResponse.json().catch(() => null) as { buildSha?: string } | null;
+        if (!summary?.buildSha || summary.buildSha !== result.commitSha) {
+          if (!cancelled) setFrontendState("not-ready");
+          return;
+        }
         const response = await fetch(`${siteBase}${result.htmlPath}${separator}deploy=${result.commitSha.slice(0, 8)}`, {
           method: "GET",
           cache: "no-store",
           credentials: "same-origin",
         });
         if (!cancelled) {
-          const live = response.status === 200;
+          const live = response.status === 200 && summary.buildSha === result.commitSha;
           setFrontendState(live ? "live" : "not-ready");
           if (live && timer) window.clearInterval(timer);
         }
@@ -1130,13 +1163,9 @@ export function PublishFormScreen({
       title: current.title || repo.repo,
       description: current.description || repo.description,
       repo: repo.url,
-      techStack: repo.language ? Array.from(new Set([...((current.techStack as string[]) ?? []), repo.language])) : current.techStack,
-      github: {
-        owner: repo.owner, repo: repo.repo, stars: repo.stars, forks: repo.forks,
-        language: repo.language, lastCommitAt: repo.lastCommitAt, topics: repo.topics,
-      },
+      github: { owner: repo.owner, repo: repo.repo },
     }));
-    setNoticeMsg("已载入 GitHub 仓库事实字段。只有发布此项目后才会在 Projects 展示，不会自动公开全部仓库。");
+    setNoticeMsg("已关联 GitHub 仓库。stars、forks、language 等技术事实仅从 repos.json 快照读取。");
   };
 
   const importMarkdown = async (file?: File) => {
@@ -1311,10 +1340,12 @@ export function PublishFormScreen({
               <button
                 type="button"
                 className="clickable inline-flex items-center gap-1 underline"
-                onClick={() => api.getStatus().then(setDeployStatus).catch(() => {})}
+                onClick={() => result && api.getStatus({ sha: result.commitSha }).then((status) => { setDeployStatus(status); setLastCheckedAt(new Date().toLocaleTimeString()); setStatusError(null); }).catch(() => setStatusError("无法刷新部署状态，请稍后重试。"))}
               >
                 <AdminIcon name="refresh" size={11} /> 稍后刷新状态
               </button>
+              {lastCheckedAt && <span className="mono text-[11px] text-[var(--ia-mist)]">最后成功检查：{lastCheckedAt}</span>}
+              {statusError && <span className="text-xs text-[var(--ia-warning)]">{statusError}</span>}
             </span>
           </div>
         ),
@@ -2388,4 +2419,28 @@ export function SettingsWorldlineScreen() {
       )}
     </SettingsShell>
   );
+}
+
+export function ProjectsManagerScreen({ siteBase }: { siteBase: string }) {
+  const [data, setData] = useState<api.ProjectsOverview | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const load = () => api.projectsOverview().then(setData).catch((e) => setError(e instanceof Error ? e.message : "读取项目失败"));
+  useEffect(() => { load(); }, []);
+  const setVisibility = async (slug: string, visibility: string) => { setBusy(slug); try { await api.setProjectVisibility(slug, visibility); await load(); } catch (e) { setError(e instanceof Error ? e.message : "保存失败"); } finally { setBusy(null); } };
+  const draftFromRepo = (repo: api.ProjectsOverview["repos"][number]) => {
+    sessionStorage.setItem("wl-project-repo-draft", JSON.stringify({ title: repo.repo, description: repo.description ?? "", github: { owner: repo.owner, repo: repo.repo }, repo: repo.url }));
+    location.href = `${siteBase}/admin/publish/project?repoDraft=1`;
+  };
+  return <div className="mx-auto max-w-[1100px] space-y-8 pb-20"><div><h2 className="text-lg font-bold">Projects Manager</h2><p className="text-xs text-[var(--ia-mist)]">GitHub 技术事实只读快照；创建草稿只预填 owner / repo。</p></div>{error && <ErrorBox>{error}</ErrorBox>}
+    <section className="space-y-3"><h3 className="eyebrow">GITHUB REPOSITORIES</h3>{data ? <div className="grid gap-3 sm:grid-cols-2">{data.repos.map((repo) => <div className="rounded-xl border border-[var(--ia-line)] p-4" key={`${repo.owner}/${repo.repo}`}><b>{repo.owner}/{repo.repo}</b><p className="mt-1 line-clamp-2 text-xs text-[var(--ia-mist)]">{repo.description || "无描述"}</p><Btn kind="ghost" className="mt-3" onClick={() => draftFromRepo(repo)}>创建 Project Draft</Btn></div>)}</div> : <Spinner />}</section>
+    <section className="space-y-3"><h3 className="eyebrow">SITE PROJECTS</h3>{data ? <div className="space-y-2">{data.projects.map((project) => <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--ia-line)] p-3" key={project.slug}><div className="min-w-40 flex-1"><b>{project.title}</b><span className="ml-2 mono text-[11px] text-[var(--ia-mist)]">{project.github ? `${project.github.owner}/${project.github.repo}` : "无关联 repo"}</span></div><select aria-label={`${project.title} visibility`} value={project.visibility} disabled={busy === project.slug} onChange={(e) => void setVisibility(project.slug, e.target.value)} className="rounded border border-[var(--ia-line)] bg-transparent px-2 py-1 text-xs"><option value="public">public</option><option value="unlisted">unlisted</option><option value="hidden">hidden</option><option value="private">private</option></select>{project.concept && <span className="mono text-[10px] text-[var(--ia-warning)]">CONCEPT</span>}</div>)}</div> : null}</section></div>;
+}
+
+export function SettingsBangumiScreen() {
+  const hook = useSettings<Record<string, any>>("bangumi"); const d = hook.data;
+  const [syncing, setSyncing] = useState(false); const [result, setResult] = useState<api.BangumiSyncResult | null>(null); const [syncError, setSyncError] = useState<string | null>(null);
+  const toggle = (scope: string) => hook.setData({ ...d!, syncScopes: (d!.syncScopes ?? []).includes(scope) ? d!.syncScopes.filter((item: string) => item !== scope) : [...(d!.syncScopes ?? []), scope] });
+  const sync = async () => { setSyncing(true); setSyncError(null); try { setResult(await api.bangumiSync()); } catch (e) { setSyncError(e instanceof Error ? e.message : "同步失败"); } finally { setSyncing(false); } };
+  return <SettingsShell title="Bangumi 同步" desc="Token 不会也不能在前端输入；如需私有收藏，请使用 Worker Secret BANGUMI_TOKEN。" hook={hook}>{d && <><section className="space-y-4 rounded-xl border border-[var(--ia-line)] p-4"><TextRow label="Bangumi 用户名" value={d.username ?? ""} onChange={(username) => hook.setData({ ...d, username })} /><div><span className="text-xs">同步范围</span><div className="mt-2 flex flex-wrap gap-3">{["watching", "planned", "completed", "paused", "dropped"].map((scope) => <OptRow key={scope} label={scope} checked={(d.syncScopes ?? []).includes(scope)} onChange={() => toggle(scope)} />)}</div></div><Field label="同步频率"><select value={d.schedule ?? "manual"} onChange={(e) => hook.setData({ ...d, schedule: e.target.value })} className="w-full rounded border border-[var(--ia-line)] bg-transparent p-2"><option value="manual">仅手动</option><option value="6h">每 6 小时</option><option value="daily">每天一次</option></select></Field><Notice tone="neon">请在 Worker 环境执行 `wrangler secret put BANGUMI_TOKEN`；此页面不会保存 Token。</Notice><Btn kind="primary" onClick={() => void sync()} disabled={syncing}>{syncing ? <Spinner /> : "立即同步"}</Btn>{syncError && <ErrorBox>{syncError}</ErrorBox>}{result && <Notice tone="success">{result.message}（扫描 {result.scanned}，新增 {result.created}，更新 {result.updated}）</Notice>}</section></>}</SettingsShell>;
 }

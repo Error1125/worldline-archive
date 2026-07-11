@@ -4,24 +4,35 @@ import GlassCard from "@/components/common/GlassCard.astro";
 import TagList from "@/components/common/TagList.astro";
 import StatusBadge from "@/components/common/StatusBadge.astro";
 import Icon from "@/components/common/Icon.astro";
+import { withBase } from "@/lib/paths";
 
 interface Props {
   entry: CollectionEntry<"anime">;
 }
 const { entry } = Astro.props;
-const { title, titleJP, status, score, episodes, currentEpisode, cover, tags, thoughts, year, season } =
+const { title, titleJP, titleCn, status, score, siteScore, bangumiUserRate, bangumiCommunityScore, bangumiRate, episodes, currentEpisode, cover, tags, thoughts, year, season, externalLinks, externalIds } =
   entry.data;
+const detailHref = withBase(`/anime/${entry.id}`);
+const displayTitle = titleCn?.trim() || title;
+const subTitle = titleJP || (displayTitle !== title ? title : undefined);
+const personalScore = siteScore ?? score;
+const communityScore = bangumiCommunityScore ?? bangumiRate;
+const bangumiId = externalIds?.bangumi;
+const anilistId = externalIds?.anilist;
+const bangumiUrl = externalLinks?.bangumi || (bangumiId !== undefined ? `https://bgm.tv/subject/${bangumiId}` : undefined);
+const anilistUrl = externalLinks?.anilist || (anilistId !== undefined ? `https://anilist.co/anime/${anilistId}` : undefined);
 
 // 无封面时用标题首字生成一个稳定的渐变占位
-const initial = title.trim().charAt(0);
-const hueSeed = [...title].reduce((a, c) => a + c.charCodeAt(0), 0);
+const initial = displayTitle.trim().charAt(0);
+const hueSeed = [...displayTitle].reduce((a, c) => a + c.charCodeAt(0), 0);
 const hueA = hueSeed % 360;
 const hueB = (hueSeed * 3 + 120) % 360;
 ---
 
-<GlassCard class="group flex flex-col gap-3 p-4">
+<GlassCard class="group card-interactive relative flex flex-col gap-3 p-4">
+  <a href={detailHref} class="card-link-overlay" aria-label={`查看《${displayTitle}》详情`}></a>
   <!-- 封面 -->
-  <div class="relative aspect-[16/10] overflow-hidden rounded-xl border border-[var(--ia-line)]">
+  <div class="relative aspect-[16/10] overflow-hidden rounded-xl border border-[var(--ia-line)]" transition:name={`anime-cover-${entry.id}`}>
     {
       cover ? (
         <img
@@ -45,9 +56,9 @@ const hueB = (hueSeed * 3 + 120) % 360;
       <StatusBadge domain="anime" status={status} />
     </div>
     {
-      typeof score === "number" && (
+      typeof personalScore === "number" && (
         <div class="absolute right-2 top-2 flex items-center gap-1 rounded-full border border-[var(--ia-line-strong)] bg-black/45 px-2 py-0.5 mono text-[11px] text-[var(--ia-warning)] backdrop-blur">
-          <Icon name="star" size={11} /> {score.toFixed(1)}
+          <Icon name="star" size={11} /> {personalScore.toFixed(1)}
         </div>
       )
     }
@@ -55,9 +66,9 @@ const hueB = (hueSeed * 3 + 120) % 360;
 
   <div class="min-w-0">
     <h3 class="truncate text-sm font-semibold text-[var(--ia-ink)] transition-colors group-hover:text-[var(--ia-star)]">
-      {title}
+      {displayTitle}
     </h3>
-    {titleJP && <p class="truncate mono text-[11px] text-[var(--ia-mist)]">{titleJP}</p>}
+    {subTitle && <p class="truncate mono text-[11px] text-[var(--ia-mist)]">{subTitle}</p>}
   </div>
 
   {thoughts && <p class="line-clamp-2 text-xs leading-relaxed text-[var(--ia-mist)]">{thoughts}</p>}
@@ -72,7 +83,12 @@ const hueB = (hueSeed * 3 + 120) % 360;
             : ""
       }
     </span>
-    <span>{[season, year].filter(Boolean).join(" · ")}</span>
+    <span class="relative z-10 flex items-center gap-1.5">
+      {(typeof bangumiUserRate === "number" || typeof communityScore === "number") && <span title="Bangumi 评分">bgm {(bangumiUserRate ?? communityScore)?.toFixed(1)}</span>}
+      <span>{[season, year].filter(Boolean).join(" · ")}</span>
+      {bangumiUrl && <a href={bangumiUrl} target="_blank" rel="noopener noreferrer" class="card-ext-link clickable" aria-label={`在 Bangumi 打开《${displayTitle}》`}>B</a>}
+      {anilistUrl && <a href={anilistUrl} target="_blank" rel="noopener noreferrer" class="card-ext-link clickable" aria-label={`在 AniList 打开《${displayTitle}》`}>A</a>}
+    </span>
   </div>
 
   {tags.length > 0 && <TagList tags={tags} max={3} />}

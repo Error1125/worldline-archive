@@ -59,10 +59,19 @@ const searchPayload = {
 ---
 
 <!doctype html>
-<html lang={siteConfig.language}>
+<html lang={siteConfig.language} data-wl-home={home ? "true" : "false"}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline>
+      (function () {
+        var isHome = document.documentElement.dataset.wlHome === "true";
+        var shouldBoot = false;
+        try { shouldBoot = isHome && !sessionStorage.getItem("wl-loader-played") && !matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { shouldBoot = isHome; }
+        document.documentElement.dataset.loaderState = shouldBoot ? "pending" : "complete";
+        if (shouldBoot) window.setTimeout(function () { if (document.documentElement.dataset.loaderState !== "complete") document.documentElement.dataset.loaderState = "complete"; }, 5000);
+      })();
+    </script>
     <script is:inline>
       // 无闪烁昼夜模式（全站持久化）：
       // 1) paint 前依据 localStorage 设定 html[data-scene-mode]（默认 night）；
@@ -94,6 +103,7 @@ const searchPayload = {
   </head>
 
   <body class="min-h-screen text-[var(--ia-ink)] antialiased">
+    <div id="wl-boot" aria-hidden="true"><span class="mono">WORLDLINE ARCHIVE</span><i></i></div>
     <!-- 背景层：星云渐变（z-0），路由间持久化，避免闪烁 -->
     <div class="ia-nebula" transition:persist="nebula" aria-hidden="true"></div>
 
@@ -114,6 +124,7 @@ const searchPayload = {
     <!-- 路由进场扫光条（由 PageEnter 触发 .run） -->
     <div class="page-sweep" aria-hidden="true"></div>
 
+    <div class="wl-app">
     <Header home={home} />
 
     <main
@@ -135,6 +146,7 @@ const searchPayload = {
 
     <!-- 移动端「全部入口」放射菜单（桌面隐藏；持久化避免路由闪烁） -->
     <MobileRadialMenu client:only="react" transition:persist="radial" />
+    </div>
 
     <!-- 全站单例 Lightbox（照片墙点击放大；由下方脚本控制，默认隐藏） -->
     <div id="wl-lightbox" class="lightbox" data-open="false" role="dialog" aria-modal="true" aria-label="图片预览">
@@ -300,6 +312,7 @@ const searchPayload = {
           } catch {}
         }
         let query = (searchInput?.value || "").trim().toLowerCase();
+        let searchTimer = 0;
 
         function itemMatches(el: HTMLElement): boolean {
           for (const key of Object.keys(state)) {
@@ -317,10 +330,18 @@ const searchPayload = {
         }
 
         function apply() {
+          const before = new Map(items.map((item) => [item, item.getBoundingClientRect()]));
           let visible = 0;
           for (const el of items) {
             const ok = itemMatches(el);
-            el.hidden = !ok;
+            if (ok) {
+              el.hidden = false;
+              el.dataset.filterState = "entering";
+              requestAnimationFrame(() => { el.dataset.filterState = "shown"; });
+            } else if (!el.hidden) {
+              el.dataset.filterState = "leaving";
+              window.setTimeout(() => { if (el.dataset.filterState === "leaving") el.hidden = true; }, reduceMotion ? 0 : 190);
+            }
             if (ok) visible++;
           }
           // 分组：无可见条目则隐藏整组
@@ -333,6 +354,19 @@ const searchPayload = {
             const label = countLine.dataset.filterCountLabel || "records";
             countLine.textContent = `${visible} ${label}`;
           }
+          if (!reduceMotion) requestAnimationFrame(() => {
+            items.forEach((item, index) => {
+              const old = before.get(item); const next = item.getBoundingClientRect();
+              if (!old || item.hidden) return;
+              const dx = old.left - next.left; const dy = old.top - next.top;
+              if (dx || dy) {
+                item.style.transition = "none";
+                item.style.transform = `translate(${dx}px, ${dy}px)`;
+                requestAnimationFrame(() => { item.style.transition = "transform var(--motion-base) var(--ease-spring-soft)"; item.style.transform = ""; });
+              }
+              item.style.setProperty("--filter-index", String(Math.min(index, 12)));
+            });
+          });
         }
 
         function sortNodes(dir: "newest" | "oldest") {
@@ -375,8 +409,8 @@ const searchPayload = {
 
         if (searchInput) {
           searchInput.addEventListener("input", () => {
-            query = searchInput.value.trim().toLowerCase();
-            apply();
+            window.clearTimeout(searchTimer);
+            searchTimer = window.setTimeout(() => { query = searchInput.value.trim().toLowerCase(); apply(); }, reduceMotion ? 0 : 100);
           });
         }
         if (sortSelect) {
@@ -411,11 +445,14 @@ const searchPayload = {
         let images: string[] = [];
         let captions: string[] = [];
         let idx = 0;
+        let triggerEl: HTMLElement | null = null;
 
         function render() {
           if (!images.length) return;
           idx = (idx + images.length) % images.length;
           imgEl.src = images[idx];
+          imgEl.alt = titleEl.textContent || "图片预览";
+          imgEl.classList.remove("is-error", "is-next", "is-prev");
           descEl.textContent = captions[idx] || "";
           descEl.style.display = captions[idx] ? "block" : "none";
           counterEl.textContent = `${idx + 1} / ${images.length}`;
@@ -432,6 +469,7 @@ const searchPayload = {
             captions = [];
           }
           if (!images.length) return;
+          triggerEl = trigger;
           idx = Number(trigger.dataset.index || 0);
           titleEl.textContent = trigger.dataset.title || "";
           if (!captions.length && trigger.dataset.desc) captions = images.map(() => trigger.dataset.desc || "");
@@ -439,11 +477,14 @@ const searchPayload = {
           render();
           lb.dataset.open = "true";
           document.body.style.overflow = "hidden";
+          btnClose.focus();
         };
         const close = () => {
           lb.dataset.open = "false";
           document.body.style.overflow = "";
+          triggerEl?.focus(); triggerEl = null;
         };
+        const move = (direction: "next" | "prev") => { idx += direction === "next" ? 1 : -1; render(); imgEl.classList.add(direction === "next" ? "is-next" : "is-prev"); };
 
         document.addEventListener("click", (e) => {
           const trigger = (e.target as HTMLElement | null)?.closest?.(
@@ -455,12 +496,10 @@ const searchPayload = {
           }
         });
         btnPrev.addEventListener("click", () => {
-          idx--;
-          render();
+          move("prev");
         });
         btnNext.addEventListener("click", () => {
-          idx++;
-          render();
+          move("next");
         });
         btnClose.addEventListener("click", close);
         lb.addEventListener("click", (e) => {
@@ -470,13 +509,12 @@ const searchPayload = {
           if (lb.dataset.open !== "true") return;
           if (e.key === "Escape") close();
           else if (e.key === "ArrowLeft") {
-            idx--;
-            render();
+            move("prev");
           } else if (e.key === "ArrowRight") {
-            idx++;
-            render();
+            move("next");
           }
         });
+        imgEl.addEventListener("error", () => { imgEl.classList.add("is-error"); descEl.textContent = "图片加载失败，请检查原始地址。"; });
         // 换页时关闭，避免残留
         document.addEventListener("astro:before-swap", close);
       }

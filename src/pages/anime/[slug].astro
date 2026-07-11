@@ -48,6 +48,7 @@ const external = d.externalUrl ?? d.externalLinks?.bangumi ?? d.externalLinks?.a
   related={related}
   backHref="/anime"
   backLabel="返回番剧观测"
+  coverTransitionName={`anime-cover-${entry.id}`}
 >
   {external && (
     <p class="mb-8">

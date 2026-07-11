@@ -12,10 +12,6 @@ visibility: "public"
 github:
   owner: "Error1125"
   repo: "worldline-archive"
-  stars: 128
-  forks: 12
-  lastCommitAt: "2025-07-03T02:12:00Z"
-  language: "Astro"
 ---
 
 荳荳ｪ縲御ｸｪ莠ｺ蠑ゆｸ也阜蟄俶｡｣轤ｹ縲搾ｼ壽滑逕滓ｴｻ縲∫分蜑ｧ縲・浹荵舌・｡ｹ逶ｮ縲。ug 蜥檎｢守｢主ｿｵ・梧噺霑帛酔荳迚・ｷｱ螟懈弌遨ｺ縲・

@@ -4,6 +4,8 @@ import Icon from "@/components/common/Icon.astro";
 import { withBase } from "@/lib/paths";
 import { getTimelineItems } from "@/lib/content";
 import { getWorldlineState } from "@/lib/worldline";
+import profile from "@/config/profile.json";
+import { normalizeEmailHref } from "@/lib/contact";
 
 /**
  * Footer.astro —— 小型页脚。
@@ -27,6 +29,8 @@ const worldline = getWorldlineState(await getTimelineItems()).value;
     </div>
 
     <div class="flex items-center gap-4">
+      <span class="mono text-[11px]">Astro 5 · React 19 · Tailwind CSS 4</span>
+      {normalizeEmailHref(profile.links.email) && <a class="clickable" href={normalizeEmailHref(profile.links.email)}>Email</a>}
       <!-- worldline 彩蛋 -->
       <span
         class="diamond mono text-[var(--ia-mist)]"

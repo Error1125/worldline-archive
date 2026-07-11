@@ -5,6 +5,7 @@ import Icon from "@/components/common/Icon.astro";
 import { isVisiblePublic } from "@/lib/visibility";
 import { resolveRelatedRecords, PROJECT_STATUS_ZH } from "@/lib/content";
 import { formatDate } from "@/lib/format";
+import { getRepoSnapshot } from "@/lib/github/repos";
 
 export async function getStaticPaths() {
   const list = await getCollection("projects", ({ data }) => isVisiblePublic(data.visibility) && !data.draft);
@@ -15,6 +16,8 @@ const { entry } = Astro.props;
 const d = entry.data;
 const { Content } = await render(entry);
 const related = await resolveRelatedRecords({ type: "project", id: entry.id, tags: d.tags }, d.related);
+const snapshot = getRepoSnapshot(d.github);
+const repoUrl = snapshot?.url ?? d.repo;
 
 const statusTone: Record<string, string> = {
   building: "var(--ia-neon)", active: "var(--ia-neon)",
@@ -47,6 +50,7 @@ const metas = [
   related={related}
   backHref="/projects"
   backLabel="返回项目列表"
+  titleTransitionName={`project-title-${entry.id}`}
 >
   {d.techStack.length > 0 && (
     <div class="mb-6 flex flex-wrap items-center gap-2">
@@ -57,10 +61,10 @@ const metas = [
     </div>
   )}
 
-  {(d.repo || d.demo) && (
+  {(repoUrl || d.demo || d.homepage) && (
     <div class="mb-8 flex flex-wrap gap-3">
-      {d.repo && (
-        <a href={d.repo} target="_blank" rel="noopener" class="clickable inline-flex items-center gap-2 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] px-4 py-2 text-sm text-[var(--ia-ink)] transition-colors hover:border-[var(--ia-neon)] hover:text-[var(--ia-neon)]">
+      {repoUrl && (
+        <a href={repoUrl} target="_blank" rel="noopener" class="clickable inline-flex items-center gap-2 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] px-4 py-2 text-sm text-[var(--ia-ink)] transition-colors hover:border-[var(--ia-neon)] hover:text-[var(--ia-neon)]">
           <Icon name="github" size={15} /> 源码仓库
         </a>
       )}
@@ -69,18 +73,20 @@ const metas = [
           <Icon name="arrow" size={15} /> 在线演示
         </a>
       )}
+      {d.homepage && <a href={d.homepage} target="_blank" rel="noopener" class="clickable inline-flex items-center gap-2 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] px-4 py-2 text-sm text-[var(--ia-ink)] transition-colors hover:border-[var(--ia-neon)] hover:text-[var(--ia-neon)]"><Icon name="arrow" size={15} /> 项目主页</a>}
     </div>
   )}
 
   {d.github && (
     <div class="mb-8 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] p-4 mono text-[11px] text-[var(--ia-mist)]">
       <span class="text-[var(--ia-neon)]">github://</span> {d.github.owner}/{d.github.repo}
-      {typeof d.github.stars === "number" && <span> · ★ {d.github.stars}</span>}
-      {typeof d.github.forks === "number" && <span> · ⑂ {d.github.forks}</span>}
-      {d.github.language && <span> · {d.github.language}</span>}
-      {d.github.lastCommitAt && <span> · 最近提交 {d.github.lastCommitAt.slice(0, 10)}</span>}
+      {snapshot ? <><span> · ★ {snapshot.stars}</span><span> · ⑂ {snapshot.forks}</span>{snapshot.language && <span> · {snapshot.language}</span>}{snapshot.lastCommitAt && <span> · 最近提交 {snapshot.lastCommitAt.slice(0, 10)}</span>}</> : <span> · 暂无可信 GitHub 快照</span>}
     </div>
   )}
+
+  {d.projectOverview && <section class="mb-8"><h2>项目概览</h2><p>{d.projectOverview}</p></section>}
+  {d.features.length > 0 && <section class="mb-8"><h2>功能</h2><ul>{d.features.map((item) => <li>{item}</li>)}</ul></section>}
+  {d.technicalHighlights.length > 0 && <section class="mb-8"><h2>技术亮点</h2><ul>{d.technicalHighlights.map((item) => <li>{item}</li>)}</ul></section>}
 
   <div class="ia-prose">
     <Content />

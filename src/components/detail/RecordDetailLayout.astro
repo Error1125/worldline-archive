@@ -43,6 +43,8 @@ interface Props {
   related?: TimelineItem[];
   backHref: string;
   backLabel: string;
+  coverTransitionName?: string;
+  titleTransitionName?: string;
 }
 const {
   type,
@@ -62,6 +64,8 @@ const {
   related = [],
   backHref,
   backLabel,
+  coverTransitionName,
+  titleTransitionName,
 } = Astro.props;
 
 const meta = TYPE_META[type];
@@ -86,7 +90,7 @@ const hasCover = !!(dayCover || nightCover);
         <Icon name={meta.icon} size={13} class="text-[var(--ia-neon)]" /> {meta.labelEn} // {meta.labelZh}
         {featured && <span class="ml-1 text-[var(--ia-warning)]">★ featured</span>}
       </div>
-      <h1 class="mt-3 text-3xl font-bold leading-tight tracking-tight text-[var(--ia-ink)] sm:text-4xl">
+      <h1 class="mt-3 text-3xl font-bold leading-tight tracking-tight text-[var(--ia-ink)] sm:text-4xl" transition:name={titleTransitionName}>
         {title}
       </h1>
       {summary && <p class="mt-3 text-base leading-relaxed text-[var(--ia-mist)]">{summary}</p>}
@@ -105,7 +109,7 @@ const hasCover = !!(dayCover || nightCover);
       {tags.length > 0 && <div class="mt-4"><TagList tags={tags} /></div>}
 
       {hasCover && (
-        <figure class="record-cover mt-6 overflow-hidden rounded-xl border border-[var(--ia-line)]">
+        <figure class="record-cover mt-6 overflow-hidden rounded-xl border border-[var(--ia-line)]" transition:name={coverTransitionName}>
           {dayCover && <img class="cover-day block w-full object-cover" src={withBase(dayCover)} alt={title} loading="lazy" />}
           {nightCover && nightCover !== dayCover && (
             <img class="cover-night block w-full object-cover" src={withBase(nightCover)} alt={title} loading="lazy" />

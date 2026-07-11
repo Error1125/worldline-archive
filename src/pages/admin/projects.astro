@@ -1,0 +1,7 @@
+---
+import AdminLayout from "@/components/admin/AdminLayout.astro";
+import AdminApp from "@/components/admin/AdminApp.tsx";
+import { withBase } from "@/lib/paths";
+const siteBase = withBase("/").replace(/\/$/, "");
+---
+<AdminLayout title="Projects Manager"><AdminApp client:only="react" screen="projects" siteBase={siteBase} summaryUrl={withBase("/data/summary.json")} /></AdminLayout>

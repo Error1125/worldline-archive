@@ -8,13 +8,10 @@ techStack: ["TypeScript", "React"]
 repo: "https://github.com/Error1125/anime-memory-shelf"
 featured: false
 visibility: "public"
+concept: true
 github:
   owner: "Error1125"
   repo: "anime-memory-shelf"
-  stars: 37
-  forks: 3
-  lastCommitAt: "2025-05-02T09:00:00Z"
-  language: "TypeScript"
 ---
 
 證ょ●荳ｭ・檎ｭ・Worldline Archive 逧・分蜑ｧ讓｡蝮礼ｨｳ螳壼錘・梧滑霑咎㈹逧・焚謐ｮ讓｡蝙句粋蟷ｶ霑・悉縲・

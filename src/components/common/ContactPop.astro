@@ -1,0 +1,33 @@
+---
+import Icon from "@/components/common/Icon.astro";
+import { withBase } from "@/lib/paths";
+interface Props { icon: string; label: string; account: string; qr?: string; variant?: "icon" | "text"; }
+const { icon, label, account, qr, variant = "icon" } = Astro.props;
+---
+<span class="profile-pop-wrap">
+  <button type="button" data-pop-toggle aria-expanded="false" aria-haspopup="dialog" aria-label={`${label} 联系方式`} class:list={["clickable", variant === "icon" ? "profile-action" : "inline-flex items-center gap-1.5 text-xs text-[var(--ia-mist)] hover:text-[var(--ia-neon)]"]}>
+    <Icon name={icon} size={variant === "icon" ? 17 : 14} />{variant === "text" && label}
+  </button>
+  <span class="profile-pop" role="dialog" aria-label={`${label} 联系方式`} tabindex="-1">
+    {qr && <img class="profile-pop-qr" src={withBase(qr)} alt={`${label} 二维码`} loading="lazy" />}
+    <span class="profile-pop-label mono">{label}</span>
+    <button type="button" class="profile-pop-account clickable mono" data-copy={account}><span>{account}</span><Icon name="copy" size={13} /></button>
+    <span class="profile-pop-note">点击账号即可复制</span>
+  </span>
+</span>
+<script>
+  if (!document.documentElement.dataset.wlContactPop) {
+    document.documentElement.dataset.wlContactPop = "1";
+    const close = (returnFocus = false) => document.querySelectorAll<HTMLElement>(".profile-pop-wrap.is-open").forEach((wrap) => { wrap.classList.remove("is-open"); const trigger = wrap.querySelector<HTMLElement>("[data-pop-toggle]"); trigger?.setAttribute("aria-expanded", "false"); if (returnFocus && wrap.contains(document.activeElement)) trigger?.focus(); });
+    document.addEventListener("click", async (event) => {
+      const target = event.target as HTMLElement | null;
+      const copy = target?.closest<HTMLElement>("[data-copy]");
+      if (copy) { const text = copy.dataset.copy ?? ""; try { await navigator.clipboard.writeText(text); copy.classList.add("is-copied"); setTimeout(() => copy.classList.remove("is-copied"), 1400); } catch {} return; }
+      const trigger = target?.closest<HTMLElement>("[data-pop-toggle]");
+      if (trigger) { const wrap = trigger.closest<HTMLElement>(".profile-pop-wrap"); if (!wrap) return; const open = !wrap.classList.contains("is-open"); close(); wrap.classList.toggle("is-open", open); trigger.setAttribute("aria-expanded", String(open)); if (open) wrap.querySelector<HTMLElement>(".profile-pop")?.focus(); return; }
+      if (!target?.closest(".profile-pop")) close(true);
+    });
+    document.addEventListener("keydown", (event) => { if (event.key === "Escape") close(true); });
+    document.addEventListener("astro:page-load", () => close());
+  }
+</script>

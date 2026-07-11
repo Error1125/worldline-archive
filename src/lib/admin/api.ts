@@ -27,9 +27,11 @@ export interface AdminStatus {
   repo: { owner: string; name: string; branch: string; url: string };
   latestCommit?: { sha: string; message: string; date: string; url: string } | null;
   latestRun?: {
+    id?: number;
     status: string;
     conclusion: string | null;
     createdAt: string;
+    updatedAt?: string;
     url: string;
     headSha: string;
   } | null;
@@ -163,7 +165,14 @@ export function publish(type: string, payload: Record<string, unknown>) {
 
 /* ---------------- settings ---------------- */
 
-export type SettingsName = "profile" | "site" | "worldline";
+export type SettingsName = "profile" | "site" | "worldline" | "bangumi";
+
+export interface BangumiSyncResult { success: boolean; username: string; scanned: number; created: number; updated: number; unchanged: number; commitUrl?: string; message: string; }
+export function bangumiSync() { return request<BangumiSyncResult>("/api/admin/bangumi/sync", { method: "POST" }); }
+
+export interface ProjectsOverview { generatedAt: string | null; repos: Array<{ owner: string; repo: string; description?: string; url: string; language?: string | null; stars: number; forks: number }>; projects: Array<{ slug: string; path: string; title: string; status: string; visibility: string; draft: boolean; concept: boolean; github: { owner: string; repo: string } | null }>; }
+export function projectsOverview() { return request<ProjectsOverview>(`/api/admin/projects/overview?t=${Date.now()}`, { cache: "no-store" }); }
+export function setProjectVisibility(slug: string, visibility: string) { return request<PublishResult & { unchanged?: boolean }>("/api/admin/projects/visibility", { method: "POST", body: JSON.stringify({ slug, visibility }) }); }
 
 export function getSettings<T = Record<string, unknown>>(name: SettingsName) {
   return request<{ name: string; data: T }>(`/api/admin/settings/${name}`);
@@ -182,8 +191,10 @@ export function githubSync() {
   return request<PublishResult>("/api/admin/github/sync", { method: "POST" });
 }
 
-export function getStatus() {
-  return request<AdminStatus>("/api/admin/status");
+export function getStatus(options: { sha?: string } = {}) {
+  const query = new URLSearchParams({ t: String(Date.now()) });
+  if (options.sha) query.set("sha", options.sha);
+  return request<AdminStatus>(`/api/admin/status?${query}`, { cache: "no-store" });
 }
 
 /** 健康检查：直接 GET {base}/api/health（无需登录）。可显式传入 base 供登录页「测试连接」。 */

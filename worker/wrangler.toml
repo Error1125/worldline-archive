@@ -21,6 +21,9 @@ ALLOWED_ORIGIN = "https://error1125.github.io"
 GITHUB_COMMITTER_NAME = "Worldline Console"
 GITHUB_COMMITTER_EMAIL = "console@worldline.local"
 
+[triggers]
+crons = ["0 */6 * * *"]
+
 # ── 可选：R2 媒体桶（不启用则控制台只提供「URL 登记」，上传接口返回 501） ──
 # 1) 创建桶：npx wrangler r2 bucket create worldline-media
 # 2) 给桶绑定公开访问域名，把该域名填到 R2_PUBLIC_BASE_URL

@@ -3,7 +3,9 @@ import { withBase } from "@/lib/paths";
 import SiteLayout from "@/components/layout/SiteLayout.astro";
 import GlassCard from "@/components/common/GlassCard.astro";
 import Icon from "@/components/common/Icon.astro";
+import { normalizeEmailHref } from "@/lib/contact";
 import { siteConfig } from "@/config/site";
+import ContactPop from "@/components/common/ContactPop.astro";
 import profileSnapshot from "@/data/github/profile.json";
 import contributionsSnapshot from "@/data/github/contributions.json";
 import repoSnapshot from "@/data/github/repos.json";
@@ -35,7 +37,9 @@ const repos = (repoSnapshot.repos ?? []).slice(0, 4);
         </div>
         <div class="flex flex-wrap gap-3 sm:ml-auto sm:pb-2">
           {links.github && <a href={links.github} target="_blank" rel="noopener noreferrer" class="clickable inline-flex items-center gap-1.5 text-xs text-[var(--ia-mist)] hover:text-[var(--ia-neon)]"><Icon name="github" size={14} /> GitHub</a>}
-          {links.email && <a href={links.email.startsWith("mailto:") ? links.email : `mailto:${links.email}`} class="clickable text-xs text-[var(--ia-mist)] hover:text-[var(--ia-neon)]">Email</a>}
+          {normalizeEmailHref(links.email) && <a href={normalizeEmailHref(links.email)} class="clickable text-xs text-[var(--ia-mist)] hover:text-[var(--ia-neon)]">Email</a>}
+          {links.qq && <ContactPop icon="qq" label="QQ" account={links.qq} qr={links.qqQr || undefined} variant="text" />}
+          {links.wechat && <ContactPop icon="wechat" label="WeChat" account={links.wechat} qr={links.wechatQr || undefined} variant="text" />}
           {links.bilibili && <a href={links.bilibili} target="_blank" rel="noopener noreferrer" class="clickable text-xs text-[var(--ia-mist)] hover:text-[var(--ia-neon)]">Bilibili</a>}
         </div>
       </div>

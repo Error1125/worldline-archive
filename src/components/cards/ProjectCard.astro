@@ -5,15 +5,21 @@ import TagList from "@/components/common/TagList.astro";
 import StatusBadge from "@/components/common/StatusBadge.astro";
 import Icon from "@/components/common/Icon.astro";
 import { formatDate } from "@/lib/format";
+import { withBase } from "@/lib/paths";
+import { getRepoSnapshot } from "@/lib/github/repos";
 
 interface Props {
   entry: CollectionEntry<"projects">;
 }
 const { entry } = Astro.props;
 const { title, description, date, status, tags, techStack, github, repo, demo, featured } = entry.data;
+const snapshot = getRepoSnapshot(github);
+const detailHref = withBase(`/projects/${entry.id}`);
+const repoUrl = snapshot?.url ?? repo;
 ---
 
-<GlassCard ticks class:list={["group flex flex-col gap-3 p-5", featured && "project-featured"]}>
+<GlassCard ticks class:list={["group card-interactive relative flex flex-col gap-3 p-5", featured && "project-featured"]}>
+  <a href={detailHref} class="card-link-overlay" aria-label={`查看项目 ${title} 详情`}></a>
   <div class="flex items-center justify-between gap-3">
     <span class="eyebrow flex items-center gap-1.5">
       <Icon name="project" size={13} class="text-[var(--ia-neon)]" />
@@ -22,7 +28,7 @@ const { title, description, date, status, tags, techStack, github, repo, demo, f
     <StatusBadge domain="project" status={status} />
   </div>
 
-  <h3 class="text-base font-semibold leading-snug text-[var(--ia-ink)] transition-colors group-hover:text-[var(--ia-star)]">
+  <h3 class="text-base font-semibold leading-snug text-[var(--ia-ink)] transition-colors group-hover:text-[var(--ia-star)]" transition:name={`project-title-${entry.id}`}>
     {title}
   </h3>
   <p class="line-clamp-2 text-sm leading-relaxed text-[var(--ia-mist)]">{description}</p>
@@ -31,24 +37,24 @@ const { title, description, date, status, tags, techStack, github, repo, demo, f
 
   <div class="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1 mono text-[11px] text-[var(--ia-mist)]">
     {
-      github && (
+      snapshot && (
         <span class="flex items-center gap-3">
           <span class="flex items-center gap-1 text-[var(--ia-star)]">
-            <Icon name="star" size={12} /> {github.stars ?? 0}
+            <Icon name="star" size={12} /> {snapshot.stars}
           </span>
-          <span>⑂ {github.forks ?? 0}</span>
-          {github.language && <span class="text-[var(--ia-neon)]">{github.language}</span>}
+          <span>⑂ {snapshot.forks}</span>
+          {snapshot.language && <span class="text-[var(--ia-neon)]">{snapshot.language}</span>}
         </span>
       )
     }
     <span class="ml-auto flex items-center gap-3">
       {
-        repo && (
+        repoUrl && (
           <a
-            href={repo}
+            href={repoUrl}
             target="_blank"
             rel="noopener noreferrer"
-            class="clickable inline-flex items-center gap-1 transition-colors hover:text-[var(--ia-neon)]"
+            class="card-ext-link clickable inline-flex items-center gap-1 transition-colors hover:text-[var(--ia-neon)]"
           >
             <Icon name="github" size={13} /> repo
           </a>
@@ -60,7 +66,7 @@ const { title, description, date, status, tags, techStack, github, repo, demo, f
             href={demo}
             target="_blank"
             rel="noopener noreferrer"
-            class="clickable transition-colors hover:text-[var(--ia-neon)]"
+            class="card-ext-link clickable transition-colors hover:text-[var(--ia-neon)]"
           >
             demo ↗
           </a>

@@ -377,6 +377,7 @@ export const SETTINGS_FILES: Record<string, { path: string; label: string }> = {
   profile: { path: "src/config/profile.json", label: "观测者档案" },
   site: { path: "src/config/site-settings.json", label: "站点设置" },
   worldline: { path: "src/config/worldline.json", label: "世界线引擎参数" },
+  bangumi: { path: "src/config/bangumi.json", label: "Bangumi 同步设置" },
 };
 
 export const MEDIA_MANIFEST_PATH = "src/data/media.json";

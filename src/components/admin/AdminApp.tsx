@@ -29,6 +29,8 @@ import {
   SettingsProfileScreen,
   SettingsSiteScreen,
   SettingsWorldlineScreen,
+  SettingsBangumiScreen,
+  ProjectsManagerScreen,
 } from "./screens";
 
 export type AdminScreen =
@@ -40,7 +42,9 @@ export type AdminScreen =
   | "media"
   | "settings-profile"
   | "settings-site"
-  | "settings-worldline";
+  | "settings-worldline"
+  | "settings-bangumi"
+  | "projects";
 
 export interface AdminAppProps {
   screen: AdminScreen;
@@ -59,6 +63,8 @@ const TITLES: Record<AdminScreen, string> = {
   "settings-profile": "设置",
   "settings-site": "设置",
   "settings-worldline": "设置",
+  "settings-bangumi": "设置",
+  projects: "项目",
 };
 
 export default function AdminApp({ screen, publishType, siteBase, summaryUrl }: AdminAppProps) {
@@ -118,6 +124,7 @@ export default function AdminApp({ screen, publishType, siteBase, summaryUrl }: 
     { key: "drafts", label: "草稿", icon: "drafts", href: `${siteBase}/admin/drafts` },
     { key: "media", label: "媒体", icon: "media", href: `${siteBase}/admin/media` },
     { key: "settings", label: "设置", icon: "settings", href: `${siteBase}/admin/settings/profile` },
+    { key: "projects", label: "项目", icon: "project", href: `${siteBase}/admin/projects` },
   ];
   const activeKey = screen.startsWith("settings")
     ? "settings"
@@ -139,6 +146,7 @@ export default function AdminApp({ screen, publishType, siteBase, summaryUrl }: 
     { key: "settings-profile", label: "档案", href: `${siteBase}/admin/settings/profile` },
     { key: "settings-site", label: "站点", href: `${siteBase}/admin/settings/site` },
     { key: "settings-worldline", label: "世界线", href: `${siteBase}/admin/settings/worldline` },
+    { key: "settings-bangumi", label: "Bangumi", href: `${siteBase}/admin/settings/bangumi` },
   ];
 
   return (
@@ -220,6 +228,8 @@ export default function AdminApp({ screen, publishType, siteBase, summaryUrl }: 
         {screen === "settings-profile" && <SettingsProfileScreen />}
         {screen === "settings-site" && <SettingsSiteScreen />}
         {screen === "settings-worldline" && <SettingsWorldlineScreen />}
+        {screen === "settings-bangumi" && <SettingsBangumiScreen />}
+        {screen === "projects" && <ProjectsManagerScreen siteBase={siteBase} />}
       </main>
 
       <TabBar tabs={tabs} activeKey={activeKey} />

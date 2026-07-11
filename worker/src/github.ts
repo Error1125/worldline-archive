@@ -55,6 +55,29 @@ async function gh(env: GitHubEnvLike, path: string, init?: RequestInit): Promise
   return res;
 }
 
+/** Git Data API：把多文件变更写入一个 tree / commit，避免一次同步触发多次部署。 */
+export async function commitFiles(env: GitHubEnvLike, files: Array<{ path: string; content: string }>, message: string) {
+  if (!files.length) return null;
+  const ref = await gh(env, `/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/git/ref/heads/${encodeURIComponent(env.GITHUB_BRANCH)}`);
+  if (!ref.ok) throw new GitHubError("GITHUB_READ_FAILED", "读取分支引用失败。", 502);
+  const parent = ((await ref.json()) as any).object.sha as string;
+  const blobs = await Promise.all(files.map(async (file) => {
+    const res = await gh(env, `/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/git/blobs`, { method: "POST", body: JSON.stringify({ content: file.content, encoding: "utf-8" }) });
+    if (!res.ok) throw new GitHubError("GITHUB_WRITE_FAILED", `写入 ${file.path} 的 blob 失败。`, 502);
+    return { path: file.path, mode: "100644", type: "blob", sha: ((await res.json()) as any).sha };
+  }));
+  const baseTree = await gh(env, `/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/git/commits/${parent}`);
+  if (!baseTree.ok) throw new GitHubError("GITHUB_READ_FAILED", "读取基准提交失败。", 502);
+  const treeRes = await gh(env, `/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/git/trees`, { method: "POST", body: JSON.stringify({ base_tree: ((await baseTree.json()) as any).tree.sha, tree: blobs }) });
+  if (!treeRes.ok) throw new GitHubError("GITHUB_WRITE_FAILED", "创建 Git tree 失败。", 502);
+  const commitRes = await gh(env, `/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/git/commits`, { method: "POST", body: JSON.stringify({ message, tree: ((await treeRes.json()) as any).sha, parents: [parent] }) });
+  if (!commitRes.ok) throw new GitHubError("GITHUB_WRITE_FAILED", "创建 Git commit 失败。", 502);
+  const commit = await commitRes.json() as any;
+  const update = await gh(env, `/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/git/refs/heads/${encodeURIComponent(env.GITHUB_BRANCH)}`, { method: "PATCH", body: JSON.stringify({ sha: commit.sha, force: false }) });
+  if (!update.ok) throw new GitHubError("GITHUB_CONFLICT", "同步期间分支发生变化，请重试。", 409);
+  return { commitSha: commit.sha as string, commitUrl: commit.html_url as string };
+}
+
 /* ------------ base64（UTF-8 安全） ------------ */
 
 export function toBase64Utf8(text: string): string {
@@ -90,6 +113,14 @@ export async function getFile(env: GitHubEnvLike, path: string): Promise<FileMet
   if (!res.ok) throw new GitHubError("GITHUB_READ_FAILED", `读取 ${path} 失败（${res.status}）。`, 502);
   const data = (await res.json()) as { sha: string; content: string; encoding: string };
   return { sha: data.sha, content: fromBase64Utf8(data.content) };
+}
+
+export async function listDir(env: GitHubEnvLike, path: string): Promise<Array<{ name: string; path: string; type: string }> | null> {
+  const res = await gh(env, `/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/${encodeURIComponent(path).replace(/%2F/g, "/")}?ref=${env.GITHUB_BRANCH}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new GitHubError("GITHUB_READ_FAILED", `读取目录 ${path} 失败。`, 502);
+  const data = await res.json() as unknown;
+  return Array.isArray(data) ? data.filter((item): item is { name: string; path: string; type: string } => Boolean(item && typeof item === "object" && "name" in item && "path" in item && "type" in item)) : null;
 }
 
 export async function getJsonFile<T = unknown>(env: GitHubEnvLike, path: string): Promise<{ sha: string; data: T } | null> {
@@ -196,19 +227,22 @@ export async function latestCommit(env: GitHubEnvLike) {
   };
 }
 
-export async function latestWorkflowRun(env: GitHubEnvLike) {
+export async function latestWorkflowRun(env: GitHubEnvLike, sha?: string) {
+  const shaParam = sha ? `&head_sha=${encodeURIComponent(sha)}` : "";
   const res = await gh(
     env,
-    `/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/actions/runs?branch=${env.GITHUB_BRANCH}&per_page=1`,
+    `/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/actions/runs?branch=${env.GITHUB_BRANCH}&per_page=1${shaParam}`,
   );
   if (!res.ok) return null;
   const data = (await res.json()) as { workflow_runs?: any[] };
   const r = data.workflow_runs?.[0];
   if (!r) return null;
   return {
+    id: r.id as number,
     status: r.status as string,
     conclusion: (r.conclusion ?? null) as string | null,
     createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
     url: r.html_url as string,
     headSha: r.head_sha as string,
   };

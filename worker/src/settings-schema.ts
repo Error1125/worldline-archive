@@ -175,6 +175,14 @@ const VALIDATORS: Record<string, (d: Obj) => string[]> = {
   profile: validateProfile,
   site: validateSite,
   worldline: validateWorldline,
+  bangumi: (d) => {
+    const errors: string[] = [];
+    checkStr(d, "username", errors);
+    if ("token" in d || "accessToken" in d || "bangumiToken" in d) errors.push("Token 只能保存在 Worker Secret BANGUMI_TOKEN 中");
+    if (d.schedule !== undefined && !["manual", "6h", "daily"].includes(String(d.schedule))) errors.push("schedule 必须为 manual / 6h / daily");
+    if (d.syncScopes !== undefined && (!Array.isArray(d.syncScopes) || d.syncScopes.some((item) => !["watching", "planned", "completed", "paused", "dropped"].includes(String(item))))) errors.push("syncScopes 包含无效状态");
+    return errors;
+  },
 };
 
 /** 校验设置数据；有问题时抛 SettingsValidationError */

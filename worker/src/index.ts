@@ -28,6 +28,8 @@ import {
 import {
   GitHubError,
   getJsonFile,
+  getFile,
+  listDir,
   putFile,
   repoInfo,
   latestCommit,
@@ -47,6 +49,8 @@ import {
   type RecordType,
 } from "./content-files";
 import { SettingsValidationError, validateSettings } from "./settings-schema";
+import { runBangumiSync } from "./bangumi";
+import { githubAssociation, scalar, splitDoc, updateScalar } from "./frontmatter";
 
 /* ---------------- Env ---------------- */
 
@@ -56,6 +60,7 @@ export interface Env extends GitHubEnvLike {
   /* secrets（wrangler secret put …） */
   ADMIN_SECRET: string; // 控制台登录口令
   SESSION_SECRET: string; // session 签名密钥
+  BANGUMI_TOKEN?: string;
   /* 可选：R2 媒体桶 */
   MEDIA_BUCKET?: R2Bucket;
   R2_PUBLIC_BASE_URL?: string; // 例：https://media.example.com
@@ -75,7 +80,7 @@ interface R2Bucket {
 function json(data: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json; charset=utf-8", ...extraHeaders },
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...extraHeaders },
   });
 }
 
@@ -369,6 +374,37 @@ async function handle(req: Request, env: Env): Promise<Response> {
   }
 
   /* ---- github sync ---- */
+  if (routeKey === "POST /api/admin/bangumi/sync") {
+    const result = await runBangumiSync(env);
+    return json(result);
+  }
+
+  if (routeKey === "GET /api/admin/projects/overview") {
+    const [repoFile, files] = await Promise.all([
+      getJsonFile<{ generatedAt?: string; repos?: unknown[] }>(env, "src/data/github/repos.json"),
+      listDir(env, "src/content/projects"),
+    ]);
+    const projects = [] as Array<Record<string, unknown>>;
+    for (const item of files ?? []) {
+      if (item.type !== "file" || !item.name.endsWith(".md")) continue;
+      const file = await getFile(env, item.path); const document = file && splitDoc(file.content);
+      if (!document) continue;
+      projects.push({ slug: item.name.replace(/\.md$/, ""), path: item.path, title: scalar(document.fm, "title") ?? item.name, status: scalar(document.fm, "status") ?? "", visibility: scalar(document.fm, "visibility") ?? "public", draft: scalar(document.fm, "draft") === "true", concept: scalar(document.fm, "concept") === "true", github: githubAssociation(document.fm) });
+    }
+    return json({ generatedAt: repoFile?.data.generatedAt ?? null, repos: Array.isArray(repoFile?.data.repos) ? repoFile.data.repos : [], projects });
+  }
+
+  if (routeKey === "POST /api/admin/projects/visibility") {
+    const body = await readJson(req); const slug = typeof body.slug === "string" ? body.slug.trim() : ""; const visibility = typeof body.visibility === "string" ? body.visibility.trim() : "";
+    if (!/^[\w\u4e00-\u9fa5-]+$/.test(slug) || !["public", "hidden", "private", "unlisted"].includes(visibility)) return err("INVALID_FIELD", "项目或 visibility 无效。", 400);
+    const path = `src/content/projects/${slug}.md`; const file = await getFile(env, path); const document = file && splitDoc(file.content);
+    if (!file || !document) return err("PROJECT_NOT_FOUND", "未找到项目。", 404);
+    const nextFm = updateScalar(document.fm, "visibility", visibility);
+    if (nextFm === document.fm) return json({ success: true, unchanged: true, path, message: "可见性未变化。" });
+    const saved = await putFile(env, path, `---\n${nextFm}\n---\n${document.body}`, `content(projects): set ${slug} visibility ${visibility} [via console]`);
+    return json({ success: true, type: "project-visibility", path, commitSha: saved.commitSha, commitUrl: saved.commitUrl, message: "项目可见性已更新。" });
+  }
+
   if (routeKey === "POST /api/admin/github/sync") {
     const generatedAt = new Date().toISOString();
     const [rawRepos, rawEvents, rawProfile, contributionCalendar] = await Promise.all([
@@ -441,7 +477,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
     let latestRunError: string | null = null;
     const [commit, run, media] = await Promise.all([
       latestCommit(env).catch(() => null),
-      latestWorkflowRun(env).catch((e) => {
+      latestWorkflowRun(env, url.searchParams.get("sha") || undefined).catch((e) => {
         latestRunError =
           e instanceof GitHubError && (e.code === "GITHUB_FORBIDDEN" || e.code === "GITHUB_TOKEN_INVALID")
             ? "GitHub token 可能缺少 Actions: Read 权限，无法读取部署状态；发布 commit 不受影响。"
@@ -594,5 +630,10 @@ export default {
       console.error("[admin-api] unhandled:", e);
       return withCors(err("INTERNAL", "服务器内部错误。", 500), cors);
     }
+  },
+  async scheduled(_event: { cron: string }, env: Env): Promise<void> {
+    const { loadBangumiConfig } = await import("./bangumi");
+    const config = await loadBangumiConfig(env).catch(() => null);
+    if (config && (config.schedule === "6h" || (config.schedule === "daily" && _event.cron.startsWith("0 0")))) await runBangumiSync(env);
   },
 };

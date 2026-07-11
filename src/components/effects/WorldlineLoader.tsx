@@ -42,14 +42,14 @@ const FADE_MS = 450;
 type Phase = "hidden" | "show" | "leave";
 
 export default function WorldlineLoader({ value }: { value?: string } = {}) {
-  const [phase, setPhase] = useState<Phase>("hidden");
+  const [phase, setPhase] = useState<Phase>(() => document.documentElement.dataset.loaderState === "pending" ? "show" : "hidden");
   const [shown, setShown] = useState(0); // 已显示的行数
   const theme = useMemo(() => THEMES[Math.floor(Math.random() * THEMES.length)], []);
 
   useEffect(() => {
     // —— 播放条件判定 ——
     try {
-      if (sessionStorage.getItem(SESSION_KEY)) return;
+      if (document.documentElement.dataset.loaderState !== "pending" || sessionStorage.getItem(SESSION_KEY)) return;
       sessionStorage.setItem(SESSION_KEY, "1");
     } catch {
       /* 隐私模式等场景拿不到 storage 时，也只播这一次（本组件持久化） */
@@ -70,6 +70,7 @@ export default function WorldlineLoader({ value }: { value?: string } = {}) {
       window.setTimeout(() => {
         setPhase("leave");
         document.documentElement.classList.remove("wl-loading");
+        document.documentElement.dataset.loaderState = "complete";
       }, total),
     );
     timers.push(window.setTimeout(() => setPhase("hidden"), total + FADE_MS));
@@ -77,6 +78,7 @@ export default function WorldlineLoader({ value }: { value?: string } = {}) {
     return () => {
       timers.forEach((t) => window.clearTimeout(t));
       document.documentElement.classList.remove("wl-loading");
+      document.documentElement.dataset.loaderState = "complete";
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

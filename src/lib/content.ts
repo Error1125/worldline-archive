@@ -56,8 +56,8 @@ export const ANIME_STATUS_ZH: Record<string, string> = {
   watching: "观测中",
   completed: "已看完",
   planned: "想看",
-  paused: "暂停",
-  dropped: "搁置",
+  paused: "搁置",
+  dropped: "抛弃",
 };
 export const PROJECT_STATUS_ZH: Record<string, string> = {
   idea: "构想",

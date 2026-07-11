@@ -1,0 +1,5 @@
+{
+  "username": "",
+  "syncScopes": ["watching", "planned", "completed", "paused", "dropped"],
+  "schedule": "manual"
+}

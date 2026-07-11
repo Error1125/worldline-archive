@@ -2,7 +2,9 @@
 import { siteConfig } from "@/config/site";
 import GlassCard from "@/components/common/GlassCard.astro";
 import Icon from "@/components/common/Icon.astro";
+import { normalizeEmailHref } from "@/lib/contact";
 import { withBase } from "@/lib/paths";
+import ContactPop from "@/components/common/ContactPop.astro";
 
 /**
  * ProfileCard —— 首页个人资料卡（v3）。
@@ -36,8 +38,8 @@ type Social = SocialLink | SocialPop;
 const socials: Social[] = [];
 if (links.github)
   socials.push({ kind: "link", icon: "github", label: "GitHub", href: links.github, external: true });
-if (links.email)
-  socials.push({ kind: "link", icon: "mail", label: "Email", href: links.email, external: false });
+if (normalizeEmailHref(links.email))
+  socials.push({ kind: "link", icon: "mail", label: "Email", href: normalizeEmailHref(links.email), external: false });
 if (links.qq)
   socials.push({
     kind: "pop",
@@ -128,43 +130,7 @@ if (links.bilibili)
             >
               <Icon name={s.icon} size={17} />
             </a>
-          ) : (
-            <span class="profile-pop-wrap">
-              <button
-                type="button"
-                data-pop-toggle
-                aria-expanded="false"
-                aria-haspopup="dialog"
-                aria-label={`${s.label}：点击查看账号`}
-                data-tip={s.label}
-                class="profile-action clickable"
-              >
-                <Icon name={s.icon} size={17} />
-              </button>
-              <span class="profile-pop" role="dialog" aria-label={`${s.label} 联系方式`}>
-                {s.qr && <img class="profile-pop-qr" src={withBase(s.qr)} alt={`${s.label} 二维码`} loading="lazy" />}
-                <span class="profile-pop-label mono">{s.label}</span>
-                <button type="button" class="profile-pop-account clickable mono" data-copy={s.account}>
-                  <span class="pop-account-text">{s.account}</span>
-                  <svg
-                    width="13"
-                    height="13"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
-                  >
-                    <rect x="9" y="9" width="11" height="11" rx="2" />
-                    <path d="M5 15V6a2 2 0 0 1 2-2h9" />
-                  </svg>
-                </button>
-                <span class="profile-pop-note">{s.note}</span>
-              </span>
-            </span>
-          ),
+          ) : <ContactPop icon={s.icon} label={s.label} account={s.account} qr={s.qr} />,
         )
       }
     </div>
@@ -173,6 +139,8 @@ if (links.bilibili)
 </GlassCard>
 
 <script>
+  if (!document.documentElement.dataset.wlContactPop) {
+  document.documentElement.dataset.wlContactPop = "1";
   /**
    * 社交 popover / 复制交互（事件委托，兼容 View Transitions）：
    * - 点击图标切换弹层；点击外部 / Esc / 再次点击关闭；
@@ -182,7 +150,9 @@ if (links.bilibili)
     document.querySelectorAll<HTMLElement>(".profile-pop-wrap.is-open").forEach((w) => {
       if (w === except) return;
       w.classList.remove("is-open");
-      w.querySelector("[data-pop-toggle]")?.setAttribute("aria-expanded", "false");
+      const trigger = w.querySelector<HTMLElement>("[data-pop-toggle]");
+      trigger?.setAttribute("aria-expanded", "false");
+      if (!except && document.activeElement && w.contains(document.activeElement)) trigger?.focus();
     });
   }
 
@@ -229,6 +199,7 @@ if (links.bilibili)
       const open = wrap.classList.toggle("is-open");
       toggle.setAttribute("aria-expanded", open ? "true" : "false");
       closeAllPops(wrap);
+      if (open) (wrap.querySelector(".profile-pop") as HTMLElement | null)?.focus();
       return;
     }
 
@@ -240,4 +211,5 @@ if (links.bilibili)
   });
 
   document.addEventListener("astro:page-load", () => closeAllPops());
+  }
 </script>
