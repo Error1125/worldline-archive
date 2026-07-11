@@ -4704,6 +4704,7 @@ html[data-scene-mode="day"] .filter-panel {
 /* 视图面板显隐由 data-active-view 控制（内联脚本先行设置，避免闪烁） */
 [data-view-root][data-active-view="timeline"] [data-view-panel="index"] { display: none; }
 [data-view-root][data-active-view="index"] [data-view-panel="timeline"] { display: none; }
+[data-view-root] [data-view-panel] { min-width: 0; }
 
 /* ---- §4 浏览器式搜索建议下拉（HeroSearch / Header 共用）---- */
 .wl-search { position: relative; }
