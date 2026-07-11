@@ -16,6 +16,6 @@ const repoUrl = (value: unknown): string | undefined => {
   }
   return undefined;
 };
-const items=projects.map(x=>({id:x.id,title:x.data.title,description:x.data.description,status:x.data.status,statusLabel:labels[x.data.status]??x.data.status,tech:x.data.techStack,tags:x.data.tags,date:x.data.date.toISOString(),href:withBase(`/projects/${x.id}`),repo:repoUrl(x.data.repo) ?? x.data.github,demo:x.data.demo,featured:x.data.featured}));
+const items=projects.map(x=>({id:x.id,title:x.data.title,description:x.data.description,status:x.data.status,statusLabel:labels[x.data.status]??x.data.status,tech:x.data.techStack,tags:x.data.tags,date:x.data.date.toISOString(),href:withBase(`/projects/${x.id}`),repo:repoUrl(x.data.repo) ?? repoUrl(x.data.github),demo:x.data.demo,featured:x.data.featured}));
 ---
 <SiteLayout title="项目" description="正在建造、暂停或已归档的造物。" motionScene="projects"><PageHeader eyebrow="PROJECTS // 造物记录" title="造物档案" subtitle="正在建造、暂停、或已经归档的东西。" icon="project" class="mb-8" />{projects.length?<ProjectsFeed client:load items={items} statuses={statuses} techs={techs}/>:<EmptyState icon="project"/>}</SiteLayout>
