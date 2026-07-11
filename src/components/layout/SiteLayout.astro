@@ -791,48 +791,6 @@ const searchPayload = {
       setupSearchBoxes();
       document.addEventListener("astro:page-load", setupSearchBoxes);
 
-      // 6) 视图切换（世界线记录：时间轴 / 观测索引）；以 URL ?view= 为准，兼容 View Transitions。
-      function initViewRoot(root: HTMLElement) {
-        if (root.dataset.viewReady === "1") return;
-        root.dataset.viewReady = "1";
-        const tabs = Array.from(root.querySelectorAll<HTMLElement>("[data-view-tab]"));
-        let transition: Animation | undefined;
-        function setView(v: string) {
-          const previous = root.dataset.activeView || "timeline";
-          const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-          const previousPanel = root.querySelector<HTMLElement>(`[data-view-panel="${previous}"]`);
-          const nextPanel = root.querySelector<HTMLElement>(`[data-view-panel="${v}"]`);
-          transition?.cancel();
-          if (previous !== v && !reduce && previousPanel && nextPanel) {
-            previousPanel.style.pointerEvents = "none";
-            transition = previousPanel.animate([{ opacity: 1 }, { opacity: 0.72, transform: "translateY(-4px)" }], { duration: 110, easing: "ease-out", fill: "both" });
-            transition.finished.catch(() => {}).then(() => {
-              if (transition?.playState !== "finished") return;
-              root.dataset.activeView = v;
-              nextPanel.animate([{ opacity: 0, transform: "translateY(4px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 180, easing: "cubic-bezier(.22,1,.36,1)" });
-              previousPanel.style.pointerEvents = "";
-              previousPanel.getAnimations().forEach((animation) => animation.cancel());
-            });
-          } else root.dataset.activeView = v;
-          tabs.forEach((t) => t.setAttribute("aria-selected", t.dataset.viewTab === v ? "true" : "false"));
-          try {
-            const url = new URL(window.location.href);
-            if (v === "index") url.searchParams.set("view", "index");
-            else url.searchParams.delete("view");
-            window.history.replaceState(null, "", url);
-          } catch {}
-        }
-        tabs.forEach((t) => t.addEventListener("click", () => setView(t.dataset.viewTab || "timeline")));
-        let initial = root.dataset.activeView || "timeline";
-        try {
-          if (new URLSearchParams(window.location.search).get("view") === "index") initial = "index";
-        } catch {}
-        setView(initial);
-      }
-      function setupViewRoots() {
-        document.querySelectorAll<HTMLElement>("[data-view-root]").forEach((r) => initViewRoot(r));
-      }
-      setupViewRoots();
-      document.addEventListener("astro:page-load", setupViewRoots);</script>
+      </script>
   </body>
 </html>

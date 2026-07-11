@@ -4701,10 +4701,16 @@ html[data-scene-mode="day"] .filter-panel {
   font-size: 10px;
   opacity: 0.7;
 }
-/* 视图面板显隐由 data-active-view 控制（内联脚本先行设置，避免闪烁） */
-[data-view-root][data-active-view="timeline"] [data-view-panel="index"] { display: none; }
-[data-view-root][data-active-view="index"] [data-view-panel="timeline"] { display: none; }
-[data-view-root] [data-view-panel] { min-width: 0; }
+/* Worldline's view state is owned by its React explorer, not global page scripts. */
+.worldline-view-stage { min-width: 0; overflow: hidden; }
+.worldline-stage-panel { min-width: 0; }
+.worldline-toolbar-main .filter-search { flex: 1 1 360px; }
+.filter-select { position: relative; z-index: 5; flex: none; }
+.filter-sort { display: inline-flex; align-items: center; gap: .55rem; min-height: 40px; }
+.filter-select-menu { position: absolute; right: 0; top: calc(100% + .45rem); min-width: max-content; overflow: hidden; padding: .3rem; border: 1px solid var(--ia-line-strong); border-radius: .75rem; background: color-mix(in srgb, var(--ia-panel) 96%, transparent); box-shadow: 0 16px 38px rgba(0,0,0,.24); backdrop-filter: blur(16px); }
+.filter-select-menu button { display:flex; width:100%; align-items:center; justify-content:space-between; gap:1rem; border-radius:.5rem; padding:.55rem .65rem; color:var(--ia-mist); font:12px var(--font-mono); text-align:left; white-space:nowrap; }
+.filter-select-menu button:hover, .filter-select-menu button[aria-selected="true"] { color:var(--ia-ink); background:color-mix(in srgb, var(--ia-neon) 14%, transparent); }
+@media (max-width: 639px) { .worldline-toolbar-main { align-items:stretch; } .worldline-toolbar-main .filter-search { flex-basis:100%; } .filter-count-line { min-height:40px; display:inline-flex; align-items:center; } .worldline-type-chips { flex-wrap:nowrap; overflow-x:auto; padding-bottom:.2rem; } .worldline-type-chips .filter-chip { flex:none; min-height:40px; } }
 
 /* ---- §4 浏览器式搜索建议下拉（HeroSearch / Header 共用）---- */
 .wl-search { position: relative; }
