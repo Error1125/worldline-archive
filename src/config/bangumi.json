@@ -1,5 +1,11 @@
 {
-  "username": "",
-  "syncScopes": ["watching", "planned", "completed", "paused", "dropped"],
-  "schedule": "manual"
+  "username": "error1125",
+  "syncScopes": [
+    "watching",
+    "planned",
+    "completed",
+    "paused",
+    "dropped"
+  ],
+  "schedule": "6h"
 }
