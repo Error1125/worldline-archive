@@ -101,7 +101,6 @@ const techList = [...techMap.entries()].sort((a, b) => b[1] - a[1]).map(([value,
         <div class="grid gap-5 sm:grid-cols-2" data-filter-list>
           {sorted.map((entry) => (
             <div
-              class="reveal"
               data-filter-item
               data-status={entry.data.status}
               data-tech={entry.data.techStack.join("|")}

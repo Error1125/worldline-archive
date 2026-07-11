@@ -4293,9 +4293,7 @@ html[data-scene-mode="day"] .icon-badge {
 [data-filter-group][hidden] {
   display: none !important;
 }
-[data-filter-item][data-filter-state="entering"] { opacity:0; transform:translateY(18px) scale(.96); }
-[data-filter-item][data-filter-state="shown"] { opacity:1; transform:none; transition:opacity var(--motion-fast) var(--ease-enter), transform var(--motion-fast) var(--ease-enter); transition-delay:calc(var(--filter-index, 0) * 12ms); }
-[data-filter-item][data-filter-state="leaving"] { opacity:0; transform:translateY(12px) scale(.96); transition:opacity var(--motion-fast) var(--ease-exit), transform var(--motion-fast) var(--ease-exit); pointer-events:none; }
+[data-filter-item][data-filter-state="leaving"] { pointer-events:none; }
 /* 无匹配空态 */
 .filter-empty {
   display: none;
@@ -5157,23 +5155,50 @@ html.ia-cursor [contenteditable="true"],
 html.ia-cursor .filter-search,
 html.ia-cursor .hero-search { cursor: text !important; }
 
-/* v5.3 semantic motion foundation: scenes share timing and only animate
-   transform/opacity.  Content remains visible without script or with reduced motion. */
+/* v5.3 semantic motion system. Filter items are owned by the filter state
+   machine (WAAPI), never by .reveal. Scene CSS below supplies page-specific
+   first-view choreography and card-internal sequencing. */
 :root { --motion-scene-duration: 520ms; --motion-scene-ease: cubic-bezier(.22,1,.36,1); --motion-scene-stagger: 55ms; }
-[data-motion-scene] [data-filter-item], [data-motion-scene] .reveal { transition: opacity var(--motion-scene-duration) var(--motion-scene-ease), transform var(--motion-scene-duration) var(--motion-scene-ease), filter var(--motion-scene-duration) var(--motion-scene-ease); }
-[data-motion-scene="anime"] [data-filter-item] { transform-origin:center top; }
-[data-motion-scene="anime"] [data-filter-item]:nth-child(3n+1) { transition-delay:0ms; }
-[data-motion-scene="anime"] [data-filter-item]:nth-child(3n+2) { transition-delay:var(--motion-scene-stagger); }
-[data-motion-scene="anime"] [data-filter-item]:nth-child(3n) { transition-delay:calc(var(--motion-scene-stagger) * 2); }
-[data-motion-scene="moments"] [data-filter-item][data-filter-state="entering"] { opacity:0; transform:translateY(12px); filter:blur(6px); }
-[data-motion-scene="moments"] [data-filter-item][data-filter-state="shown"] { opacity:1; transform:none; filter:none; }
-[data-motion-scene="timeline"] [data-filter-item] { transform-origin:left center; }
-[data-motion-scene="observation"] [data-filter-item][data-filter-state="entering"] { opacity:.2; filter:blur(4px); transform:translateY(4px); }
-[data-motion-scene="projects"] [data-filter-item] { transform-origin:left top; }
-[data-motion-scene="photos"] .photo-polaroid { transition-timing-function:var(--motion-scene-ease); }
-[data-motion-scene="music"] [data-filter-item] { transform-origin:left center; }
-[data-motion-scene="posts"] .reveal:first-child { transition-delay:0ms; }
-[data-motion-scene="bugs"] [data-filter-item][data-filter-state="entering"] { opacity:0; transform:translateY(8px); }
+[data-motion-scene] [data-filter-item].reveal { opacity:1; transform:none; transition:none; }
+
+@keyframes wl-scene-anime { from { opacity:0; filter:blur(5px); transform:scale(.97); } to { opacity:1; filter:none; transform:scale(1); } }
+@keyframes wl-scene-project { from { opacity:0; transform:translateY(12px) scale(.985); } to { opacity:1; transform:none; } }
+@keyframes wl-scene-photo { from { opacity:0; filter:saturate(.55); transform:scale(.98); } to { opacity:1; filter:saturate(1); transform:scale(1); } }
+@keyframes wl-scene-music { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+@keyframes wl-scene-document { from { opacity:0; filter:blur(4px); transform:translateY(10px); } to { opacity:1; filter:none; transform:none; } }
+@keyframes wl-timeline-line { from { transform:scaleY(0); opacity:.2; } to { transform:scaleY(1); opacity:1; } }
+@keyframes wl-timeline-node { from { opacity:0; transform:scale(.25); box-shadow:none; } to { opacity:1; transform:scale(1); } }
+@keyframes wl-timeline-record { from { opacity:0; filter:blur(4px); transform:translateY(10px) scale(.99); } to { opacity:1; filter:none; transform:none; } }
+@keyframes wl-observation-scan { from { transform:translateY(-130%); opacity:0; } 30% { opacity:.8; } to { transform:translateY(340%); opacity:0; } }
+
+[data-motion-scene="anime"] [data-filter-root][data-motion-initial="1"] [data-filter-item]:not([hidden]) { animation:wl-scene-anime 460ms var(--motion-scene-ease) both; animation-delay:calc(min(var(--filter-index, 0), 8) * 42ms); }
+[data-motion-scene="projects"] [data-filter-root][data-motion-initial="1"] [data-filter-item]:not([hidden]) { animation:wl-scene-project 440ms var(--motion-scene-ease) both; animation-delay:calc(min(var(--filter-index, 0), 8) * 40ms); }
+[data-motion-scene="photos"] [data-filter-root][data-motion-initial="1"] [data-filter-item]:not([hidden]) { animation:wl-scene-photo 480ms var(--motion-scene-ease) both; animation-delay:calc(min(var(--filter-index, 0), 8) * 44ms); }
+[data-motion-scene="music"] [data-filter-root][data-motion-initial="1"] [data-filter-item]:not([hidden]) { animation:wl-scene-music 380ms var(--motion-scene-ease) both; animation-delay:calc(min(var(--filter-index, 0), 8) * 36ms); }
+
+/* Timeline: the line grows, then nodes illuminate in DOM/time order, then
+   records unfold beside their nodes. Sorting changes DOM order, so newest and
+   oldest genuinely reverse that temporal sequence without a 0,0 FLIP source. */
+[data-filter-root][data-motion-initial="1"][data-motion-scene="timeline"] .timeline-line { transform-origin:top; animation:wl-timeline-line 520ms var(--motion-scene-ease) both; }
+[data-filter-root][data-motion-initial="1"][data-motion-scene="timeline"] .timeline-record { animation:wl-timeline-record 380ms var(--motion-scene-ease) both; animation-delay:calc(150ms + min(var(--filter-index, 0), 10) * 38ms); }
+[data-filter-root][data-motion-initial="1"][data-motion-scene="timeline"] .timeline-node { animation:wl-timeline-node 260ms var(--motion-scene-ease) both; animation-delay:calc(90ms + min(var(--filter-index, 0), 10) * 38ms); }
+
+/* Observation: matched records focus through blur while a scan line sweeps the
+   grid; exits are handled by WAAPI as an unfocus, rather than spatial flight. */
+[data-filter-root][data-motion-initial="1"][data-motion-scene="observation"] .observation-grid { position:relative; }
+[data-filter-root][data-motion-initial="1"][data-motion-scene="observation"] .observation-grid::before { content:""; position:absolute; z-index:2; left:0; right:0; top:0; height:1px; pointer-events:none; background:linear-gradient(90deg, transparent, var(--ia-neon), transparent); box-shadow:0 0 16px color-mix(in srgb, var(--ia-neon) 65%, transparent); animation:wl-observation-scan 850ms var(--motion-scene-ease) both; }
+
+/* Card-internal semantic sequencing; these are intentionally real animations,
+   not transform-origin placeholders. */
+[data-motion-scene="anime"] [data-filter-item] .aspect-\[16\/10\] { animation:wl-scene-anime 360ms var(--motion-scene-ease) both; }
+[data-motion-scene="anime"] [data-filter-item] h3 { animation:wl-scene-document 300ms var(--motion-scene-ease) 90ms both; }
+[data-motion-scene="projects"] [data-filter-item] .tag-list, [data-motion-scene="projects"] [data-filter-item] [class*="tag"] { animation:wl-scene-document 280ms var(--motion-scene-ease) 120ms both; }
+[data-motion-scene="music"] [data-filter-item] > .glass-card > div:first-child { animation:wl-scene-music 300ms var(--motion-scene-ease) both; }
+[data-motion-scene="photos"] [data-filter-item] .photo-polaroid img { animation:wl-scene-photo 480ms var(--motion-scene-ease) both; }
+[data-motion-scene="photos"] [data-filter-item] .photo-polaroid-cap { animation:wl-scene-document 300ms var(--motion-scene-ease) 130ms both; }
+[data-motion-scene="posts"] [data-motion-item], [data-motion-scene="bugs"] [data-motion-item] { animation:wl-scene-document 440ms var(--motion-scene-ease) both; animation-delay:calc(var(--motion-index, 0) * 45ms); }
+[data-motion-scene="posts"] [data-motion-item] p, [data-motion-scene="bugs"] [data-motion-item] p { animation:wl-scene-document 280ms var(--motion-scene-ease) 90ms both; }
+
 @media (prefers-reduced-motion: reduce) { [data-motion-scene] *, [data-motion-scene] *::before, [data-motion-scene] *::after { animation:none !important; transition-duration:.01ms !important; filter:none !important; transform:none !important; } }
 
 /* v5.3 moments feed: natural two-column flow without CSS columns, preserving

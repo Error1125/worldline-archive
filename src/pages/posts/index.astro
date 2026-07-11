@@ -8,7 +8,7 @@ import { getPosts } from "@/lib/content";
 const posts = await getPosts();
 ---
 
-<SiteLayout title="文章" description="长文、开发记录与深夜思绪。">
+<SiteLayout title="文章" description="长文、开发记录与深夜思绪。" motionScene="posts">
   <PageHeader
     eyebrow="POSTS // 文章"
     title="文字档案"
@@ -20,8 +20,8 @@ const posts = await getPosts();
   {
     posts.length > 0 ? (
       <div class="grid gap-5 sm:grid-cols-2">
-        {posts.map((entry) => (
-          <div class="reveal">
+        {posts.map((entry, index) => (
+          <div class="scene-static-item" data-motion-item style={`--motion-index:${index}`}>
             <ArticleCard entry={entry} />
           </div>
         ))}

@@ -44,7 +44,7 @@ const typeCounts = typeOrder.map((t) => ({
 }));
 ---
 
-<div data-filter-root data-filter-kind="timeline">
+<div data-filter-root data-filter-kind="timeline" data-motion-scene="timeline">
   <!-- 统一筛选栏 -->
   <div class="filter-panel mb-8 flex flex-col gap-4 p-4 sm:p-5">
     <div class="filter-bar">
@@ -94,7 +94,7 @@ const typeCounts = typeOrder.map((t) => ({
   <div class="flex flex-col gap-10">
     {
       years.map((year) => (
-        <section class="reveal" data-filter-group data-group-key={year}>
+        <section class="timeline-year" data-filter-group data-group-key={year}>
           <div class="mb-4 flex items-center gap-3">
             <h2 class="font-serif text-3xl font-bold text-[var(--ia-ink)]">{year}</h2>
             <span class="mono text-[11px] text-[var(--ia-mist)]">{groups.get(year)!.length} records</span>
@@ -102,7 +102,7 @@ const typeCounts = typeOrder.map((t) => ({
           </div>
 
           <div class="relative pl-6">
-            <span class="absolute bottom-2 left-[7px] top-2 w-px bg-gradient-to-b from-[var(--ia-line-strong)] via-[var(--ia-line)] to-transparent" />
+            <span class="timeline-line absolute bottom-2 left-[7px] top-2 w-px bg-gradient-to-b from-[var(--ia-line-strong)] via-[var(--ia-line)] to-transparent" />
 
             <ul class="flex flex-col gap-5" data-filter-list>
               {groups.get(year)!.map((it) => {
@@ -111,14 +111,14 @@ const typeCounts = typeOrder.map((t) => ({
                 const search = [it.title, it.description ?? "", it.typeLabel, ...it.tags].join(" ");
                 return (
                   <li
-                    class="relative"
+                    class="timeline-record relative"
                     data-filter-item
                     data-type={it.type}
                     data-date={it.date.toISOString()}
                     data-search={search}
                   >
                     <span
-                      class="absolute -left-[21px] top-2 grid size-3.5 place-items-center rounded-full ring-2 ring-[var(--ia-bg)]"
+                      class="timeline-node absolute -left-[21px] top-2 grid size-3.5 place-items-center rounded-full ring-2 ring-[var(--ia-bg)]"
                       style={`background:${color};box-shadow:0 0 10px ${color}`}
                     />
                     <Tag

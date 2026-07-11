@@ -59,7 +59,6 @@ const albums = [...albumMap.entries()].map(([value, count]) => ({ value, count }
         <div class="photo-wall" data-filter-list>
           {photos.map((entry) => (
             <div
-              class="reveal"
               data-filter-item
               data-album={entry.data.album ?? ""}
               data-date={entry.data.date.toISOString()}

@@ -104,7 +104,6 @@ const statusColor: Record<string, string> = {
         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" data-filter-list>
           {anime.map((entry) => (
             <div
-              class="reveal"
               data-filter-item
               data-status={entry.data.status}
               data-tag={(entry.data.tags ?? []).join("|")}

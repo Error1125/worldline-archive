@@ -29,8 +29,8 @@ const investigating = bugs.filter((b) => b.data.status === "investigating").leng
   {
     bugs.length > 0 ? (
       <div class="grid gap-5 sm:grid-cols-2">
-        {bugs.map((entry) => (
-          <div class="reveal">
+        {bugs.map((entry, index) => (
+          <div class="scene-static-item" data-motion-item style={`--motion-index:${index}`}>
             <BugCard entry={entry} />
           </div>
         ))}

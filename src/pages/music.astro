@@ -101,7 +101,6 @@ const tagList = [...tagMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).m
         <div class="grid gap-5 sm:grid-cols-2" data-filter-list>
           {music.map((entry) => (
             <div
-              class="reveal"
               data-filter-item
               data-type={entry.data.type}
               data-tag={entry.data.tags.join("|")}

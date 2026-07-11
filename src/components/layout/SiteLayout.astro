@@ -315,6 +315,60 @@ const searchPayload = {
         }
         let query = (searchInput?.value || "").trim().toLowerCase();
         let searchTimer = 0;
+        let hasInitialised = false;
+        let filterRun = 0;
+        const activeAnimations = new Map<HTMLElement, Animation[]>();
+        const leaveTimers = new Map<HTMLElement, number>();
+
+        function sceneFor(el: HTMLElement) {
+          return el.closest<HTMLElement>("[data-motion-scene]")?.dataset.motionScene || root.dataset.filterKind || "document";
+        }
+
+        function clearMotion(el: HTMLElement) {
+          leaveTimers.get(el) && window.clearTimeout(leaveTimers.get(el));
+          leaveTimers.delete(el);
+          activeAnimations.get(el)?.forEach((animation) => animation.cancel());
+          activeAnimations.delete(el);
+          // Earlier revisions wrote FLIP transforms inline. Always remove that
+          // ownership before a new state transition, including rapid changes.
+          el.style.removeProperty("transform");
+          el.style.removeProperty("transition");
+          el.style.removeProperty("opacity");
+          el.style.removeProperty("filter");
+        }
+
+        function play(el: HTMLElement, keyframes: Keyframe[], options: KeyframeAnimationOptions) {
+          if (reduceMotion) return;
+          const animation = el.animate(keyframes, { duration: 280, easing: "cubic-bezier(.22,1,.36,1)", fill: "none", ...options });
+          const list = activeAnimations.get(el) || [];
+          list.push(animation);
+          activeAnimations.set(el, list);
+          animation.finished.catch(() => {}).finally(() => {
+            const next = (activeAnimations.get(el) || []).filter((current) => current !== animation);
+            if (next.length) activeAnimations.set(el, next); else activeAnimations.delete(el);
+          });
+          return animation;
+        }
+
+        function enterFrames(scene: string): Keyframe[] {
+          switch (scene) {
+            case "observation": return [{ opacity: 0.12, filter: "blur(8px)" }, { opacity: 1, filter: "blur(0px)" }];
+            case "moments": return [{ opacity: 0, filter: "blur(6px)", transform: "translateY(12px)" }, { opacity: 1, filter: "blur(0px)", transform: "translateY(0)" }];
+            case "timeline": return [{ opacity: 0, filter: "blur(4px)", transform: "translateY(10px) scale(.99)" }, { opacity: 1, filter: "blur(0px)", transform: "translateY(0) scale(1)" }];
+            case "anime": return [{ opacity: 0, filter: "blur(5px)", transform: "scale(.97)" }, { opacity: 1, filter: "blur(0px)", transform: "scale(1)" }];
+            case "projects": return [{ opacity: 0, transform: "translateY(12px) scale(.985)" }, { opacity: 1, transform: "translateY(0) scale(1)" }];
+            case "photos": return [{ opacity: 0, filter: "saturate(.55)", transform: "scale(.98)" }, { opacity: 1, filter: "saturate(1)", transform: "scale(1)" }];
+            case "music": return [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "translateY(0)" }];
+            case "bugs": return [{ opacity: 0, filter: "blur(4px)", transform: "translateY(8px)" }, { opacity: 1, filter: "blur(0px)", transform: "translateY(0)" }];
+            default: return [{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "translateY(0)" }];
+          }
+        }
+
+        function leaveFrames(scene: string): Keyframe[] {
+          if (scene === "observation") return [{ opacity: 1, filter: "blur(0px)" }, { opacity: 0.1, filter: "blur(7px)" }];
+          if (scene === "moments") return [{ opacity: 1, filter: "blur(0px)", transform: "translateY(0)" }, { opacity: 0, filter: "blur(5px)", transform: "translateY(10px)" }];
+          return [{ opacity: 1, filter: "blur(0px)", transform: "translateY(0)" }, { opacity: 0, filter: "blur(4px)", transform: "translateY(8px)" }];
+        }
 
         function itemMatches(el: HTMLElement): boolean {
           for (const key of Object.keys(state)) {
@@ -331,18 +385,41 @@ const searchPayload = {
           return true;
         }
 
-        function apply() {
-          const before = new Map(items.map((item) => [item, item.getBoundingClientRect()]));
+        function apply(sortDirection?: "newest" | "oldest") {
+          const run = ++filterRun;
+          // FLIP samples only elements currently contributing a real layout box.
+          // Hidden elements must never provide a 0,0 "before" rect.
+          const before = new Map<HTMLElement, DOMRect>();
+          if (hasInitialised && !reduceMotion) {
+            for (const item of items) {
+              if (item.hidden) continue;
+              const rect = item.getBoundingClientRect();
+              if (rect.width > 0 && rect.height > 0) before.set(item, rect);
+            }
+          }
+          if (sortDirection) sortNodes(sortDirection);
+          const staying: HTMLElement[] = [];
+          const entering: HTMLElement[] = [];
+          const leaving: HTMLElement[] = [];
           let visible = 0;
           for (const el of items) {
             const ok = itemMatches(el);
+            const wasVisible = !el.hidden;
+            clearMotion(el);
             if (ok) {
-              el.hidden = false;
-              el.dataset.filterState = "entering";
-              requestAnimationFrame(() => { el.dataset.filterState = "shown"; });
-            } else if (!el.hidden) {
+              if (wasVisible) {
+                el.dataset.filterState = "staying";
+                staying.push(el);
+              } else {
+                el.hidden = false;
+                el.dataset.filterState = "entering";
+                entering.push(el);
+              }
+            } else if (wasVisible) {
               el.dataset.filterState = "leaving";
-              window.setTimeout(() => { if (el.dataset.filterState === "leaving") el.hidden = true; }, reduceMotion ? 0 : 190);
+              leaving.push(el);
+            } else {
+              el.dataset.filterState = "hidden";
             }
             if (ok) visible++;
           }
@@ -356,17 +433,49 @@ const searchPayload = {
             const label = countLine.dataset.filterCountLabel || "records";
             countLine.textContent = `${visible} ${label}`;
           }
-          if (!reduceMotion) requestAnimationFrame(() => {
+          if (!hasInitialised) {
             items.forEach((item, index) => {
-              const old = before.get(item); const next = item.getBoundingClientRect();
-              if (!old || item.hidden) return;
-              const dx = old.left - next.left; const dy = old.top - next.top;
-              if (dx || dy) {
-                item.style.transition = "none";
-                item.style.transform = `translate(${dx}px, ${dy}px)`;
-                requestAnimationFrame(() => { item.style.transition = "transform var(--motion-base) var(--ease-spring-soft)"; item.style.transform = ""; });
-              }
+              item.dataset.filterState = item.hidden ? "hidden" : "shown";
               item.style.setProperty("--filter-index", String(Math.min(index, 12)));
+            });
+            hasInitialised = true;
+            requestAnimationFrame(() => {
+              root.dataset.motionInitial = "1";
+              // Initial choreography is deliberately one-shot. Subsequent
+              // filter entries are owned only by the state machine/WAAPI.
+              window.setTimeout(() => { delete root.dataset.motionInitial; }, 900);
+            });
+            return;
+          }
+
+          requestAnimationFrame(() => {
+            if (run !== filterRun) return;
+            // Only staying elements receive FLIP. entering never reads an old
+            // rect, so it can never translate from the document origin.
+            for (const item of staying) {
+              const old = before.get(item);
+              const next = item.getBoundingClientRect();
+              if (!old || next.width <= 0 || next.height <= 0) continue;
+              const dx = old.left - next.left;
+              const dy = old.top - next.top;
+              if (dx || dy) play(item, [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "translate(0, 0)" }], { duration: 360, easing: "cubic-bezier(.22,1,.36,1)" });
+              item.dataset.filterState = "shown";
+            }
+            entering.forEach((item, index) => {
+              item.style.setProperty("--filter-index", String(Math.min(index, 12)));
+              const animation = play(item, enterFrames(sceneFor(item)), { delay: Math.min(index, 10) * 36 });
+              if (animation) animation.finished.catch(() => {}).then(() => { if (run === filterRun && !item.hidden) item.dataset.filterState = "shown"; });
+              else item.dataset.filterState = "shown";
+            });
+            leaving.forEach((item) => {
+              const finish = () => {
+                if (run !== filterRun || item.dataset.filterState !== "leaving") return;
+                clearMotion(item); item.hidden = true; item.dataset.filterState = "hidden";
+                for (const g of groups) g.hidden = !g.querySelector<HTMLElement>("[data-filter-item]:not([hidden])");
+              };
+              const animation = play(item, leaveFrames(sceneFor(item)), { duration: 190, easing: "ease-out" });
+              if (animation) animation.finished.catch(() => {}).then(finish);
+              else finish();
             });
           });
         }
@@ -417,8 +526,7 @@ const searchPayload = {
         }
         if (sortSelect) {
           sortSelect.addEventListener("change", () => {
-            sortNodes((sortSelect.value as "newest" | "oldest") || "newest");
-            apply();
+            apply((sortSelect.value as "newest" | "oldest") || "newest");
           });
         }
 
