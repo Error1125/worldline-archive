@@ -408,8 +408,7 @@ a.glass-card:focus-visible {
   }
   to {
     opacity: 0;
-    transform: translateY(-6px);
-    filter: blur(4px);
+    transform: translateY(-4px);
   }
 }
 ::view-transition-old(root) {

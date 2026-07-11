@@ -25,8 +25,6 @@ export default function PageEnter() {
     };
 
     // 首帧也来一次
-    run();
-
     document.addEventListener("astro:after-swap", run);
     return () => document.removeEventListener("astro:after-swap", run);
   }, []);
