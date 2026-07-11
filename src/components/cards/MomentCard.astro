@@ -13,9 +13,11 @@ const { entry } = Astro.props;
 const { content, date, tags, mood, weather, locationText, images } = entry.data;
 const meta = [mood, weather, locationText].filter(Boolean) as string[];
 const pics = (images ?? []).slice(0, 3).map((src) => withBase(src));
+const href = withBase(`/moments/${entry.id}`);
 ---
 
 <GlassCard class="group flex flex-col gap-3 p-5">
+  <a href={href} class="card-link-overlay" aria-label="View moment"></a>
   <div class="flex items-center justify-between gap-3">
     <span class="eyebrow flex items-center gap-1.5">
       <Icon name="moment" size={13} class="text-[var(--ia-neon)]" />
@@ -26,15 +28,15 @@ const pics = (images ?? []).slice(0, 3).map((src) => withBase(src));
     </time>
   </div>
 
-  <p class="whitespace-pre-line text-[15px] leading-relaxed text-[var(--ia-ink)]">
+  <p class="relative z-10 whitespace-pre-line text-[15px] leading-relaxed text-[var(--ia-ink)]">
     {content}
   </p>
 
   {
     pics.length > 0 && (
-      <div class:list={["grid gap-2", pics.length === 1 ? "grid-cols-1" : "grid-cols-3"]}>
-        {pics.map((src) => (
-          <div class="aspect-square overflow-hidden rounded-lg border border-[var(--ia-line)]">
+      <div class:list={["relative z-10 grid gap-2", pics.length === 1 ? "grid-cols-1 aspect-[4/3]" : pics.length === 2 ? "grid-cols-2" : "grid-cols-[1.35fr_1fr]"]}>
+        {pics.map((src, i) => (
+          <div class:list={["overflow-hidden rounded-lg border border-[var(--ia-line)]", pics.length === 1 ? "" : "aspect-square", pics.length === 3 && i === 0 ? "row-span-2 aspect-auto" : ""]}>
             <img
               src={src}
               alt=""
@@ -48,7 +50,7 @@ const pics = (images ?? []).slice(0, 3).map((src) => withBase(src));
   }
 
   <div class="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-1">
-    <TagList tags={tags ?? []} max={4} />
+    <TagList tags={tags ?? []} max={2} />
     {
       meta.length > 0 && (
         <span class="mono text-[11px] text-[var(--ia-mist)]">

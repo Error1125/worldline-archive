@@ -1,0 +1,14 @@
+---
+import discussion from "@/config/discussion.json";
+interface Props { type: "anime" | "post" | "project" | "moment"; recordId: string; externalId?: string | number; }
+const { type, recordId, externalId } = Astro.props;
+const configType = type === "post" ? "posts" : type === "project" ? "projects" : type === "moment" ? "moments" : "anime";
+const term = type === "anime" ? `anime:${externalId ? `bgm-${externalId}` : recordId}` : `${type}:${recordId}`;
+const enabled = discussion.enabled && discussion.provider === "giscus" && discussion.enabledTypes.includes(configType) && discussion.giscus.repo && discussion.giscus.repoId && discussion.giscus.categoryId;
+---
+{enabled && <section id="discussion" class="mt-10 border-t border-[var(--ia-line)] pt-7" data-discussion-term={term} data-giscus-repo={discussion.giscus.repo} data-giscus-repo-id={discussion.giscus.repoId} data-giscus-category={discussion.giscus.category} data-giscus-category-id={discussion.giscus.categoryId} data-giscus-mapping={discussion.giscus.mapping} data-giscus-theme={discussion.giscus.theme}>
+  <p class="mono mb-3 text-[11px] text-[var(--ia-mist)]">OBSERVATION FOLLOW-UP // {term}</p>
+</section>}
+<script is:inline>
+  (() => { const mount = (root) => { if (root.dataset.loaded) return; root.dataset.loaded = "true"; const s = document.createElement("script"); s.src = "https://giscus.app/client.js"; s.async = true; s.crossOrigin = "anonymous"; s.setAttribute("data-repo", root.dataset.giscusRepo); s.setAttribute("data-repo-id", root.dataset.giscusRepoId); s.setAttribute("data-category", root.dataset.giscusCategory); s.setAttribute("data-category-id", root.dataset.giscusCategoryId); s.setAttribute("data-mapping", root.dataset.giscusMapping || "specific"); s.setAttribute("data-term", root.dataset.discussionTerm); s.setAttribute("data-theme", document.documentElement.dataset.sceneMode === "day" ? "light" : "dark"); s.setAttribute("data-lang", "zh-CN"); s.setAttribute("data-reactions-enabled", "1"); s.setAttribute("data-input-position", "top"); root.append(s); }; const roots = [...document.querySelectorAll("#discussion[data-discussion-term]")]; const observer = new IntersectionObserver((entries) => entries.forEach((entry) => { if (entry.isIntersecting) { mount(entry.target); observer.unobserve(entry.target); } }), { rootMargin: "240px" }); roots.forEach((root) => observer.observe(root)); })();
+</script>

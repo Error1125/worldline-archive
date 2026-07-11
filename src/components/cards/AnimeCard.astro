@@ -10,7 +10,7 @@ interface Props {
   entry: CollectionEntry<"anime">;
 }
 const { entry } = Astro.props;
-const { title, titleJP, titleCn, status, score, siteScore, bangumiUserRate, bangumiCommunityScore, bangumiRate, episodes, currentEpisode, cover, tags, thoughts, year, season, externalLinks, externalIds } =
+const { title, titleJP, titleCn, status, score, siteScore, bangumiUserRate, bangumiCommunityScore, bangumiRate, episodes, currentEpisode, cover, tags, thoughts, bangumiSummary, year, season, externalLinks, externalIds } =
   entry.data;
 const detailHref = withBase(`/anime/${entry.id}`);
 const displayTitle = titleCn?.trim() || title;
@@ -71,7 +71,7 @@ const hueB = (hueSeed * 3 + 120) % 360;
     {subTitle && <p class="truncate mono text-[11px] text-[var(--ia-mist)]">{subTitle}</p>}
   </div>
 
-  {thoughts && <p class="line-clamp-2 text-xs leading-relaxed text-[var(--ia-mist)]">{thoughts}</p>}
+  {(thoughts || bangumiSummary || titleJP) && <p class="line-clamp-2 text-xs leading-relaxed text-[var(--ia-mist)]">{thoughts || bangumiSummary || titleJP}</p>}
 
   <div class="mt-auto flex items-center justify-between gap-2 mono text-[11px] text-[var(--ia-mist)]">
     <span>

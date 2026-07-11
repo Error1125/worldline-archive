@@ -39,7 +39,7 @@ for (const p of projects) for (const t of p.data.techStack) techMap.set(t, (tech
 const techList = [...techMap.entries()].sort((a, b) => b[1] - a[1]).map(([value, count]) => ({ value, count }));
 ---
 
-<SiteLayout title="项目" description="正在建造、暂停或已归档的造物。">
+<SiteLayout title="项目" description="正在建造、暂停或已归档的造物。" motionScene="projects">
   <PageHeader
     eyebrow="PROJECTS // 造物记录"
     title="造物档案"

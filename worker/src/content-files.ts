@@ -283,6 +283,14 @@ function buildFrontmatter(type: RecordType, p: Record<string, unknown>, date: Da
         line("studio", p.studio, "arr"),
         line("genres", p.genres, "arr"),
         line("thoughts", p.thoughts),
+        line("longReview", p.longReview),
+        line("bangumiSummary", p.bangumiSummary),
+        line("bangumiAirDate", p.bangumiAirDate),
+        typeof p.bangumiRank === "number" ? line("bangumiRank", p.bangumiRank, "raw") : null,
+        line("bangumiTags", p.bangumiTags, "arr"),
+        typeof p.bangumiCommunityScore === "number" ? line("bangumiCommunityScore", p.bangumiCommunityScore, "raw") : null,
+        typeof p.bangumiUserRate === "number" ? line("bangumiUserRate", p.bangumiUserRate, "raw") : null,
+        line("bangumiSyncedAt", p.bangumiSyncedAt),
         line("externalUrl", p.externalUrl),
         p.externalIds && typeof p.externalIds === "object"
           ? line("externalIds", JSON.stringify(p.externalIds), "raw")

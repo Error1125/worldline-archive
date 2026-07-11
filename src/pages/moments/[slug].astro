@@ -4,6 +4,7 @@ import RecordDetailLayout from "@/components/detail/RecordDetailLayout.astro";
 import { withBase } from "@/lib/paths";
 import { isVisiblePublic } from "@/lib/visibility";
 import { resolveRelatedRecords } from "@/lib/content";
+import DiscussionSection from "@/components/discussion/DiscussionSection.astro";
 
 export async function getStaticPaths() {
   const list = await getCollection("moments", ({ data }) => isVisiblePublic(data.visibility) && !data.draft);
@@ -51,4 +52,5 @@ const metas = [
   <div class="ia-prose mt-8">
     <Content />
   </div>
+  <DiscussionSection type="moment" recordId={entry.id} />
 </RecordDetailLayout>

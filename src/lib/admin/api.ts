@@ -169,6 +169,8 @@ export type SettingsName = "profile" | "site" | "worldline" | "bangumi";
 
 export interface BangumiSyncResult { success: boolean; username: string; scanned: number; created: number; updated: number; unchanged: number; commitUrl?: string; message: string; }
 export function bangumiSync() { return request<BangumiSyncResult>("/api/admin/bangumi/sync", { method: "POST" }); }
+export interface BangumiSearchItem { id: number; titleCn: string; titleJP: string; cover: string; airDate: string; year?: number; seasonYear?: number; episodes?: number; score?: number; rank?: number; summary: string; tags: string[]; externalUrl: string; }
+export function bangumiSearch(query: string) { return request<{ items: BangumiSearchItem[] }>(`/api/admin/bangumi/search?q=${encodeURIComponent(query)}`, { cache: "no-store" }); }
 
 export interface ProjectsOverview { generatedAt: string | null; repos: Array<{ owner: string; repo: string; description?: string; url: string; language?: string | null; stars: number; forks: number }>; projects: Array<{ slug: string; path: string; title: string; status: string; visibility: string; draft: boolean; concept: boolean; github: { owner: string; repo: string } | null }>; }
 export function projectsOverview() { return request<ProjectsOverview>(`/api/admin/projects/overview?t=${Date.now()}`, { cache: "no-store" }); }
@@ -196,6 +198,14 @@ export function getStatus(options: { sha?: string } = {}) {
   if (options.sha) query.set("sha", options.sha);
   return request<AdminStatus>(`/api/admin/status?${query}`, { cache: "no-store" });
 }
+
+export type ContentType = "anime" | "post" | "moment" | "photo" | "music" | "bug" | "project";
+export interface ContentRow { type: ContentType; slug: string; path: string; title: string; status: string; visibility: string; draft: boolean; source: string; updatedAt: string; htmlPath: string; githubUrl: string; }
+export interface ContentDetail { type: ContentType; slug: string; path: string; frontmatter: string; body: string; blobSha: string; }
+export function contentList(type: ContentType) { return request<{ items: ContentRow[] }>(`/api/admin/content/${type}?t=${Date.now()}`, { cache: "no-store" }); }
+export function contentDetail(type: ContentType, slug: string) { return request<ContentDetail>(`/api/admin/content/${type}/${encodeURIComponent(slug)}?t=${Date.now()}`, { cache: "no-store" }); }
+export function updateContent(type: ContentType, slug: string, data: Pick<ContentDetail, "frontmatter" | "body" | "blobSha">) { return request<PublishResult>(`/api/admin/content/${type}/${encodeURIComponent(slug)}`, { method: "PUT", body: JSON.stringify(data) }); }
+export function deleteContent(type: ContentType, slug: string, blobSha: string) { return request<PublishResult>(`/api/admin/content/${type}/${encodeURIComponent(slug)}`, { method: "DELETE", body: JSON.stringify({ blobSha }) }); }
 
 /** 健康检查：直接 GET {base}/api/health（无需登录）。可显式传入 base 供登录页「测试连接」。 */
 export async function health(baseOverride?: string): Promise<HealthInfo> {

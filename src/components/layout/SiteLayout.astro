@@ -33,8 +33,9 @@ interface Props {
   description?: string;
   /** 首页模式：主容器改用"观测室"一屏壳布局，且不渲染 Footer（由 HomeStatusStrip 收尾）。 */
   home?: boolean;
+  motionScene?: string;
 }
-const { title, description, home = false } = Astro.props;
+const { title, description, home = false, motionScene = "document" } = Astro.props;
 
 /* v5.0.2 §16.6：进场动画的世界线数值改由引擎在构建期计算（全站单一来源） */
 const wlLoaderValue = getWorldlineValue(await getTimelineItems());
@@ -128,6 +129,7 @@ const searchPayload = {
     <Header home={home} />
 
     <main
+      data-motion-scene={motionScene}
       class:list={[
         "relative z-10 mx-auto w-full",
         home

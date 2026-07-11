@@ -31,6 +31,7 @@ import {
   getFile,
   listDir,
   putFile,
+  deleteFile,
   repoInfo,
   latestCommit,
   latestWorkflowRun,
@@ -116,6 +117,18 @@ async function readJson(req: Request): Promise<Record<string, unknown>> {
   }
   return {};
 }
+
+const CONTENT_DIRS: Record<RecordType, string> = { moment: "moments", post: "posts", photo: "photos", project: "projects", music: "music", anime: "anime", bug: "bugs" };
+const CONTENT_HTML: Record<RecordType, string> = { moment: "moments", post: "posts", photo: "photos", project: "projects", music: "music", anime: "anime", bug: "bugs" };
+
+function validContentSlug(value: string) {
+  return /^[a-z0-9\-\u4e00-\u9fa5]{1,128}$/i.test(value) && !value.includes("..") && !value.includes("/") && !value.includes("\\");
+}
+function contentPath(type: RecordType, slug: string) {
+  if (!RECORD_TYPES.includes(type) || !validContentSlug(slug)) return null;
+  return `src/content/${CONTENT_DIRS[type]}/${slug}.md`;
+}
+function contentTitle(fm: string, fallback: string) { return scalar(fm, "title") ?? scalar(fm, "content")?.slice(0, 80) ?? fallback; }
 
 /* ---------------- 登录限流（单实例内存，足够挡爆破） ---------------- */
 
@@ -377,6 +390,62 @@ async function handle(req: Request, env: Env): Promise<Response> {
   if (routeKey === "POST /api/admin/bangumi/sync") {
     const result = await runBangumiSync(env);
     return json(result);
+  }
+
+  if (routeKey === "GET /api/admin/bangumi/search") {
+    const q = (url.searchParams.get("q") ?? "").trim();
+    if (!q || q.length > 80) return err("INVALID_QUERY", "搜索关键词长度必须在 1 到 80 个字符之间。", 400);
+    const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch("https://api.bgm.tv/v0/search/subjects?limit=8", { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json", "User-Agent": "worldline-archive" }, body: JSON.stringify({ keyword: q, filter: { type: [2] } }), signal: controller.signal });
+      if (response.status === 429) return err("BANGUMI_RATE_LIMITED", "Bangumi 搜索请求过于频繁，请稍后重试。", 429);
+      if (!response.ok) return err("BANGUMI_SEARCH_FAILED", `Bangumi 搜索失败（HTTP ${response.status}）。`, 502);
+      const payload = await response.json() as { data?: any[] };
+      return json({ items: (payload.data ?? []).slice(0, 8).map((item) => ({ id: item.id, titleCn: item.name_cn ?? "", titleJP: item.name ?? "", cover: item.images?.large ?? item.images?.common ?? "", airDate: item.date ?? "", year: /^\d{4}/.test(item.date ?? "") ? Number(String(item.date).slice(0, 4)) : undefined, episodes: item.eps ?? undefined, score: item.rating?.score ?? undefined, rank: item.rank ?? undefined, summary: item.short_summary ?? "", tags: Array.isArray(item.tags) ? item.tags.slice(0, 8).map((tag: any) => tag.name).filter(Boolean) : [], externalUrl: `https://bgm.tv/subject/${item.id}` })) });
+    } catch (error) {
+      const timeout = error instanceof Error && error.name === "AbortError";
+      return err(timeout ? "BANGUMI_TIMEOUT" : "BANGUMI_SEARCH_FAILED", timeout ? "Bangumi 搜索超时，请稍后重试。" : "无法连接 Bangumi 搜索服务。", 502);
+    } finally { clearTimeout(timer); }
+  }
+
+  /* ---- v5.3 content manager: only the seven whitelisted content directories
+     are reachable. Raw frontmatter is preserved verbatim so unknown fields and
+     formatting survive an edit. */
+  const contentMatch = path.match(/^\/api\/admin\/content\/([a-z]+)(?:\/([^/]+))?$/);
+  if (contentMatch) {
+    const type = contentMatch[1] as RecordType;
+    const slug = contentMatch[2];
+    if (!RECORD_TYPES.includes(type)) return err("UNKNOWN_TYPE", "不支持的内容类型。", 400);
+    if (!slug && req.method === "GET") {
+      const files = (await listDir(env, `src/content/${CONTENT_DIRS[type]}`) ?? []).filter((item) => item.type === "file" && item.name.endsWith(".md"));
+      const rows = await Promise.all(files.map(async (item) => {
+        const file = await getFile(env, item.path); const doc = file && splitDoc(file.content); const recordSlug = item.name.slice(0, -3);
+        if (!doc) return null;
+        const visibility = scalar(doc.fm, "visibility") ?? "public";
+        return { type, slug: recordSlug, path: item.path, title: contentTitle(doc.fm, recordSlug), status: scalar(doc.fm, "status") ?? "", visibility, draft: scalar(doc.fm, "draft") === "true", source: scalar(doc.fm, "externalIds")?.includes("bangumi") ? "bangumi" : "local", updatedAt: scalar(doc.fm, "updatedAt") ?? scalar(doc.fm, "syncedAt") ?? scalar(doc.fm, "date") ?? "", htmlPath: `/${CONTENT_HTML[type]}/${recordSlug}`, githubUrl: `https://github.com/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/blob/${env.GITHUB_BRANCH}/${item.path}` };
+      }));
+      return json({ items: rows.filter(Boolean).sort((a: any, b: any) => String(b.updatedAt).localeCompare(String(a.updatedAt))) });
+    }
+    if (!slug || !validContentSlug(slug)) return err("INVALID_SLUG", "slug 非法。", 400);
+    const target = contentPath(type, slug)!;
+    const file = await getFile(env, target);
+    if (!file) return err("CONTENT_NOT_FOUND", "未找到该内容。", 404);
+    const doc = splitDoc(file.content);
+    if (!doc) return err("INVALID_CONTENT", "内容缺少合法 frontmatter，无法安全编辑。", 422);
+    if (req.method === "GET") return json({ type, slug, path: target, frontmatter: doc.fm, body: doc.body, blobSha: file.sha });
+    const payload = await readJson(req);
+    if (req.method === "PUT") {
+      if (typeof payload.blobSha !== "string" || payload.blobSha !== file.sha) return err("CONTENT_CONFLICT", "内容已被更新，请重新加载后再保存。", 409);
+      if (typeof payload.frontmatter !== "string" || typeof payload.body !== "string" || payload.frontmatter.includes("\u0000")) return err("INVALID_CONTENT", "frontmatter 或正文无效。", 400);
+      const next = `---\n${payload.frontmatter.replace(/^---\s*\n?|\n?---\s*$/g, "").trimEnd()}\n---\n${payload.body}`;
+      const saved = await putFile(env, target, next, `content(${CONTENT_DIRS[type]}): edit ${slug} [via console]`, { expectedSha: file.sha });
+      return json({ success: true, type, path: target, commitSha: saved.commitSha, commitUrl: saved.commitUrl, message: "内容已保存。" });
+    }
+    if (req.method === "DELETE") {
+      if (typeof payload.blobSha !== "string" || payload.blobSha !== file.sha) return err("CONTENT_CONFLICT", "内容已被更新，请重新加载后再删除。", 409);
+      const saved = await deleteFile(env, target, file.sha, `content(${CONTENT_DIRS[type]}): delete ${slug} [via console]`);
+      return json({ success: true, type, path: target, commitSha: saved.commitSha, commitUrl: saved.commitUrl, message: "内容已永久删除。" });
+    }
   }
 
   if (routeKey === "GET /api/admin/projects/overview") {

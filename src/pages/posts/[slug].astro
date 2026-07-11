@@ -9,6 +9,7 @@ import { isVisiblePublic } from "@/lib/visibility";
 import RelatedRecords from "@/components/detail/RelatedRecords.astro";
 import WorldlineContext from "@/components/detail/WorldlineContext.astro";
 import { resolveRelatedRecords } from "@/lib/content";
+import DiscussionSection from "@/components/discussion/DiscussionSection.astro";
 
 export async function getStaticPaths() {
   const posts = await getCollection("posts", ({ data }) => isVisiblePublic(data.visibility) && !data.draft);
@@ -66,6 +67,7 @@ const related = await resolveRelatedRecords({ type: "post", id: entry.id, tags }
         relatedCount={related.length}
       />
     </div>
+    <DiscussionSection type="post" recordId={entry.id} />
 
     <!-- 页脚彩蛋 -->
     <footer class="mt-8 mono text-xs text-[var(--ia-mist)] opacity-70">

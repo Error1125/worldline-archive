@@ -3,6 +3,7 @@ import { getCollection, render } from "astro:content";
 import RecordDetailLayout from "@/components/detail/RecordDetailLayout.astro";
 import { isVisiblePublic } from "@/lib/visibility";
 import { resolveRelatedRecords, ANIME_STATUS_ZH } from "@/lib/content";
+import DiscussionSection from "@/components/discussion/DiscussionSection.astro";
 
 export async function getStaticPaths() {
   const list = await getCollection("anime", ({ data }) => isVisiblePublic(data.visibility) && !data.draft);
@@ -61,4 +62,6 @@ const external = d.externalUrl ?? d.externalLinks?.bangumi ?? d.externalLinks?.a
   <div class="ia-prose">
     <Content />
   </div>
+  <section class="ia-prose mt-10"><h2>作品简介</h2><p>{d.bangumiSummary ?? d.summary ?? "暂无 Bangumi 同步简介。"}</p><h2>我的观测记录</h2>{typeof d.siteScore === "number" && <p>站内评分：{d.siteScore} / 10</p>}{d.thoughts && <p>{d.thoughts}</p>}{d.longReview && <p class="whitespace-pre-wrap">{d.longReview}</p>}</section>
+  <DiscussionSection type="anime" recordId={entry.id} externalId={d.externalIds?.bangumi} />
 </RecordDetailLayout>

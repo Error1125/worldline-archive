@@ -926,6 +926,9 @@ export function PublishFormScreen({
   const [importBusy, setImportBusy] = useState(false);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [animeQuery, setAnimeQuery] = useState("");
+  const [bangumiBusy, setBangumiBusy] = useState(false);
+  const [bangumiResults, setBangumiResults] = useState<api.BangumiSearchItem[]>([]);
+  const [bangumiError, setBangumiError] = useState<string | null>(null);
   const [animeBusy, setAnimeBusy] = useState(false);
   const [animeResults, setAnimeResults] = useState<AniListSearchItem[]>([]);
   const [animeError, setAnimeError] = useState<string | null>(null);
@@ -1139,23 +1142,16 @@ export function PublishFormScreen({
   const applyAnime = (item: AniListSearchItem) => {
     setState((current) => ({
       ...current,
-      title: item.title.english || item.title.romaji || item.title.native || current.title,
-      titleJP: item.title.native || current.titleJP,
-      titleCn: current.titleCn,
-      cover: item.coverImage?.large || current.cover,
-      episodes: item.episodes ?? current.episodes,
-      season: item.season ? item.season.toLowerCase() : current.season,
-      year: item.seasonYear ?? current.year,
-      genres: item.genres ?? current.genres,
-      studio: item.studios?.nodes?.map((node) => node.name).filter(Boolean) ?? current.studio,
-      externalUrl: item.siteUrl || current.externalUrl,
-      externalIds: { anilist: item.id, ...(item.idMal ? { mal: item.idMal } : {}) },
+      title: current.title || item.title.english || item.title.romaji || item.title.native || "",
+      cover: current.cover || item.coverImage?.large || "",
+      externalIds: { ...((current.externalIds as Record<string, unknown>) ?? {}), anilist: item.id, ...(item.idMal ? { mal: item.idMal } : {}) },
     }));
     setAnimeResults([]);
     setNoticeMsg("已从 AniList 导入真实番剧资料；观看状态、评分与短评仍由你填写。");
   };
 
   const applyProjectRepo = () => {
+    // Bangumi is intentionally scoped to the anime publisher state above.
     const repo = githubReposData.repos.find((item) => item.repo === selectedRepo);
     if (!repo) return;
     setState((current) => ({
@@ -1166,6 +1162,15 @@ export function PublishFormScreen({
       github: { owner: repo.owner, repo: repo.repo },
     }));
     setNoticeMsg("已关联 GitHub 仓库。stars、forks、language 等技术事实仅从 repos.json 快照读取。");
+  };
+
+  const searchBangumi = async () => {
+    const search = animeQuery.trim(); if (!search) return;
+    setBangumiBusy(true); setBangumiError(null);
+    try { setBangumiResults((await api.bangumiSearch(search)).items); } catch (error) { setBangumiResults([]); setBangumiError(error instanceof Error ? error.message : "Bangumi search failed."); } finally { setBangumiBusy(false); }
+  };
+  const applyBangumi = (item: api.BangumiSearchItem) => {
+    setState((current) => ({ ...current, title: item.titleCn || item.titleJP || current.title, titleCn: item.titleCn || current.titleCn, titleJP: item.titleJP || current.titleJP, cover: item.cover || current.cover, episodes: item.episodes ?? current.episodes, year: item.year ?? current.year, bangumiSummary: item.summary || current.bangumiSummary, bangumiAirDate: item.airDate || current.bangumiAirDate, bangumiRank: item.rank ?? current.bangumiRank, bangumiTags: item.tags, bangumiCommunityScore: item.score ?? current.bangumiCommunityScore, externalUrl: item.externalUrl, externalIds: { ...((current.externalIds as Record<string, unknown>) ?? {}), bangumi: item.id } })); setBangumiResults([]); setNoticeMsg("Bangumi metadata applied.");
   };
 
   const importMarkdown = async (file?: File) => {
@@ -1468,34 +1473,40 @@ export function PublishFormScreen({
                     value={animeQuery}
                     onChange={(event) => setAnimeQuery(event.target.value)}
                     onKeyDown={(event) => {
-                      if (event.key === "Enter") { event.preventDefault(); void searchAnime(); }
+                      if (event.key === "Enter") { event.preventDefault(); void searchBangumi(); }
                     }}
                     placeholder="搜索日文 / 英文标题"
                     className="flex-1"
                   />
-                  <Btn onClick={() => void searchAnime()} disabled={animeBusy}>
-                    {animeBusy ? <Spinner size={13} /> : <AdminIcon name="search" size={14} />} 搜索
+                  <Btn onClick={() => void searchBangumi()} disabled={bangumiBusy}>
+                    {bangumiBusy ? <Spinner size={13} /> : <AdminIcon name="search" size={14} />} Bangumi
                   </Btn>
                 </div>
-                {animeError && <p className="mt-2 text-xs text-[var(--ia-warning)]">{animeError}</p>}
-                {animeResults.length > 0 && (
+                {bangumiError && <p className="mt-2 text-xs text-[var(--ia-warning)]">{bangumiError}</p>}
+                {bangumiResults.length > 0 && (
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {animeResults.map((item) => (
+                    {bangumiResults.map((item) => (
                       <button
                         key={item.id}
                         type="button"
-                        onClick={() => applyAnime(item)}
+                        onClick={() => applyBangumi(item)}
                         className="clickable flex min-h-16 items-center gap-2 rounded-lg border border-[var(--ia-line)] p-2 text-left hover:border-[var(--ia-neon)]"
                       >
-                        {item.coverImage?.large && <img src={item.coverImage.large} alt="" className="h-14 w-10 rounded object-cover" />}
+                        {item.cover && <img src={item.cover} alt="" className="h-14 w-10 rounded object-cover" />}
                         <span className="min-w-0">
-                          <span className="line-clamp-2 text-xs font-semibold text-[var(--ia-ink)]">{item.title.english || item.title.romaji || item.title.native}</span>
+                          <span className="line-clamp-2 text-xs font-semibold text-[var(--ia-ink)]">{item.titleCn || item.titleJP}</span>
                           <span className="mono text-[10px] text-[var(--ia-mist)]">{item.seasonYear ?? "—"} · {item.episodes ?? "?"} 集</span>
                         </span>
                       </button>
                     ))}
                   </div>
                 )}
+                <details className="mt-4 border-t border-[var(--ia-line)] pt-3">
+                  <summary className="cursor-pointer text-xs text-[var(--ia-mist)]">AniList optional supplement</summary>
+                  <div className="mt-3"><Btn onClick={() => void searchAnime()} disabled={animeBusy}>Search AniList</Btn></div>
+                  {animeError && <p className="mt-2 text-xs text-[var(--ia-warning)]">{animeError}</p>}
+                  {animeResults.length > 0 && <div className="mt-3 grid gap-2">{animeResults.map((item) => <button key={item.id} type="button" onClick={() => applyAnime(item)} className="rounded-lg border border-[var(--ia-line)] p-2 text-left"><b>{item.title.english || item.title.romaji || item.title.native}</b></button>)}</div>}
+                </details>
               </div>
             )}
             {(def.type === "post" || def.type === "bug") && (
@@ -2432,6 +2443,7 @@ export function ProjectsManagerScreen({ siteBase }: { siteBase: string }) {
     sessionStorage.setItem("wl-project-repo-draft", JSON.stringify({ title: repo.repo, description: repo.description ?? "", github: { owner: repo.owner, repo: repo.repo }, repo: repo.url }));
     location.href = `${siteBase}/admin/publish/project?repoDraft=1`;
   };
+
   return <div className="mx-auto max-w-[1100px] space-y-8 pb-20"><div><h2 className="text-lg font-bold">Projects Manager</h2><p className="text-xs text-[var(--ia-mist)]">GitHub 技术事实只读快照；创建草稿只预填 owner / repo。</p></div>{error && <ErrorBox>{error}</ErrorBox>}
     <section className="space-y-3"><h3 className="eyebrow">GITHUB REPOSITORIES</h3>{data ? <div className="grid gap-3 sm:grid-cols-2">{data.repos.map((repo) => <div className="rounded-xl border border-[var(--ia-line)] p-4" key={`${repo.owner}/${repo.repo}`}><b>{repo.owner}/{repo.repo}</b><p className="mt-1 line-clamp-2 text-xs text-[var(--ia-mist)]">{repo.description || "无描述"}</p><Btn kind="ghost" className="mt-3" onClick={() => draftFromRepo(repo)}>创建 Project Draft</Btn></div>)}</div> : <Spinner />}</section>
     <section className="space-y-3"><h3 className="eyebrow">SITE PROJECTS</h3>{data ? <div className="space-y-2">{data.projects.map((project) => <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--ia-line)] p-3" key={project.slug}><div className="min-w-40 flex-1"><b>{project.title}</b><span className="ml-2 mono text-[11px] text-[var(--ia-mist)]">{project.github ? `${project.github.owner}/${project.github.repo}` : "无关联 repo"}</span></div><select aria-label={`${project.title} visibility`} value={project.visibility} disabled={busy === project.slug} onChange={(e) => void setVisibility(project.slug, e.target.value)} className="rounded border border-[var(--ia-line)] bg-transparent px-2 py-1 text-xs"><option value="public">public</option><option value="unlisted">unlisted</option><option value="hidden">hidden</option><option value="private">private</option></select>{project.concept && <span className="mono text-[10px] text-[var(--ia-warning)]">CONCEPT</span>}</div>)}</div> : null}</section></div>;
@@ -2442,5 +2454,18 @@ export function SettingsBangumiScreen() {
   const [syncing, setSyncing] = useState(false); const [result, setResult] = useState<api.BangumiSyncResult | null>(null); const [syncError, setSyncError] = useState<string | null>(null);
   const toggle = (scope: string) => hook.setData({ ...d!, syncScopes: (d!.syncScopes ?? []).includes(scope) ? d!.syncScopes.filter((item: string) => item !== scope) : [...(d!.syncScopes ?? []), scope] });
   const sync = async () => { setSyncing(true); setSyncError(null); try { setResult(await api.bangumiSync()); } catch (e) { setSyncError(e instanceof Error ? e.message : "同步失败"); } finally { setSyncing(false); } };
-  return <SettingsShell title="Bangumi 同步" desc="Token 不会也不能在前端输入；如需私有收藏，请使用 Worker Secret BANGUMI_TOKEN。" hook={hook}>{d && <><section className="space-y-4 rounded-xl border border-[var(--ia-line)] p-4"><TextRow label="Bangumi 用户名" value={d.username ?? ""} onChange={(username) => hook.setData({ ...d, username })} /><div><span className="text-xs">同步范围</span><div className="mt-2 flex flex-wrap gap-3">{["watching", "planned", "completed", "paused", "dropped"].map((scope) => <OptRow key={scope} label={scope} checked={(d.syncScopes ?? []).includes(scope)} onChange={() => toggle(scope)} />)}</div></div><Field label="同步频率"><select value={d.schedule ?? "manual"} onChange={(e) => hook.setData({ ...d, schedule: e.target.value })} className="w-full rounded border border-[var(--ia-line)] bg-transparent p-2"><option value="manual">仅手动</option><option value="6h">每 6 小时</option><option value="daily">每天一次</option></select></Field><Notice tone="neon">请在 Worker 环境执行 `wrangler secret put BANGUMI_TOKEN`；此页面不会保存 Token。</Notice><Btn kind="primary" onClick={() => void sync()} disabled={syncing}>{syncing ? <Spinner /> : "立即同步"}</Btn>{syncError && <ErrorBox>{syncError}</ErrorBox>}{result && <Notice tone="success">{result.message}（扫描 {result.scanned}，新增 {result.created}，更新 {result.updated}）</Notice>}</section></>}</SettingsShell>;
+  return <SettingsShell title="Bangumi 同步" desc="Token 不会也不能在前端输入；如需私有收藏，请使用 Worker Secret BANGUMI_TOKEN。" hook={hook}>{d && <><section className="space-y-4 rounded-xl border border-[var(--ia-line)] p-4"><TextRow label="Bangumi 用户名" value={d.username ?? ""} onChange={(username) => hook.setData({ ...d, username })} /><div><span className="text-xs">同步范围</span><div className="mt-2 flex flex-wrap gap-3">{["watching", "planned", "completed", "paused", "dropped"].map((scope) => <OptRow key={scope} label={scope} checked={(d.syncScopes ?? []).includes(scope)} onChange={() => toggle(scope)} />)}</div></div><Field label="同步频率"><select value={d.schedule ?? "manual"} onChange={(e) => hook.setData({ ...d, schedule: e.target.value })} className="w-full rounded border border-[var(--ia-line)] bg-transparent p-2"><option value="manual">仅手动</option><option value="6h">每 6 小时</option><option value="daily">每天一次</option></select></Field><Field label="远端缺失策略"><select value={d.syncMissingPolicy ?? "keep"} onChange={(e) => hook.setData({ ...d, syncMissingPolicy: e.target.value })} className="w-full rounded border border-[var(--ia-line)] bg-transparent p-2"><option value="keep">保留站内记录</option><option value="hide">自动隐藏（不永久删除）</option></select></Field><Notice tone="neon">同步会补齐 Bangumi 简介和元数据，但不会覆盖站内评分、短评、长评、角色、关联和手动隐藏状态。</Notice><Btn kind="primary" onClick={() => void sync()} disabled={syncing}>{syncing ? <Spinner /> : "立即同步"}</Btn>{syncError && <ErrorBox>{syncError}</ErrorBox>}{result && <Notice tone="success">{result.message}（扫描 {result.scanned}，新增 {result.created}，更新 {result.updated}）</Notice>}</section></>}</SettingsShell>;
+}
+
+export function ContentManagerScreen({ siteBase }: { siteBase: string }) {
+  const types: api.ContentType[] = ["anime", "post", "moment", "photo", "music", "bug", "project"];
+  const [type, setType] = useState<api.ContentType>("anime"); const [rows, setRows] = useState<api.ContentRow[]>([]); const [detail, setDetail] = useState<api.ContentDetail | null>(null); const [error, setError] = useState<string | null>(null); const [query, setQuery] = useState(""); const [busy, setBusy] = useState(false);
+  const load = () => { setDetail(null); api.contentList(type).then((r) => setRows(r.items)).catch((e) => setError(e instanceof Error ? e.message : "读取失败")); };
+  useEffect(() => { load(); }, [type]);
+  const edit = (row: api.ContentRow) => api.contentDetail(type, row.slug).then(setDetail).catch((e) => setError(e instanceof Error ? e.message : "读取失败"));
+  const save = async () => { if (!detail) return; setBusy(true); try { await api.updateContent(type, detail.slug, detail); await load(); } catch (e) { setError(e instanceof Error ? e.message : "保存失败"); } finally { setBusy(false); } };
+  const hide = async (row: api.ContentRow, visibility: "hidden" | "public") => { try { const d = await api.contentDetail(type, row.slug); const frontmatter = d.frontmatter.match(/^visibility:.*$/m) ? d.frontmatter.replace(/^visibility:.*$/m, `visibility: \"${visibility}\"`) : `${d.frontmatter}\nvisibility: \"${visibility}\"`; await api.updateContent(type, row.slug, { ...d, frontmatter }); load(); } catch (e) { setError(e instanceof Error ? e.message : "更新失败"); } };
+  const remove = async () => { if (!detail || !confirm(`永久删除「${detail.slug}」？此操作会删除 GitHub 文件且不可恢复。`)) return; const typed = prompt("请输入 slug 以确认永久删除："); if (typed !== detail.slug) return; setBusy(true); try { await api.deleteContent(type, detail.slug, detail.blobSha); setDetail(null); load(); } catch (e) { setError(e instanceof Error ? e.message : "删除失败"); } finally { setBusy(false); } };
+  const shown = rows.filter((r) => `${r.title} ${r.slug}`.toLowerCase().includes(query.toLowerCase()));
+  return <div className="mx-auto max-w-[1200px] space-y-5 pb-20"><div><h2 className="text-lg font-bold">Content Manager</h2><p className="text-xs text-[var(--ia-mist)]">编辑保留原始 frontmatter、未知字段与 Markdown 正文；保存与永久删除均校验 GitHub blob SHA。</p></div>{error && <ErrorBox>{error}</ErrorBox>}<div className="flex flex-wrap gap-2">{types.map((item) => <Btn key={item} kind={item === type ? "primary" : "ghost"} onClick={() => setType(item)}>{item}</Btn>)}</div><label className="block"><Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索标题或 slug" /></label><div className="overflow-x-auto rounded-xl border border-[var(--ia-line)]"><table className="w-full min-w-[760px] text-left text-xs"><thead className="mono text-[10px] text-[var(--ia-mist)]"><tr><th className="p-3">标题</th><th>slug</th><th>状态</th><th>可见性</th><th>来源</th><th>操作</th></tr></thead><tbody>{shown.map((row) => <tr key={row.slug} className="border-t border-[var(--ia-line)]"><td className="p-3 font-medium">{row.title}</td><td className="mono">{row.slug}</td><td>{row.status || "—"}</td><td>{row.visibility}{row.draft ? " / draft" : ""}</td><td>{row.source}</td><td className="space-x-2"><button className="text-[var(--ia-neon)]" onClick={() => void edit(row)}>编辑</button><button onClick={() => void hide(row, row.visibility === "hidden" ? "public" : "hidden")}>{row.visibility === "hidden" ? "恢复" : "隐藏"}</button><a className="text-[var(--ia-mist)]" href={`${siteBase}${row.htmlPath}`} target="_blank">前台</a><a className="text-[var(--ia-mist)]" href={row.githubUrl} target="_blank">GitHub</a></td></tr>)}</tbody></table></div>{detail && <section className="space-y-3 rounded-xl border border-[var(--ia-line)] p-4"><div className="flex items-center justify-between"><h3 className="font-semibold">编辑 {detail.slug}</h3><button onClick={() => setDetail(null)}>关闭</button></div><Field label="Frontmatter（原样保留，未知字段不会丢失）"><textarea className="min-h-56 w-full rounded border border-[var(--ia-line)] bg-transparent p-3 font-mono text-xs" value={detail.frontmatter} onChange={(e) => setDetail({ ...detail, frontmatter: e.target.value })} /></Field><Field label="Markdown 正文"><textarea className="min-h-56 w-full rounded border border-[var(--ia-line)] bg-transparent p-3 font-mono text-xs" value={detail.body} onChange={(e) => setDetail({ ...detail, body: e.target.value })} /></Field><div className="flex gap-2"><Btn kind="primary" onClick={() => void save()} disabled={busy}>保存</Btn><Btn kind="danger" onClick={() => void remove()} disabled={busy}>永久删除</Btn></div></section>}</div>;
 }

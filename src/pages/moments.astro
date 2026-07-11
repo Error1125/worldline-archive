@@ -24,7 +24,7 @@ for (const m of moments) for (const t of m.data.tags ?? []) tagMap.set(t, (tagMa
 const tagList = [...tagMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([value, count]) => ({ value, count }));
 ---
 
-<SiteLayout title="说说" description="没人听见、却想留下的碎碎念。">
+<SiteLayout title="说说" description="没人听见、却想留下的碎碎念。" motionScene="moments">
   <PageHeader
     eyebrow="MOMENTS // 说说"
     title="碎碎念"
@@ -38,6 +38,8 @@ const tagList = [...tagMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).m
       <div data-filter-root data-filter-kind="moments">
         {(moods.length > 0 || tagList.length > 0) && (
           <div class="filter-panel mb-8 flex flex-col gap-4 p-4 sm:p-5">
+            <details class="moment-filter-details">
+              <summary class="cursor-pointer mono text-[11px] text-[var(--ia-mist)]">FILTERS // mood · tags</summary>
             {moods.length > 0 && (
               <div class="filter-bar">
                 <span class="mono shrink-0 text-[11px] uppercase tracking-wider text-[var(--ia-mist)]">心情</span>
@@ -69,6 +71,7 @@ const tagList = [...tagMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).m
                 </div>
               </div>
             )}
+            </details>
 
             <div class="filter-bar">
               <label class="filter-search">
@@ -85,7 +88,7 @@ const tagList = [...tagMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).m
           <p class="mono mt-1 text-xs text-[var(--ia-mist)] opacity-70">// no moments match this filter</p>
         </div>
 
-        <div class="columns-1 gap-5 sm:columns-2 [&>*]:mb-5 [&>*]:break-inside-avoid" data-filter-list>
+        <div class="moments-feed grid gap-5 sm:grid-cols-2" data-filter-list>
           {moments.map((entry) => (
             <div
               data-filter-item

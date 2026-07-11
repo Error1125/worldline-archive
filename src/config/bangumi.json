@@ -7,5 +7,6 @@
     "paused",
     "dropped"
   ],
-  "schedule": "6h"
+  "schedule": "6h",
+  "syncMissingPolicy": "keep"
 }

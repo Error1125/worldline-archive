@@ -144,7 +144,7 @@ export async function putFile(
   path: string,
   content: string,
   message: string,
-  opts: { createOnly?: boolean } = {},
+  opts: { createOnly?: boolean; expectedSha?: string } = {},
 ): Promise<PutResult> {
   // 分支存在性 / 文件现状检查
   let sha: string | undefined;
@@ -158,6 +158,9 @@ export async function putFile(
         `文件已存在：${path}。换一个 slug 或标题再发布。`,
         409,
       );
+    }
+    if (opts.expectedSha && existing.sha !== opts.expectedSha) {
+      throw new GitHubError("GITHUB_CONFLICT", "提交冲突（文件已被其他编辑更新），请重新读取后再试。", 409);
     }
     sha = existing.sha;
   }
@@ -195,6 +198,21 @@ export async function putFile(
   if (!res.ok) {
     throw new GitHubError("GITHUB_WRITE_FAILED", `提交失败（HTTP ${res.status}）。`, 502);
   }
+  const data = (await res.json()) as { commit: { sha: string; html_url: string } };
+  return { path, commitSha: data.commit.sha, commitUrl: data.commit.html_url };
+}
+
+/** Delete a known repository file.  Callers must validate the path before this
+ * reaches GitHub; the SHA is deliberately supplied by the caller to make a
+ * stale editor fail closed instead of deleting a newer revision. */
+export async function deleteFile(env: GitHubEnvLike, path: string, sha: string, message: string): Promise<PutResult> {
+  const res = await gh(
+    env,
+    `/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/${encodeURIComponent(path).replace(/%2F/g, "/")}`,
+    { method: "DELETE", body: JSON.stringify({ message, sha, branch: env.GITHUB_BRANCH }) },
+  );
+  if (res.status === 409) throw new GitHubError("GITHUB_CONFLICT", "提交冲突（文件已被其他编辑更新），请重新读取后再试。", 409);
+  if (!res.ok) throw new GitHubError("GITHUB_DELETE_FAILED", `删除 ${path} 失败（HTTP ${res.status}）。`, 502);
   const data = (await res.json()) as { commit: { sha: string; html_url: string } };
   return { path, commitSha: data.commit.sha, commitUrl: data.commit.html_url };
 }

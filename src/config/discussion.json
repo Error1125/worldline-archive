@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "provider": "none",
+  "enabledTypes": ["anime", "posts", "projects", "moments"],
+  "giscus": {
+    "repo": "",
+    "repoId": "",
+    "category": "Announcements",
+    "categoryId": "",
+    "mapping": "specific",
+    "theme": "preferred_color_scheme",
+    "reactionsEnabled": true,
+    "inputPosition": "top",
+    "language": "zh-CN",
+    "lazyLoad": true
+  }
+}

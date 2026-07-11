@@ -6,6 +6,7 @@ import { isVisiblePublic } from "@/lib/visibility";
 import { resolveRelatedRecords, PROJECT_STATUS_ZH } from "@/lib/content";
 import { formatDate } from "@/lib/format";
 import { getRepoSnapshot } from "@/lib/github/repos";
+import DiscussionSection from "@/components/discussion/DiscussionSection.astro";
 
 export async function getStaticPaths() {
   const list = await getCollection("projects", ({ data }) => isVisiblePublic(data.visibility) && !data.draft);
@@ -91,4 +92,5 @@ const metas = [
   <div class="ia-prose">
     <Content />
   </div>
+  <DiscussionSection type="project" recordId={entry.id} />
 </RecordDetailLayout>

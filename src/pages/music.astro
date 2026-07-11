@@ -27,7 +27,7 @@ for (const m of music) for (const t of m.data.tags) tagMap.set(t, (tagMap.get(t)
 const tagList = [...tagMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([value, count]) => ({ value, count }));
 ---
 
-<SiteLayout title="音乐" description="深夜循环的歌、专辑与歌单碎片。">
+<SiteLayout title="音乐" description="深夜循环的歌、专辑与歌单碎片。" motionScene="music">
   <PageHeader
     eyebrow="MUSIC // 音乐碎片"
     title="深夜循环"

@@ -31,6 +31,7 @@ import {
   SettingsWorldlineScreen,
   SettingsBangumiScreen,
   ProjectsManagerScreen,
+  ContentManagerScreen,
 } from "./screens";
 
 export type AdminScreen =
@@ -44,7 +45,8 @@ export type AdminScreen =
   | "settings-site"
   | "settings-worldline"
   | "settings-bangumi"
-  | "projects";
+  | "projects"
+  | "content";
 
 export interface AdminAppProps {
   screen: AdminScreen;
@@ -65,6 +67,7 @@ const TITLES: Record<AdminScreen, string> = {
   "settings-worldline": "设置",
   "settings-bangumi": "设置",
   projects: "项目",
+  content: "内容",
 };
 
 export default function AdminApp({ screen, publishType, siteBase, summaryUrl }: AdminAppProps) {
@@ -125,6 +128,7 @@ export default function AdminApp({ screen, publishType, siteBase, summaryUrl }: 
     { key: "media", label: "媒体", icon: "media", href: `${siteBase}/admin/media` },
     { key: "settings", label: "设置", icon: "settings", href: `${siteBase}/admin/settings/profile` },
     { key: "projects", label: "项目", icon: "project", href: `${siteBase}/admin/projects` },
+    { key: "content", label: "内容", icon: "publish", href: `${siteBase}/admin/content` },
   ];
   const activeKey = screen.startsWith("settings")
     ? "settings"
@@ -230,6 +234,7 @@ export default function AdminApp({ screen, publishType, siteBase, summaryUrl }: 
         {screen === "settings-worldline" && <SettingsWorldlineScreen />}
         {screen === "settings-bangumi" && <SettingsBangumiScreen />}
         {screen === "projects" && <ProjectsManagerScreen siteBase={siteBase} />}
+        {screen === "content" && <ContentManagerScreen siteBase={siteBase} />}
       </main>
 
       <TabBar tabs={tabs} activeKey={activeKey} />
