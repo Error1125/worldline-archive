@@ -408,8 +408,7 @@ a.glass-card:focus-visible {
   }
   to {
     opacity: 0;
-    transform: translateY(-6px);
-    filter: blur(4px);
+    transform: translateY(-4px);
   }
 }
 ::view-transition-old(root) {
@@ -4702,9 +4701,16 @@ html[data-scene-mode="day"] .filter-panel {
   font-size: 10px;
   opacity: 0.7;
 }
-/* 视图面板显隐由 data-active-view 控制（内联脚本先行设置，避免闪烁） */
-[data-view-root][data-active-view="timeline"] [data-view-panel="index"] { display: none; }
-[data-view-root][data-active-view="index"] [data-view-panel="timeline"] { display: none; }
+/* Worldline's view state is owned by its React explorer, not global page scripts. */
+.worldline-view-stage { min-width: 0; overflow: hidden; }
+.worldline-stage-panel { min-width: 0; }
+.worldline-toolbar-main .filter-search { flex: 1 1 360px; }
+.filter-select { position: relative; z-index: 5; flex: none; }
+.filter-sort { display: inline-flex; align-items: center; gap: .55rem; min-height: 40px; }
+.filter-select-menu { position: absolute; right: 0; top: calc(100% + .45rem); min-width: max-content; overflow: hidden; padding: .3rem; border: 1px solid var(--ia-line-strong); border-radius: .75rem; background: color-mix(in srgb, var(--ia-panel) 96%, transparent); box-shadow: 0 16px 38px rgba(0,0,0,.24); backdrop-filter: blur(16px); }
+.filter-select-menu button { display:flex; width:100%; align-items:center; justify-content:space-between; gap:1rem; border-radius:.5rem; padding:.55rem .65rem; color:var(--ia-mist); font:12px var(--font-mono); text-align:left; white-space:nowrap; }
+.filter-select-menu button:hover, .filter-select-menu button[aria-selected="true"] { color:var(--ia-ink); background:color-mix(in srgb, var(--ia-neon) 14%, transparent); }
+@media (max-width: 639px) { .worldline-toolbar-main { align-items:stretch; } .worldline-toolbar-main .filter-search { flex-basis:100%; } .filter-count-line { min-height:40px; display:inline-flex; align-items:center; } .worldline-type-chips { flex-wrap:nowrap; overflow-x:auto; padding-bottom:.2rem; } .worldline-type-chips .filter-chip { flex:none; min-height:40px; } }
 
 /* ---- §4 浏览器式搜索建议下拉（HeroSearch / Header 共用）---- */
 .wl-search { position: relative; }
@@ -5160,21 +5166,28 @@ html.ia-cursor .hero-search { cursor: text !important; }
    first-view choreography and card-internal sequencing. */
 :root { --motion-scene-duration: 520ms; --motion-scene-ease: cubic-bezier(.22,1,.36,1); --motion-scene-stagger: 55ms; }
 [data-motion-scene] [data-filter-item].reveal { opacity:1; transform:none; transition:none; }
+[data-motion-owned="layout"].reveal,
+[data-motion-owned="layout"][data-filter-item] { opacity:1; transition:none; }
+[data-motion-owned="layout"] { will-change:transform, opacity; }
 
 @keyframes wl-scene-anime { from { opacity:0; filter:blur(5px); transform:scale(.97); } to { opacity:1; filter:none; transform:scale(1); } }
 @keyframes wl-scene-project { from { opacity:0; transform:translateY(12px) scale(.985); } to { opacity:1; transform:none; } }
 @keyframes wl-scene-photo { from { opacity:0; filter:saturate(.55); transform:scale(.98); } to { opacity:1; filter:saturate(1); transform:scale(1); } }
 @keyframes wl-scene-music { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
 @keyframes wl-scene-document { from { opacity:0; filter:blur(4px); transform:translateY(10px); } to { opacity:1; filter:none; transform:none; } }
+@keyframes wl-scene-fade { from { opacity:0; } to { opacity:1; } }
 @keyframes wl-timeline-line { from { transform:scaleY(0); opacity:.2; } to { transform:scaleY(1); opacity:1; } }
 @keyframes wl-timeline-node { from { opacity:0; transform:scale(.25); box-shadow:none; } to { opacity:1; transform:scale(1); } }
 @keyframes wl-timeline-record { from { opacity:0; filter:blur(4px); transform:translateY(10px) scale(.99); } to { opacity:1; filter:none; transform:none; } }
 @keyframes wl-observation-scan { from { transform:translateY(-130%); opacity:0; } 30% { opacity:.8; } to { transform:translateY(340%); opacity:0; } }
 
-[data-motion-scene="anime"] [data-filter-root][data-motion-initial="1"] [data-filter-item]:not([hidden]) { animation:wl-scene-anime 460ms var(--motion-scene-ease) both; animation-delay:calc(min(var(--filter-index, 0), 8) * 42ms); }
-[data-motion-scene="projects"] [data-filter-root][data-motion-initial="1"] [data-filter-item]:not([hidden]) { animation:wl-scene-project 440ms var(--motion-scene-ease) both; animation-delay:calc(min(var(--filter-index, 0), 8) * 40ms); }
-[data-motion-scene="photos"] [data-filter-root][data-motion-initial="1"] [data-filter-item]:not([hidden]) { animation:wl-scene-photo 480ms var(--motion-scene-ease) both; animation-delay:calc(min(var(--filter-index, 0), 8) * 44ms); }
-[data-motion-scene="music"] [data-filter-root][data-motion-initial="1"] [data-filter-item]:not([hidden]) { animation:wl-scene-music 380ms var(--motion-scene-ease) both; animation-delay:calc(min(var(--filter-index, 0), 8) * 36ms); }
+/* The legacy filter controller may own a list wrapper's transform. Its first
+   view animation is therefore opacity-only; semantic transforms live on named
+   inner visual layers below, never on the same element. */
+[data-motion-scene="anime"] [data-filter-root][data-motion-initial="1"] [data-filter-item]:not([hidden]),
+[data-motion-scene="projects"] [data-filter-root][data-motion-initial="1"] [data-filter-item]:not([hidden]),
+[data-motion-scene="photos"] [data-filter-root][data-motion-initial="1"] [data-filter-item]:not([hidden]),
+[data-motion-scene="music"] [data-filter-root][data-motion-initial="1"] [data-filter-item]:not([hidden]) { animation:wl-scene-fade 180ms ease-out both; animation-delay:calc(min(var(--filter-index, 0), 8) * 30ms); }
 
 /* Timeline: the line grows, then nodes illuminate in DOM/time order, then
    records unfold beside their nodes. Sorting changes DOM order, so newest and
@@ -5196,7 +5209,7 @@ html.ia-cursor .hero-search { cursor: text !important; }
 [data-motion-scene="music"] [data-filter-item] > .glass-card > div:first-child { animation:wl-scene-music 300ms var(--motion-scene-ease) both; }
 [data-motion-scene="photos"] [data-filter-item] .photo-polaroid img { animation:wl-scene-photo 480ms var(--motion-scene-ease) both; }
 [data-motion-scene="photos"] [data-filter-item] .photo-polaroid-cap { animation:wl-scene-document 300ms var(--motion-scene-ease) 130ms both; }
-[data-motion-scene="posts"] [data-motion-item], [data-motion-scene="bugs"] [data-motion-item] { animation:wl-scene-document 440ms var(--motion-scene-ease) both; animation-delay:calc(var(--motion-index, 0) * 45ms); }
+[data-motion-scene="posts"] [data-motion-item], [data-motion-scene="bugs"] [data-motion-item] { animation:wl-scene-fade 200ms ease-out both; animation-delay:calc(min(var(--motion-index, 0), 8) * 30ms); }
 [data-motion-scene="posts"] [data-motion-item] p, [data-motion-scene="bugs"] [data-motion-item] p { animation:wl-scene-document 280ms var(--motion-scene-ease) 90ms both; }
 
 @media (prefers-reduced-motion: reduce) { [data-motion-scene] *, [data-motion-scene] *::before, [data-motion-scene] *::after { animation:none !important; transition-duration:.01ms !important; filter:none !important; transform:none !important; } }
@@ -5206,6 +5219,5 @@ html.ia-cursor .hero-search { cursor: text !important; }
 .moment-filter-details > summary { list-style:none; }
 .moment-filter-details > summary::-webkit-details-marker { display:none; }
 .moment-filter-details[open] > summary { margin-bottom:.8rem; color:var(--ia-neon); }
-.moments-feed > [data-filter-item]:nth-child(even) { margin-top:clamp(0rem, 3vw, 2.5rem); }
 html[data-scene-mode="day"] [data-motion-scene="moments"] .glass-card { box-shadow:0 12px 34px rgba(120,90,140,.14); }
-@media (max-width: 639px) { .moments-feed > [data-filter-item]:nth-child(even) { margin-top:0; } }
+.moments-motion-card { min-width:0; }

@@ -1,119 +1,21 @@
 ---
 import SiteLayout from "@/components/layout/SiteLayout.astro";
 import PageHeader from "@/components/common/PageHeader.astro";
-import ProjectCard from "@/components/cards/ProjectCard.astro";
 import EmptyState from "@/components/common/EmptyState.astro";
-import Icon from "@/components/common/Icon.astro";
-import { getProjects } from "@/lib/content";
-
-/**
- * Projects 页面（v4.2）—— 项目档案库。
- * 顶部统一 filter-bar：技术栈筛选 + 状态筛选 + 关键词搜索；Featured 项目高亮。
- * 卡片沿用 ProjectCard（GitHub / demo 外链、技术栈 pill、状态徽标）。
- */
-const projects = await getProjects();
-
-// 排序：featured 优先，其次按日期倒序（getProjects 已按日期倒序）
-const sorted = [...projects].sort(
-  (a, b) => Number(b.data.featured) - Number(a.data.featured),
-);
-
-const STATUS_LABEL: Record<string, string> = {
-  idea: "构想",
-  building: "建造中",
-  paused: "暂停",
-  done: "已完成",
-  archived: "已归档",
-  active: "活跃维护",
-  completed: "已完成",
-  prototype: "原型",
-};
-
-// 收集出现过的状态与技术栈（带数量）
-const statusList = Object.keys(STATUS_LABEL)
-  .map((s) => ({ value: s, label: STATUS_LABEL[s], count: projects.filter((p) => p.data.status === s).length }))
-  .filter((s) => s.count > 0);
-
-const techMap = new Map<string, number>();
-for (const p of projects) for (const t of p.data.techStack) techMap.set(t, (techMap.get(t) ?? 0) + 1);
-const techList = [...techMap.entries()].sort((a, b) => b[1] - a[1]).map(([value, count]) => ({ value, count }));
----
-
-<SiteLayout title="项目" description="正在建造、暂停或已归档的造物。" motionScene="projects">
-  <PageHeader
-    eyebrow="PROJECTS // 造物记录"
-    title="造物档案"
-    subtitle="正在建造、暂停、或已经归档的东西。技术事实来自 GitHub，同步失败时继续使用站内 content。"
-    icon="project"
-    class="mb-8"
-  />
-
-  {
-    projects.length > 0 ? (
-      <div data-filter-root data-filter-kind="projects">
-        <div class="filter-panel mb-8 flex flex-col gap-4 p-4 sm:p-5">
-          {statusList.length > 0 && (
-            <div class="filter-bar">
-              <span class="mono shrink-0 text-[11px] uppercase tracking-wider text-[var(--ia-mist)]">状态</span>
-              <div class="filter-group" role="group" aria-label="按状态筛选">
-                <button type="button" class="filter-chip" data-filter-chip data-key="status" data-value="all" data-active="true">
-                  全部 <span class="chip-count">{projects.length}</span>
-                </button>
-                {statusList.map((s) => (
-                  <button type="button" class="filter-chip" data-filter-chip data-key="status" data-value={s.value}>
-                    {s.label} <span class="chip-count">{s.count}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {techList.length > 0 && (
-            <div class="filter-bar">
-              <span class="mono shrink-0 text-[11px] uppercase tracking-wider text-[var(--ia-mist)]">技术栈</span>
-              <div class="filter-group" role="group" aria-label="按技术栈筛选">
-                <button type="button" class="filter-chip" data-filter-chip data-key="tech" data-value="all" data-active="true">
-                  全部
-                </button>
-                {techList.map((t) => (
-                  <button type="button" class="filter-chip" data-filter-chip data-key="tech" data-value={t.value}>
-                    {t.value} <span class="chip-count">{t.count}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div class="filter-bar">
-            <label class="filter-search">
-              <Icon name="search" size={15} class="shrink-0 text-[var(--ia-mist)]" />
-              <input type="search" data-filter-search placeholder="搜索项目名 / 描述 / 标签…" aria-label="搜索项目" />
-            </label>
-            <span class="filter-count-line" data-filter-count data-filter-count-label="projects">{projects.length} projects</span>
-          </div>
-        </div>
-
-        <div class="filter-empty glass" data-filter-empty>
-          <p class="text-sm text-[var(--ia-ink)]">没有匹配的项目</p>
-          <p class="mono mt-1 text-xs text-[var(--ia-mist)] opacity-70">// no projects match this filter</p>
-        </div>
-
-        <div class="grid gap-5 sm:grid-cols-2" data-filter-list>
-          {sorted.map((entry) => (
-            <div
-              data-filter-item
-              data-status={entry.data.status}
-              data-tech={entry.data.techStack.join("|")}
-              data-date={entry.data.date.toISOString()}
-              data-search={[entry.data.title, entry.data.description, ...entry.data.tags, ...entry.data.techStack].join(" ")}
-            >
-              <ProjectCard entry={entry} />
-            </div>
-          ))}
-        </div>
-      </div>
-    ) : (
-      <EmptyState icon="project" />
-    )
+import ProjectsFeed from "@/components/projects/ProjectsFeed";
+import {getProjects,PROJECT_STATUS_ZH} from "@/lib/content";
+import {withBase} from "@/lib/paths";
+const projects=await getProjects(); const labels:Record<string,string>={...PROJECT_STATUS_ZH,active:"活跃维护",completed:"已完成",prototype:"原型"};
+const statuses=Object.entries(labels).map(([value,label])=>({value,label,count:projects.filter(x=>x.data.status===value).length})).filter(x=>x.count);
+const all=new Map<string,number>();for(const p of projects)for(const t of p.data.techStack)all.set(t,(all.get(t)??0)+1);const techs=[...all].map(([value,count])=>({value,count}));
+const repoUrl = (value: unknown): string | undefined => {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && "owner" in value && "repo" in value) {
+    const { owner, repo } = value;
+    if (typeof owner === "string" && typeof repo === "string") return `https://github.com/${owner}/${repo}`;
   }
-</SiteLayout>
+  return undefined;
+};
+const items=projects.map(x=>({id:x.id,title:x.data.title,description:x.data.description,status:x.data.status,statusLabel:labels[x.data.status]??x.data.status,tech:x.data.techStack,tags:x.data.tags,date:x.data.date.toISOString(),href:withBase(`/projects/${x.id}`),repo:repoUrl(x.data.repo) ?? repoUrl(x.data.github),demo:x.data.demo,featured:x.data.featured}));
+---
+<SiteLayout title="项目" description="正在建造、暂停或已归档的造物。" motionScene="projects"><PageHeader eyebrow="PROJECTS // 造物记录" title="造物档案" subtitle="正在建造、暂停、或已经归档的东西。" icon="project" class="mb-8" />{projects.length?<ProjectsFeed client:load items={items} statuses={statuses} techs={techs}/>:<EmptyState icon="project"/>}</SiteLayout>

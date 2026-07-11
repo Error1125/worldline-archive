@@ -1,10 +1,9 @@
 ---
 import SiteLayout from "@/components/layout/SiteLayout.astro";
 import PageHeader from "@/components/common/PageHeader.astro";
-import TimelineView from "@/components/timeline/TimelineView.astro";
-import ArchiveExplorer from "@/components/archive/ArchiveExplorer.astro";
-import Icon from "@/components/common/Icon.astro";
-import { getTimelineItems, getWorldlineStatus } from "@/lib/content";
+import WorldlineRecordsExplorer from "@/components/worldline/WorldlineRecordsExplorer";
+import { getTimelineItems, getWorldlineStatus, TYPE_META, type ContentType } from "@/lib/content";
+import { withBase } from "@/lib/paths";
 import EmptyState from "@/components/common/EmptyState.astro";
 
 /**
@@ -16,6 +15,10 @@ import EmptyState from "@/components/common/EmptyState.astro";
  */
 const count = (await getTimelineItems()).length;
 const wl = await getWorldlineStatus();
+const colors: Record<ContentType,string>={post:"var(--ia-neon)",moment:"var(--ia-star)",bug:"var(--ia-danger)",project:"var(--ia-nebula)",anime:"var(--ia-success)",music:"var(--ia-warning)",photo:"var(--ia-blue)"};
+const records=await getTimelineItems();
+const explorerItems=records.map(x=>({id:`${x.type}:${x.id}`,type:x.type,label:TYPE_META[x.type].labelZh,title:x.title,description:x.description,date:x.date.toISOString(),href:x.href?withBase(x.href):undefined,tags:x.tags,color:colors[x.type]}));
+const explorerTypes=(["post","project","photo","moment","bug","anime","music"] as ContentType[]).filter(t=>records.some(x=>x.type===t)).map(t=>({type:t,label:TYPE_META[t].labelZh,color:colors[t]}));
 ---
 
 <SiteLayout title="世界线记录" description="这条世界线上的全部记录：按时间浏览，或按关键词检索。" motionScene="timeline">
@@ -34,38 +37,8 @@ const wl = await getWorldlineStatus();
 
   {
     count > 0 ? (
-      <div id="wl-records" data-view-root data-active-view="timeline">
-        {/* 防闪烁：解析到此立即依据 ?view= 设定初始视图，避免先显示时间轴再跳到索引 */}
-        <script is:inline>
-          (function () {
-            try {
-              if (new URLSearchParams(location.search).get("view") === "index") {
-                var r = document.getElementById("wl-records");
-                if (r) r.dataset.activeView = "index";
-              }
-            } catch (e) {}
-          })();
-        </script>
-
-        <div class="mb-8 flex justify-center sm:justify-start">
-          <div class="view-toggle" role="tablist" aria-label="记录视图切换">
-            <button type="button" class="view-toggle-btn clickable" role="tab" data-view-tab="timeline" aria-selected="true">
-              <Icon name="timeline" size={15} />
-              时间轴
-            </button>
-            <button type="button" class="view-toggle-btn clickable" role="tab" data-view-tab="index" aria-selected="false">
-              <Icon name="search" size={15} />
-              观测索引
-            </button>
-          </div>
-        </div>
-
-        <div data-view-panel="timeline" role="tabpanel">
-          <TimelineView />
-        </div>
-        <div data-view-panel="index" role="tabpanel">
-          <ArchiveExplorer />
-        </div>
+      <div id="wl-records">
+        <WorldlineRecordsExplorer client:load items={explorerItems} types={explorerTypes} initialView={Astro.url.searchParams.get("view") === "index" ? "observation" : "timeline"} />
       </div>
     ) : (
       <EmptyState icon="timeline" />

@@ -1,10 +1,10 @@
 ---
 import SiteLayout from "@/components/layout/SiteLayout.astro";
 import PageHeader from "@/components/common/PageHeader.astro";
-import MomentCard from "@/components/cards/MomentCard.astro";
+import MomentsFeed from "@/components/moments/MomentsFeed";
 import EmptyState from "@/components/common/EmptyState.astro";
-import Icon from "@/components/common/Icon.astro";
 import { getMoments } from "@/lib/content";
+import { withBase } from "@/lib/paths";
 
 /**
  * Moments 页面（v4.5）—— 轻量动态 / 说说流。
@@ -22,6 +22,17 @@ const moods = [...moodMap.entries()].sort((a, b) => b[1] - a[1]).map(([value, co
 const tagMap = new Map<string, number>();
 for (const m of moments) for (const t of m.data.tags ?? []) tagMap.set(t, (tagMap.get(t) ?? 0) + 1);
 const tagList = [...tagMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([value, count]) => ({ value, count }));
+const feedMoments = moments.map((entry) => ({
+  id: entry.id,
+  content: entry.data.content,
+  date: entry.data.date.toISOString(),
+  href: withBase(`/moments/${entry.id}`),
+  tags: entry.data.tags ?? [],
+  mood: entry.data.mood,
+  weather: entry.data.weather,
+  locationText: entry.data.locationText,
+  images: (entry.data.images ?? []).slice(0, 3).map((image) => withBase(image)),
+}));
 ---
 
 <SiteLayout title="说说" description="没人听见、却想留下的碎碎念。" motionScene="moments">
@@ -35,73 +46,7 @@ const tagList = [...tagMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).m
 
   {
     moments.length > 0 ? (
-      <div data-filter-root data-filter-kind="moments">
-        {(moods.length > 0 || tagList.length > 0) && (
-          <div class="filter-panel mb-8 flex flex-col gap-4 p-4 sm:p-5">
-            <details class="moment-filter-details">
-              <summary class="cursor-pointer mono text-[11px] text-[var(--ia-mist)]">FILTERS // mood · tags</summary>
-            {moods.length > 0 && (
-              <div class="filter-bar">
-                <span class="mono shrink-0 text-[11px] uppercase tracking-wider text-[var(--ia-mist)]">心情</span>
-                <div class="filter-group" role="group" aria-label="按心情筛选">
-                  <button type="button" class="filter-chip" data-filter-chip data-key="mood" data-value="all" data-active="true">
-                    全部 <span class="chip-count">{moments.length}</span>
-                  </button>
-                  {moods.map((m) => (
-                    <button type="button" class="filter-chip" data-filter-chip data-key="mood" data-value={m.value}>
-                      {m.value} <span class="chip-count">{m.count}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {tagList.length > 0 && (
-              <div class="filter-bar">
-                <span class="mono shrink-0 text-[11px] uppercase tracking-wider text-[var(--ia-mist)]">标签</span>
-                <div class="filter-group" role="group" aria-label="按标签筛选">
-                  <button type="button" class="filter-chip" data-filter-chip data-key="tag" data-value="all" data-active="true">
-                    全部
-                  </button>
-                  {tagList.map((t) => (
-                    <button type="button" class="filter-chip" data-filter-chip data-key="tag" data-value={t.value}>
-                      #{t.value} <span class="chip-count">{t.count}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            </details>
-
-            <div class="filter-bar">
-              <label class="filter-search">
-                <Icon name="search" size={15} class="shrink-0 text-[var(--ia-mist)]" />
-                <input type="search" data-filter-search placeholder="搜索这些碎碎念…" aria-label="搜索说说" />
-              </label>
-              <span class="filter-count-line" data-filter-count data-filter-count-label="moments">{moments.length} moments</span>
-            </div>
-          </div>
-        )}
-
-        <div class="filter-empty glass" data-filter-empty>
-          <p class="text-sm text-[var(--ia-ink)]">没有匹配的说说</p>
-          <p class="mono mt-1 text-xs text-[var(--ia-mist)] opacity-70">// no moments match this filter</p>
-        </div>
-
-        <div class="moments-feed grid gap-5 sm:grid-cols-2" data-filter-list>
-          {moments.map((entry) => (
-            <div
-              data-filter-item
-              data-mood={entry.data.mood ?? ""}
-              data-tag={(entry.data.tags ?? []).join("|")}
-              data-date={entry.data.date.toISOString()}
-              data-search={[entry.data.content, entry.data.mood ?? "", entry.data.weather ?? "", entry.data.locationText ?? "", ...(entry.data.tags ?? [])].join(" ")}
-            >
-              <MomentCard entry={entry} />
-            </div>
-          ))}
-        </div>
-      </div>
+      <MomentsFeed client:load moments={feedMoments} moods={moods} tags={tagList} />
     ) : (
       <EmptyState icon="moment" />
     )
