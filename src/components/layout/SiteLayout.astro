@@ -285,6 +285,9 @@ const searchPayload = {
       //        [data-filter-group][data-group-key]  可选：分组容器（如年份），内含 [data-filter-list]
       type FilterState = Record<string, string>;
       function initFilterRoot(root: HTMLElement) {
+        // React Motion lists manage their own state, presence and transform.
+        // Never let the legacy filter/WAAPI controller attach to those roots.
+        if (root.dataset.motionManaged === "react") return;
         if (root.dataset.filterReady === "1") return;
         root.dataset.filterReady = "1";
 
