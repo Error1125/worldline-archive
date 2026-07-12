@@ -30,13 +30,13 @@ export const LS_ADMIN_HINT = "wl-admin-hint";
  * 其余值视为未配置，返回 ""。
  */
 export function normalizeApiBase(raw: string | null | undefined): string {
-  const v = (raw ?? "").trim();
-  if (!v) return "";
-  if (/^https?:\/\//i.test(v)) return v.replace(/\/+$/, "");
-  if (v.startsWith("/")) {
+  const value = (raw ?? "").trim();
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return value.replace(/\/+$/, "");
+  if (value.startsWith("/") && !value.startsWith("//")) {
     if (typeof location === "undefined") return "";
-    const path = v.replace(/\/+$/, "");
-    return path === "" || path === "/" ? location.origin : location.origin + path;
+    const path = value === "/" ? "" : value.replace(/\/+$/, "");
+    return location.origin + path;
   }
   return "";
 }
@@ -51,11 +51,22 @@ export function resolveApiBase(): string {
 
 export function saveApiBase(v: string) {
   try {
-    const trimmed = v.trim().replace(/\/+$/, "");
+    const raw = v.trim();
     // 允许保存绝对地址或同站相对写法（"/" / "/prefix"），空值清除本机覆盖。
-    if (trimmed && (/^https?:\/\//i.test(trimmed) || v.trim().startsWith("/"))) {
-      localStorage.setItem(LS_API_BASE, trimmed || "/");
-    } else localStorage.removeItem(LS_API_BASE);
+    if (!raw) {
+      localStorage.removeItem(LS_API_BASE);
+      return;
+    }
+    if (/^https?:\/\//i.test(raw)) {
+      localStorage.setItem(LS_API_BASE, raw.replace(/\/+$/, ""));
+      return;
+    }
+    if (raw.startsWith("/") && !raw.startsWith("//")) {
+      const path = raw === "/" ? "/" : raw.replace(/\/+$/, "");
+      localStorage.setItem(LS_API_BASE, path || "/");
+      return;
+    }
+    localStorage.removeItem(LS_API_BASE);
   } catch { /* ignore */ }
 }
 
