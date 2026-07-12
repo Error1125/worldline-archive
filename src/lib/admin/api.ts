@@ -6,7 +6,7 @@
  * 401 时抛出 code = "UNAUTHORIZED" 供上层跳转登录页。
  */
 
-import { resolveApiBase } from "@/config/admin";
+import { normalizeApiBase, resolveApiBase } from "@/config/admin";
 
 export interface PublishResult {
   success: boolean;
@@ -209,7 +209,7 @@ export function deleteContent(type: ContentType, slug: string, blobSha: string) 
 
 /** 健康检查：直接 GET {base}/api/health（无需登录）。可显式传入 base 供登录页「测试连接」。 */
 export async function health(baseOverride?: string): Promise<HealthInfo> {
-  const base = (baseOverride ?? resolveApiBase()).replace(/\/+$/, "");
+  const base = baseOverride !== undefined ? normalizeApiBase(baseOverride) : resolveApiBase();
   if (!base) throw new AdminApiError("NO_API_BASE", "尚未配置后端 API 地址。", 0);
   let res: Response;
   try {

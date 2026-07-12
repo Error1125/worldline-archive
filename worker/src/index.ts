@@ -24,6 +24,7 @@ import {
   verifySession,
   timingSafeEqual,
   isUsableSessionSecret,
+  resolveCookieSameSite,
 } from "./session";
 import {
   GitHubError,
@@ -57,7 +58,15 @@ import { githubAssociation, scalar, splitDoc, updateScalar } from "./frontmatter
 
 export interface Env extends GitHubEnvLike {
   /* vars（wrangler.toml [vars]） */
-  ALLOWED_ORIGIN: string; // 例：https://error1125.github.io
+  ALLOWED_ORIGIN: string; // 例：https://error1125.github.io（可英文逗号分隔多个）
+  /**
+   * v5.4.1 Hotfix-02：session cookie 的 SameSite 策略。
+   * - 未配置 / "None"：跨站部署（github.io + workers.dev）沿用现状；
+   * - "Lax"：前端与 API 为同一注册域名（same-site）时的推荐值，
+   *   iOS Safari 默认隐私设置下也能保存会话；
+   * - "Strict"：同站且不需要外部跳转直达控制台时可用。
+   */
+  COOKIE_SAME_SITE?: string;
   /* secrets（wrangler secret put …） */
   ADMIN_SECRET: string; // 控制台登录口令
   SESSION_SECRET: string; // session 签名密钥
@@ -270,6 +279,11 @@ async function handle(req: Request, env: Env): Promise<Response> {
     if (!env.GITHUB_OWNER) problems.push("GITHUB_OWNER missing");
     if (!env.GITHUB_REPO) problems.push("GITHUB_REPO missing");
     if (!env.GITHUB_BRANCH) problems.push("GITHUB_BRANCH missing");
+    /* v5.4.1 Hotfix-02：附带 cookie / CORS 体检（只报配置形态，不回显任何值）。
+       requestOrigin* 帮助定位「登录成功但会话没保存」——
+       若 originAllowed=false，说明 ALLOWED_ORIGIN 没放行当前前端源。 */
+    const origin = req.headers.get("Origin");
+    const allowed = (env.ALLOWED_ORIGIN ?? "").split(",").map((s) => s.trim()).filter(Boolean);
     return json({
       ok: problems.length === 0,
       service: "worldline-admin-api",
@@ -284,7 +298,10 @@ async function handle(req: Request, env: Env): Promise<Response> {
         githubToken: Boolean(env.GITHUB_TOKEN),
         githubRepo: Boolean(env.GITHUB_OWNER && env.GITHUB_REPO && env.GITHUB_BRANCH),
         r2: Boolean(env.MEDIA_BUCKET && env.R2_PUBLIC_BASE_URL),
+        cookieSameSite: resolveCookieSameSite(env.COOKIE_SAME_SITE),
+        allowedOrigins: allowed.length,
       },
+      ...(origin ? { requestOrigin: origin, requestOriginAllowed: allowed.includes(origin) } : {}),
       ...(problems.length > 0 ? { code: "SERVER_MISCONFIGURED", problems } : {}),
     });
   }
@@ -323,12 +340,14 @@ async function handle(req: Request, env: Env): Promise<Response> {
     if (!secret || !timingSafeEqual(secret, env.ADMIN_SECRET)) {
       return err("INVALID_SECRET", "口令错误。El Psy Kongroo.", 401);
     }
-    const cookie = await issueSessionCookie(env.SESSION_SECRET);
+    const cookie = await issueSessionCookie(env.SESSION_SECRET, resolveCookieSameSite(env.COOKIE_SAME_SITE));
     return json({ authenticated: true }, 200, { "Set-Cookie": cookie });
   }
 
   if (routeKey === "POST /api/admin/logout") {
-    return json({ authenticated: false }, 200, { "Set-Cookie": clearSessionCookie() });
+    return json({ authenticated: false }, 200, {
+      "Set-Cookie": clearSessionCookie(resolveCookieSameSite(env.COOKIE_SAME_SITE)),
+    });
   }
 
   /* ---- publish ---- */
@@ -670,13 +689,14 @@ export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const cors = corsHeaders(env, req);
 
-    /* CORS 预检 */
+    /* CORS 预检（v5.4.1：补上 DELETE —— 内容管理的永久删除是 DELETE 方法，
+       跨站部署下缺它会导致预检失败） */
     if (req.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
         headers: {
           ...cors,
-          "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
+          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type",
           "Access-Control-Max-Age": "86400",
         },

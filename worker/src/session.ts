@@ -1,14 +1,33 @@
 /**
- * Session（v5.0）—— HMAC-SHA256 签名的 httpOnly cookie。
+ * Session（v5.0，v5.4.1 调整 SameSite 策略）—— HMAC-SHA256 签名的 httpOnly cookie。
  *
  * cookie 值 = base64url(JSON{iat,exp}) + "." + base64url(HMAC(payload, SESSION_SECRET))
  * - httpOnly：前端 JS 读不到；
- * - Secure + SameSite=None：GitHub Pages（跨站）也能带上；
+ * - Secure 始终开启；
+ * - SameSite 可配置（v5.4.1 Hotfix-02）：
+ *     · 跨站部署（github.io 前端 + workers.dev 后端）只能用 None，
+ *       但 iOS Safari 默认「防止跨网站追踪」会拦截第三方 Cookie；
+ *     · 推荐的同站部署（archive.example.com + api.example.com，
+ *       或 archive.example.com/api/*）应配 COOKIE_SAME_SITE = "Lax"，
+ *       Safari 默认隐私设置下即可正常保存会话；
  * - 无状态：Worker 不需要 KV，验证只靠签名 + exp。
  */
 
 const COOKIE_NAME = "wl_admin_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 天
+
+export type CookieSameSite = "None" | "Lax" | "Strict";
+
+/**
+ * 归一化 COOKIE_SAME_SITE 配置。
+ * 未配置 / 非法值 → "None"（保持既有跨站部署不被破坏）。
+ */
+export function resolveCookieSameSite(raw: string | undefined | null): CookieSameSite {
+  const v = String(raw ?? "").trim().toLowerCase();
+  if (v === "lax") return "Lax";
+  if (v === "strict") return "Strict";
+  return "None";
+}
 
 /**
  * session 签名密钥的最小长度。低于此值视为「未正确配置」：
@@ -64,7 +83,10 @@ export interface SessionPayload {
 }
 
 /** 签发 session，返回 Set-Cookie 值 */
-export async function issueSessionCookie(secret: string): Promise<string> {
+export async function issueSessionCookie(
+  secret: string,
+  sameSite: CookieSameSite = "None",
+): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const payload: SessionPayload = { iat: now, exp: now + SESSION_TTL_SECONDS };
   const body = b64url(enc.encode(JSON.stringify(payload)));
@@ -74,15 +96,15 @@ export async function issueSessionCookie(secret: string): Promise<string> {
     `${COOKIE_NAME}=${value}`,
     "HttpOnly",
     "Secure",
-    "SameSite=None",
+    `SameSite=${sameSite}`,
     "Path=/",
     `Max-Age=${SESSION_TTL_SECONDS}`,
   ].join("; ");
 }
 
-/** 清除 session 的 Set-Cookie 值 */
-export function clearSessionCookie(): string {
-  return `${COOKIE_NAME}=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0`;
+/** 清除 session 的 Set-Cookie 值（属性需与签发时一致，否则部分浏览器不清除） */
+export function clearSessionCookie(sameSite: CookieSameSite = "None"): string {
+  return `${COOKIE_NAME}=; HttpOnly; Secure; SameSite=${sameSite}; Path=/; Max-Age=0`;
 }
 
 function parseCookies(header: string | null): Record<string, string> {

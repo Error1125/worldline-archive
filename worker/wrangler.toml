@@ -15,11 +15,43 @@ compatibility_date = "2026-06-01"
 GITHUB_OWNER = "Error1125"
 GITHUB_REPO = "worldline-archive"
 GITHUB_BRANCH = "main"
-# CORS 白名单：GitHub Pages 站点源（可用英文逗号分隔多个，如再加本地调试源）
+# CORS 白名单：前端站点源（可用英文逗号分隔多个，如再加本地调试源）。
+# 同站部署（v5.4.1 Hotfix-02）后，把这里换成自定义域名前端源，例如：
+#   ALLOWED_ORIGIN = "https://archive.example.com"
 ALLOWED_ORIGIN = "https://error1125.github.io"
+# session cookie 的 SameSite 策略（v5.4.1 Hotfix-02）：
+#   - "None"（默认，可不配）：github.io + workers.dev 跨站部署沿用现状，
+#     但 iOS Safari 默认「防止跨网站追踪」会拦截该第三方 Cookie；
+#   - "Lax"：前端与 API 属同一注册域名（same-site）时的推荐值，
+#     Safari 默认隐私设置下即可登录。切换到自定义域名后请启用：
+# COOKIE_SAME_SITE = "Lax"
 # commit 署名（可选；留空则用 token 对应账号）
 GITHUB_COMMITTER_NAME = "Worldline Console"
 GITHUB_COMMITTER_EMAIL = "console@worldline.local"
+
+# ── v5.4.1 Hotfix-02：同站（same-site）部署，解决 iOS Safari 无法登录 ──
+# 目标结构（任选其一，均为「同一注册域名」）：
+#   A) archive.example.com（GitHub Pages 自定义域名）
+#      api.example.com    （Worker Custom Domain）
+#   B) archive.example.com          （GitHub Pages 自定义域名）
+#      archive.example.com/api/*    （Worker Route，见下方 routes 示例）
+# 步骤：
+#   1. GitHub Pages 绑定自定义域名（仓库 Settings → Pages → Custom domain）；
+#   2. Worker 绑定 Custom Domain 或 Route（取消下方注释并按需修改）；
+#   3. 本文件 ALLOWED_ORIGIN 换成新前端源，并启用 COOKIE_SAME_SITE = "Lax"；
+#   4. 前端构建注入 PUBLIC_ADMIN_API_BASE（方案 A 填 https://api.example.com，
+#      方案 B 填 "/"，详见 docs/SAME_SITE_AUTH.md）；
+#   5. npx wrangler deploy 重新部署。
+#
+# 方案 A —— Custom Domain（Cloudflare 托管该域名 DNS 时最简单）：
+# [[routes]]
+# pattern = "api.example.com"
+# custom_domain = true
+#
+# 方案 B —— 同主机路径路由（前端与 API 同一主机名）：
+# [[routes]]
+# pattern = "archive.example.com/api/*"
+# zone_name = "example.com"
 
 [triggers]
 crons = ["0 */6 * * *"]
