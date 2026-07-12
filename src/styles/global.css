@@ -5221,3 +5221,55 @@ html.ia-cursor .hero-search { cursor: text !important; }
 .moment-filter-details[open] > summary { margin-bottom:.8rem; color:var(--ia-neon); }
 html[data-scene-mode="day"] [data-motion-scene="moments"] .glass-card { box-shadow:0 12px 34px rgba(120,90,140,.14); }
 .moments-motion-card { min-width:0; }
+
+/* ============================================================
+   v5.4 Admin Interaction System
+   Console-only primitives: focus ring, outlet transitions,
+   dialog / drawer / toast motion, skeleton shimmer.
+   Motion budget: translate <= 8px, scale >= 0.98, 100-240ms.
+   ============================================================ */
+:root { --adm-ease: cubic-bezier(0.2, 0.8, 0.3, 1); }
+
+.adm-ring:focus-visible { outline: 2px solid var(--ia-neon); outline-offset: 2px; }
+
+@keyframes adm-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes adm-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes adm-rise-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes adm-sink-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-4px); } }
+@keyframes adm-pop-in { from { opacity: 0; transform: translateY(8px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes adm-pop-out { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(4px) scale(0.99); } }
+@keyframes adm-slide-in-left { from { opacity: 0.6; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes adm-slide-out-left { from { opacity: 1; transform: translateX(0); } to { opacity: 0.4; transform: translateX(-8px); } }
+@keyframes adm-toast-in { from { opacity: 0; transform: translateY(-6px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes adm-toast-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-4px); } }
+@keyframes adm-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+.adm-outlet-exit { animation: adm-sink-out 130ms var(--adm-ease) both; }
+.adm-outlet-enter { animation: adm-rise-in 200ms var(--adm-ease) both; }
+.adm-panel-enter { animation: adm-rise-in 180ms var(--adm-ease) both; }
+.adm-overlay-in { animation: adm-fade-in 160ms ease-out both; }
+.adm-overlay-out { animation: adm-fade-out 120ms ease-in both; }
+.adm-dialog-in { animation: adm-pop-in 200ms var(--adm-ease) both; }
+.adm-dialog-out { animation: adm-pop-out 120ms ease-in both; }
+.adm-drawer-in { animation: adm-slide-in-left 220ms var(--adm-ease) both; }
+.adm-drawer-out { animation: adm-slide-out-left 170ms ease-in both; }
+.adm-toast-in { animation: adm-toast-in 180ms var(--adm-ease) both; }
+.adm-toast-out { animation: adm-toast-out 140ms ease-in both; }
+
+.adm-skeleton {
+  border-radius: 8px;
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--ia-panel-strong) 72%, transparent) 32%,
+    color-mix(in srgb, var(--ia-neon) 9%, var(--ia-panel-strong)) 48%,
+    color-mix(in srgb, var(--ia-panel-strong) 72%, transparent) 64%
+  );
+  background-size: 200% 100%;
+  animation: adm-shimmer 1.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adm-outlet-enter, .adm-panel-enter, .adm-dialog-in, .adm-drawer-in, .adm-toast-in, .adm-overlay-in { animation: adm-fade-in 80ms ease-out both; }
+  .adm-outlet-exit, .adm-dialog-out, .adm-drawer-out, .adm-toast-out, .adm-overlay-out { animation: adm-fade-out 1ms linear both; }
+  .adm-skeleton { animation: none; }
+}

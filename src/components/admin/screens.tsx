@@ -20,7 +20,7 @@
  *        Dashboard 与首页读取同一份 /data/summary.json 引擎输出并展示 deploy pending。
  */
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as api from "@/lib/admin/api";
 import { AdminApiError } from "@/lib/admin/api";
 import { saveApiBase, resolveApiBase, setAdminHint, ADMIN_API_BASE_ENV } from "@/config/admin";
@@ -32,16 +32,20 @@ import {
   AdminIcon,
   Btn,
   BottomBar,
+  ContentSkeleton,
+  EmptyState,
   ErrorBox,
+  ErrorState,
   Field,
   ImageListInput,
   ImageThumb,
   ImageUrlInput,
   InfoRow,
   Input,
+  Listbox,
   Notice,
   Section,
-  Select,
+  Skeleton,
   Spinner,
   StatusPill,
   Steps,
@@ -51,6 +55,9 @@ import {
   timeAgo,
   type StepState,
 } from "./ui";
+import { useDialog, useToast } from "./feedback";
+import { NavLink, useAdminNavGuard, useAdminNavigate, type SettingsSection } from "./router";
+import { useReportSaveStatus } from "./shell";
 
 /* =========================================================================
  * Login（v5.0.2 §3：API URL 默认隐藏）
@@ -81,7 +88,7 @@ export function LoginScreen({ siteBase }: { siteBase: string }) {
     else saveApiBase(v);
   };
 
-  const submit = async (e?: React.FormEvent<HTMLFormElement>) => {
+  const submit = async (e?: { preventDefault: () => void }) => {
     e?.preventDefault();
     setError(null);
     if (!secret) {
@@ -210,8 +217,8 @@ export function LoginScreen({ siteBase }: { siteBase: string }) {
         <ErrorBox>{error}</ErrorBox>
         {loginStatus && !error && <Notice tone="neon">{loginStatus}</Notice>}
 
-        <Btn kind="primary" type="submit" full disabled={busy}>
-          {busy ? <Spinner /> : <AdminIcon name="arrow" size={16} />}
+        <Btn kind="primary" type="submit" full loading={busy}>
+          <AdminIcon name="arrow" size={16} />
           {busy ? "验证中…" : "登录"}
         </Btn>
 
@@ -251,11 +258,11 @@ export function LoginScreen({ siteBase }: { siteBase: string }) {
                 />
               </Field>
               <div className="flex gap-2">
-                <Btn onClick={runHealth} disabled={healthBusy} className="flex-1 !min-h-[40px] !text-xs">
-                  {healthBusy ? <Spinner size={13} /> : <AdminIcon name="refresh" size={13} />}
+                <Btn size="sm" onClick={runHealth} loading={healthBusy} className="flex-1">
+                  <AdminIcon name="refresh" size={13} />
                   健康检查
                 </Btn>
-                <Btn onClick={resetLocalBase} className="flex-1 !min-h-[40px] !text-xs">
+                <Btn size="sm" onClick={resetLocalBase} className="flex-1">
                   <AdminIcon name="close" size={13} /> 重置本机地址
                 </Btn>
               </div>
@@ -346,6 +353,7 @@ export function DashboardScreen({
   const [localDrafts, setLocalDrafts] = useState(0);
   const [profile, setProfile] = useState<Record<string, any> | "err" | null>(null);
   const [healthInfo, setHealthInfo] = useState<api.HealthInfo | "err" | null>(null);
+  const toast = useToast();
 
   const loadStatus = () =>
     api
@@ -378,10 +386,14 @@ export function DashboardScreen({
     setSyncMsg(null);
     try {
       const r = await api.githubSync();
-      setSyncMsg(`GitHub 数据已同步并提交：${r.commitSha.slice(0, 7)}`);
+      const sha = r.commitSha.slice(0, 7);
+      setSyncMsg(`GitHub 数据已同步并提交：${sha}`);
+      toast.success("GitHub 数据已同步", `commit ${sha}`);
       loadStatus();
     } catch (e) {
-      setSyncMsg(e instanceof Error ? `同步失败：${e.message}` : "同步失败");
+      const msg = e instanceof Error ? e.message : "同步失败";
+      setSyncMsg(`同步失败：${msg}`);
+      toast.error("GitHub 数据同步失败", msg);
     } finally {
       setSyncBusy(false);
     }
@@ -456,7 +468,11 @@ export function DashboardScreen({
           ) : summaryErr ? (
             <p className="mt-3 text-xs text-[var(--ia-warning)]">{summaryErr}</p>
           ) : (
-            <div className="mt-3 text-[var(--ia-mist)]"><Spinner /></div>
+            <div className="mt-3 flex flex-col gap-2">
+              <Skeleton className="h-9 w-40" />
+              <Skeleton className="h-3 w-64 max-w-full" />
+              <Skeleton className="h-3 w-52 max-w-full" />
+            </div>
           )}
         </section>
 
@@ -468,7 +484,7 @@ export function DashboardScreen({
               <a
                 key={t.type}
                 href={`${siteBase}/admin/publish/${t.type}`}
-                className="clickable flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] text-center"
+                className="clickable adm-ring flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] text-center transition-colors hover:border-[var(--ia-line-strong)] hover:bg-[var(--ia-panel-strong)] motion-safe:active:scale-[0.98]"
                 style={{ color: t.accent }}
               >
                 <AdminIcon name={t.icon} size={19} />
@@ -477,7 +493,7 @@ export function DashboardScreen({
             ))}
             <a
               href={`${siteBase}/admin/publish`}
-              className="clickable flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-[var(--ia-line)] text-[var(--ia-mist)]"
+              className="clickable adm-ring flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-[var(--ia-line)] text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-line-strong)] hover:bg-[var(--ia-panel)] motion-safe:active:scale-[0.98]"
             >
               <AdminIcon name="plus" size={19} />
               <span className="text-[10px] font-semibold">全部</span>
@@ -507,7 +523,13 @@ export function DashboardScreen({
               ))}
             </div>
           ) : (
-            !summaryErr && <div className="mt-3 text-[var(--ia-mist)]"><Spinner /></div>
+            !summaryErr && (
+              <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-6 w-full" />
+                ))}
+              </div>
+            )
           )}
         </section>
 
@@ -542,7 +564,7 @@ export function DashboardScreen({
               type="button"
               onClick={loadStatus}
               aria-label="刷新状态"
-              className="clickable grid size-8 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)]"
+              className="clickable adm-ring grid size-8 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-line-strong)] hover:text-[var(--ia-ink)]"
             >
               <AdminIcon name="refresh" size={14} />
             </button>
@@ -590,15 +612,15 @@ export function DashboardScreen({
               )}
               <InfoRow k="media">{status.media?.count ?? 0} 项 · R2 {status.r2Enabled ? "已启用" : "未配置"}</InfoRow>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Btn onClick={doSync} disabled={syncBusy} className="!min-h-[40px] flex-1 !text-xs">
-                  {syncBusy ? <Spinner size={13} /> : <AdminIcon name="refresh" size={13} />}
+                <Btn size="sm" onClick={doSync} loading={syncBusy} className="flex-1">
+                  <AdminIcon name="refresh" size={13} />
                   同步 GitHub 数据
                 </Btn>
                 <a
                   href={`${status.repo.url}/actions`}
                   target="_blank"
                   rel="noreferrer"
-                  className="clickable inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-[var(--ia-line)] px-3 text-xs font-semibold text-[var(--ia-mist)]"
+                  className="clickable adm-ring inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-[var(--ia-line)] px-3 text-xs font-semibold text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-line-strong)] hover:text-[var(--ia-ink)]"
                 >
                   <AdminIcon name="external" size={12} /> Actions
                 </a>
@@ -606,9 +628,18 @@ export function DashboardScreen({
               {syncMsg && <p className="mono mt-2 text-[11px] text-[var(--ia-mist)]">{syncMsg}</p>}
             </div>
           ) : statusErr ? (
-            <ErrorBox>{statusErr}</ErrorBox>
+            <ErrorState
+              className="mt-3"
+              title="状态获取失败"
+              message={statusErr}
+              onRetry={() => void loadStatus()}
+            />
           ) : (
-            <div className="mt-3 text-[var(--ia-mist)]"><Spinner /></div>
+            <div className="mt-3 flex flex-col gap-2">
+              <Skeleton className="h-5 w-full" />
+              <Skeleton className="h-5 w-4/5" />
+              <Skeleton className="h-5 w-3/5" />
+            </div>
           )}
         </section>
 
@@ -632,7 +663,12 @@ export function DashboardScreen({
         {/* Profile 完成度（§12） */}
         <section className="glass-card rounded-2xl p-4">
           <span className="eyebrow">PROFILE // 档案完成度</span>
-          {profile === null && <div className="mt-3 text-[var(--ia-mist)]"><Spinner size={14} /></div>}
+          {profile === null && (
+            <div className="mt-3 flex flex-col gap-2">
+              <Skeleton className="h-7 w-24" />
+              <Skeleton className="h-1.5 w-full" />
+            </div>
+          )}
           {profile === "err" && (
             <p className="mono mt-2 text-[10px] text-[var(--ia-mist)]">// 读取失败（不影响使用）</p>
           )}
@@ -668,7 +704,12 @@ export function DashboardScreen({
         {/* 配置健康检查（§11.3 / §12） */}
         <section className="glass-card rounded-2xl p-4">
           <span className="eyebrow">HEALTH // 配置体检</span>
-          {healthInfo === null && <div className="mt-3 text-[var(--ia-mist)]"><Spinner size={14} /></div>}
+          {healthInfo === null && (
+            <div className="mt-3 flex flex-col gap-2">
+              <Skeleton className="h-5 w-full" />
+              <Skeleton className="h-5 w-4/5" />
+            </div>
+          )}
           {healthInfo === "err" && (
             <p className="mt-2 text-[11px] text-[var(--ia-warning)]">无法连接 Worker /api/health。</p>
           )}
@@ -715,7 +756,7 @@ export function PublishIndexScreen({ siteBase }: { siteBase: string }) {
           <a
             key={t.type}
             href={`${siteBase}/admin/publish/${t.type}`}
-            className="glass-card clickable flex items-center gap-3.5 rounded-2xl p-4"
+            className="glass-card clickable adm-ring flex items-center gap-3.5 rounded-2xl p-4 transition-colors hover:border-[var(--ia-line-strong)] motion-safe:active:scale-[0.99]"
           >
             <span
               className="icon-badge grid size-12 shrink-0 place-items-center rounded-xl"
@@ -780,10 +821,11 @@ function FieldControl({
       );
     case "select":
       return (
-        <Select
+        <Listbox
           value={String(value ?? "")}
           options={def.options ?? []}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(v) => onChange(v)}
+          ariaLabel={def.label}
         />
       );
     case "tags":
@@ -933,6 +975,12 @@ export function PublishFormScreen({
   const [animeResults, setAnimeResults] = useState<AniListSearchItem[]>([]);
   const [animeError, setAnimeError] = useState<string | null>(null);
   const [selectedRepo, setSelectedRepo] = useState("");
+  /* v5.4：dirty=本会话内有过编辑且尚未成功发布；attempted=点过发布（用于必填项红标） */
+  const [dirty, setDirty] = useState(false);
+  const [attempted, setAttempted] = useState(false);
+  const toast = useToast();
+  const dialog = useDialog();
+  const navigate = useAdminNavigate();
 
   useEffect(() => {
     if (def?.type !== "project" || new URLSearchParams(location.search).get("repoDraft") !== "1") return;
@@ -1039,15 +1087,14 @@ export function PublishFormScreen({
   }, [result]);
 
   const missing = useMemo(() => {
-    if (!def) return [];
+    if (!def) return [] as FieldDef[];
     return def.fields
       .filter((f) => f.required)
       .filter((f) => {
         const v = state[f.name];
         if (Array.isArray(v)) return v.filter((x) => String(x).trim() !== "").length === 0;
         return v === "" || v === undefined || v === null;
-      })
-      .map((f) => f.label);
+      });
   }, [def, state]);
 
   /* ---- 部署阶段推导 ---- */
@@ -1102,11 +1149,54 @@ export function PublishFormScreen({
     }
   }, [frontendState]);
 
+  /* v5.4：未发布的编辑在离开前拦截（先落草稿再询问，避免"误报丢失"） */
+  const guardActive = dirty && !result;
+  useAdminNavGuard(
+    guardActive
+      ? async () => {
+          if (def && draftsLib.hasDraftContent(state, body)) {
+            const id = draftsLib.saveDraft({ id: draftId ?? undefined, type: def.type, state, body });
+            if (!draftId) setDraftId(id);
+          }
+          return dialog.confirm({
+            title: "离开当前编辑？",
+            message: "改动已自动保存到本机草稿箱，离开后可随时从「草稿箱」恢复继续。",
+            confirmLabel: "离开",
+            cancelLabel: "留在此页",
+          });
+        }
+      : null,
+  );
+  useEffect(() => {
+    if (!guardActive) return undefined;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [guardActive]);
+
+  /* v5.4：顶栏 SaveStatusPill */
+  useReportSaveStatus(
+    busy
+      ? { tone: "saving", label: "正在提交…" }
+      : result
+        ? { tone: "saved", label: "已发布" }
+        : dirty
+          ? { tone: "dirty", label: autosavedAt ? `编辑中 · 草稿 ${autosavedAt}` : "编辑中" }
+          : autosavedAt
+            ? { tone: "saved", label: `草稿已保存 ${autosavedAt}` }
+            : null,
+  );
+
   if (!def) {
     return <ErrorBox>未知的记录类型：{type}</ErrorBox>;
   }
 
-  const set = (name: string) => (v: unknown) => setState((s) => ({ ...s, [name]: v }));
+  const set = (name: string) => (v: unknown) => {
+    setDirty(true);
+    setState((s) => ({ ...s, [name]: v }));
+  };
 
   const searchAnime = async () => {
     const search = animeQuery.trim();
@@ -1140,6 +1230,7 @@ export function PublishFormScreen({
   };
 
   const applyAnime = (item: AniListSearchItem) => {
+    setDirty(true);
     setState((current) => ({
       ...current,
       title: current.title || item.title.english || item.title.romaji || item.title.native || "",
@@ -1154,6 +1245,7 @@ export function PublishFormScreen({
     // Bangumi is intentionally scoped to the anime publisher state above.
     const repo = githubReposData.repos.find((item) => item.repo === selectedRepo);
     if (!repo) return;
+    setDirty(true);
     setState((current) => ({
       ...current,
       title: current.title || repo.repo,
@@ -1170,14 +1262,23 @@ export function PublishFormScreen({
     try { setBangumiResults((await api.bangumiSearch(search)).items); } catch (error) { setBangumiResults([]); setBangumiError(error instanceof Error ? error.message : "Bangumi search failed."); } finally { setBangumiBusy(false); }
   };
   const applyBangumi = (item: api.BangumiSearchItem) => {
+    setDirty(true);
     setState((current) => ({ ...current, title: item.titleCn || item.titleJP || current.title, titleCn: item.titleCn || current.titleCn, titleJP: item.titleJP || current.titleJP, cover: item.cover || current.cover, episodes: item.episodes ?? current.episodes, year: item.year ?? current.year, bangumiSummary: item.summary || current.bangumiSummary, bangumiAirDate: item.airDate || current.bangumiAirDate, bangumiRank: item.rank ?? current.bangumiRank, bangumiTags: item.tags, bangumiCommunityScore: item.score ?? current.bangumiCommunityScore, externalUrl: item.externalUrl, externalIds: { ...((current.externalIds as Record<string, unknown>) ?? {}), bangumi: item.id } })); setBangumiResults([]); setNoticeMsg("Bangumi metadata applied.");
   };
 
   const importMarkdown = async (file?: File) => {
     if (!file) return;
-    if (body.trim() && !window.confirm("重新导入会覆盖当前正文，是否继续？")) {
-      if (importInputRef.current) importInputRef.current.value = "";
-      return;
+    if (body.trim()) {
+      const ok = await dialog.confirm({
+        title: "覆盖当前正文？",
+        message: "重新导入会用文件内容覆盖当前正文与同名 frontmatter 字段。",
+        confirmLabel: "覆盖导入",
+        cancelLabel: "取消",
+      });
+      if (!ok) {
+        if (importInputRef.current) importInputRef.current.value = "";
+        return;
+      }
     }
     setImportBusy(true);
     setErrorInfo(null);
@@ -1185,6 +1286,7 @@ export function PublishFormScreen({
       const parsed = await readMarkdownFile(file);
       const aliases: Record<string, string> = { description: "description", summary: "summary" };
       const allowed = new Set(def.fields.map((field) => field.name));
+      setDirty(true);
       setState((current) => {
         const next = { ...current };
         for (const [rawKey, value] of Object.entries(parsed.attributes)) {
@@ -1210,7 +1312,9 @@ export function PublishFormScreen({
   const saveDraftNow = () => {
     const id = draftsLib.saveDraft({ id: draftId ?? undefined, type: def.type, state, body, status: "draft" });
     setDraftId(id);
+    setDirty(false);
     setNoticeMsg("已保存到本机草稿箱。可随时在「草稿箱」中恢复编辑。");
+    toast.success("已保存到草稿箱", "仅存于本机浏览器，不会进入仓库");
   };
 
   const buildPayload = (): Record<string, unknown> => {
@@ -1234,13 +1338,27 @@ export function PublishFormScreen({
   const submit = async () => {
     setErrorInfo(null);
     setNoticeMsg(null);
-    /* Step 1：表单校验 */
+    setAttempted(true);
+    /* Step 1：表单校验（v5.4：toast 汇总 + 滚动定位到第一个缺失字段） */
     if (missing.length) {
       setErrorInfo({
         kind: "form",
         title: "表单校验未通过",
-        message: `还有必填项未填：${missing.join("、")}。`,
+        message: `还有必填项未填：${missing.map((f) => f.label).join("、")}。`,
       });
+      toast.error(`还有 ${missing.length} 个必填项未填`, missing.map((f) => f.label).join("、"));
+      const firstName = missing[0]?.name;
+      if (firstName) {
+        requestAnimationFrame(() => {
+          const holder = document.querySelector<HTMLElement>(`[data-field="fld-${firstName}"]`);
+          if (!holder) return;
+          holder.scrollIntoView({ behavior: "smooth", block: "center" });
+          const control = holder.querySelector<HTMLElement>(
+            "input, textarea, select, button, [tabindex]",
+          );
+          control?.focus({ preventScroll: true });
+        });
+      }
       return;
     }
     setBusy(true);
@@ -1255,7 +1373,10 @@ export function PublishFormScreen({
       draftsLib.clearDraftAfterPublish(safetyDraftId);
       setDraftId(null);
       setAutosavedAt(null);
+      setDirty(false);
+      setAttempted(false);
       setResult(r);
+      toast.success("已提交到 GitHub", `commit ${r.commitSha.slice(0, 7)} · 部署自动进行`);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
       const info = classifyPublishError(e);
@@ -1277,6 +1398,7 @@ export function PublishFormScreen({
         return;
       }
       setErrorInfo(info);
+      toast.error(info.title, `${ERR_KIND_LABEL[info.kind]} · 内容已进入本机草稿箱`);
     } finally {
       setBusy(false);
     }
@@ -1406,11 +1528,13 @@ export function PublishFormScreen({
               setBody("");
               setErrorInfo(null);
               setNoticeMsg(null);
+              setDirty(false);
+              setAttempted(false);
             }}
           >
             <AdminIcon name="plus" size={15} /> 再发一条{def.label}
           </Btn>
-          <Btn full onClick={() => (location.href = `${siteBase}/admin/dashboard`)}>
+          <Btn full onClick={() => void navigate({ screen: "dashboard" })}>
             返回总览
           </Btn>
         </div>
@@ -1423,11 +1547,20 @@ export function PublishFormScreen({
   const mainFields = def.fields.filter((f) => !TAIL.has(f.name));
   const tailFields = def.fields.filter((f) => TAIL.has(f.name));
 
+  const missingNames = new Set(missing.map((f) => f.name));
   const renderField = (f: FieldDef) =>
     f.kind === "toggle" ? (
       <FieldControl key={f.name} def={f} value={state[f.name]} onChange={set(f.name)} />
     ) : (
-      <Field key={f.name} label={f.label} required={f.required} help={f.help}>
+      <Field
+        key={f.name}
+        label={f.label}
+        required={f.required}
+        help={f.help}
+        fieldId={`fld-${f.name}`}
+        invalid={attempted && missingNames.has(f.name)}
+        error={attempted && missingNames.has(f.name) ? "该必填项还未填写。" : undefined}
+      >
         <FieldControl def={f} value={state[f.name]} onChange={set(f.name)} />
       </Field>
     );
@@ -1459,7 +1592,7 @@ export function PublishFormScreen({
                 <p className="text-sm font-semibold text-[var(--ia-ink)]">从 GitHub 仓库导入</p>
                 <p className="mono mt-0.5 text-[10px] text-[var(--ia-mist)]">缓存同步于 {githubReposData.generatedAt?.slice(0, 10) || "unavailable"} · 手动选择才展示</p>
                 <div className="mt-3 flex gap-2">
-                  <Select value={selectedRepo} onChange={(event) => setSelectedRepo(event.target.value)} options={[{ value: "", label: "选择仓库…" }, ...githubReposData.repos.map((repo) => ({ value: repo.repo, label: `${repo.repo} · ★ ${repo.stars}` }))]} />
+                  <Listbox className="flex-1" value={selectedRepo} onChange={(v) => setSelectedRepo(v)} ariaLabel="选择 GitHub 仓库" options={[{ value: "", label: "选择仓库…" }, ...githubReposData.repos.map((repo) => ({ value: repo.repo, label: `${repo.repo} · ★ ${repo.stars}` }))]} />
                   <Btn onClick={applyProjectRepo} disabled={!selectedRepo}><AdminIcon name="github" size={14} /> 导入</Btn>
                 </div>
               </div>
@@ -1478,8 +1611,8 @@ export function PublishFormScreen({
                     placeholder="搜索日文 / 英文标题"
                     className="flex-1"
                   />
-                  <Btn onClick={() => void searchBangumi()} disabled={bangumiBusy}>
-                    {bangumiBusy ? <Spinner size={13} /> : <AdminIcon name="search" size={14} />} Bangumi
+                  <Btn onClick={() => void searchBangumi()} loading={bangumiBusy}>
+                    <AdminIcon name="search" size={14} /> Bangumi
                   </Btn>
                 </div>
                 {bangumiError && <p className="mt-2 text-xs text-[var(--ia-warning)]">{bangumiError}</p>}
@@ -1503,7 +1636,7 @@ export function PublishFormScreen({
                 )}
                 <details className="mt-4 border-t border-[var(--ia-line)] pt-3">
                   <summary className="cursor-pointer text-xs text-[var(--ia-mist)]">AniList optional supplement</summary>
-                  <div className="mt-3"><Btn onClick={() => void searchAnime()} disabled={animeBusy}>Search AniList</Btn></div>
+                  <div className="mt-3"><Btn onClick={() => void searchAnime()} loading={animeBusy}>Search AniList</Btn></div>
                   {animeError && <p className="mt-2 text-xs text-[var(--ia-warning)]">{animeError}</p>}
                   {animeResults.length > 0 && <div className="mt-3 grid gap-2">{animeResults.map((item) => <button key={item.id} type="button" onClick={() => applyAnime(item)} className="rounded-lg border border-[var(--ia-line)] p-2 text-left"><b>{item.title.english || item.title.romaji || item.title.native}</b></button>)}</div>}
                 </details>
@@ -1537,7 +1670,10 @@ export function PublishFormScreen({
                 <Textarea
                   value={body}
                   rows={12}
-                  onChange={(e) => setBody(e.target.value)}
+                  onChange={(e) => {
+                    setDirty(true);
+                    setBody(e.target.value);
+                  }}
                   placeholder={"支持 Markdown。\n\n## 小标题\n正文……"}
                   className="mono !text-[13px] lg:min-h-[320px]"
                 />
@@ -1554,9 +1690,9 @@ export function PublishFormScreen({
 
           {/* 桌面操作卡（移动端由 BottomBar 承担） */}
           <div className="glass-card hidden flex-col gap-2.5 rounded-2xl p-4 lg:flex">
-            <Btn kind="primary" full onClick={submit} disabled={busy}>
-              {busy ? <Spinner /> : <AdminIcon name="publish" size={16} />}
-              {busy ? "正在提交至仓库…" : `发布${def.label}${state.draft ? "（草稿）" : ""}`}
+            <Btn kind="primary" full onClick={submit} loading={busy}>
+              <AdminIcon name="publish" size={16} />
+              发布{def.label}{state.draft ? "（草稿）" : ""}
             </Btn>
             <Btn full onClick={saveDraftNow} disabled={busy}>
               <AdminIcon name="save" size={15} /> 保存到草稿箱
@@ -1584,9 +1720,9 @@ export function PublishFormScreen({
         <Btn onClick={saveDraftNow} disabled={busy} className="shrink-0 !px-3.5" aria-label="保存到草稿箱">
           <AdminIcon name="save" size={16} />
         </Btn>
-        <Btn kind="primary" full onClick={submit} disabled={busy}>
-          {busy ? <Spinner /> : <AdminIcon name="publish" size={16} />}
-          {busy ? "正在提交至仓库…" : `发布${def.label}${state.draft ? "（草稿）" : ""}`}
+        <Btn kind="primary" full onClick={submit} loading={busy}>
+          <AdminIcon name="publish" size={16} />
+          发布{def.label}{state.draft ? "（草稿）" : ""}
         </Btn>
       </BottomBar>
     </div>
@@ -1599,21 +1735,30 @@ export function PublishFormScreen({
 
 export function DraftsScreen({ siteBase }: { siteBase: string }) {
   const [items, setItems] = useState<draftsLib.DraftRecord[]>([]);
-  const [armDelete, setArmDelete] = useState<string | null>(null);
+  const toast = useToast();
+  const dialog = useDialog();
 
   useEffect(() => {
     setItems(draftsLib.listDrafts());
   }, []);
 
-  const remove = (id: string) => {
-    if (armDelete !== id) {
-      setArmDelete(id);
-      window.setTimeout(() => setArmDelete((v) => (v === id ? null : v)), 4000);
-      return;
-    }
-    draftsLib.deleteDraft(id);
-    setArmDelete(null);
+  const remove = async (d: draftsLib.DraftRecord) => {
+    const ok = await dialog.confirm({
+      title: "删除这条草稿？",
+      message: (
+        <>
+          「{d.title || "未命名草稿"}」将从本机浏览器移除，此操作不可恢复。
+          已发布到仓库的内容不受影响。
+        </>
+      ),
+      confirmLabel: "删除草稿",
+      cancelLabel: "取消",
+      danger: true,
+    });
+    if (!ok) return;
+    draftsLib.deleteDraft(d.id);
     setItems(draftsLib.listDrafts());
+    toast.success("草稿已删除", "仅移除了本机副本");
   };
 
   return (
@@ -1627,18 +1772,18 @@ export function DraftsScreen({ siteBase }: { siteBase: string }) {
       </div>
 
       {items.length === 0 && (
-        <section className="glass-card rounded-2xl p-6 text-center">
-          <span className="icon-badge mx-auto grid size-12 place-items-center rounded-xl text-[var(--ia-mist)]">
-            <AdminIcon name="drafts" size={22} />
-          </span>
-          <p className="mt-3 text-sm text-[var(--ia-mist)]">还没有草稿。发布表单会自动把写到一半的内容存到这里。</p>
+        <EmptyState
+          icon="drafts"
+          title="还没有草稿"
+          hint="发布表单会自动把写到一半的内容存到这里。"
+        >
           <a
             href={`${siteBase}/admin/publish`}
-            className="clickable mono mt-3 inline-flex items-center gap-1 text-xs text-[var(--ia-neon)]"
+            className="clickable adm-ring mono inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-[var(--ia-neon)]"
           >
             去发布 <AdminIcon name="arrow" size={12} />
           </a>
-        </section>
+        </EmptyState>
       )}
 
       {items.map((d) => {
@@ -1686,11 +1831,11 @@ export function DraftsScreen({ siteBase }: { siteBase: string }) {
               )}
               <button
                 type="button"
-                onClick={() => remove(d.id)}
-                className="clickable inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-[color-mix(in_srgb,var(--ia-danger)_50%,transparent)] px-3 text-xs font-semibold text-[var(--ia-danger)]"
+                onClick={() => void remove(d)}
+                className="clickable adm-ring inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-[color-mix(in_srgb,var(--ia-danger)_50%,transparent)] px-3 text-xs font-semibold text-[var(--ia-danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--ia-danger)_12%,transparent)]"
               >
                 <AdminIcon name="trash" size={13} />
-                {armDelete === d.id ? "确认删除？" : "删除"}
+                删除
               </button>
             </div>
           </section>
@@ -1724,13 +1869,17 @@ export function MediaScreen() {
   const [notice, setNotice] = useState<string | null>(null);
   const [openMenuFor, setOpenMenuFor] = useState<string | null>(null);
   const [applyBusy, setApplyBusy] = useState<string | null>(null);
-  const [armDelete, setArmDelete] = useState<string | null>(null);
   const [deleteBusy, setDeleteBusy] = useState<string | null>(null);
+  const toast = useToast();
+  const dialog = useDialog();
 
   const load = () =>
     api
       .mediaList()
-      .then((r) => setItems(r.items))
+      .then((r) => {
+        setItems(r.items);
+        setError(null);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : "读取失败"));
 
   useEffect(() => {
@@ -1743,6 +1892,7 @@ export function MediaScreen() {
     if (!v) return;
     if (!/^https?:\/\/\S+/i.test(v)) {
       setNotice("URL 无效：必须以 http(s):// 开头。");
+      toast.warning("URL 无效", "必须以 http(s):// 开头");
       return;
     }
     setBusy(true);
@@ -1752,9 +1902,12 @@ export function MediaScreen() {
       setUrl("");
       setLabel("");
       setNotice("已登记并提交（media.json）。");
+      toast.success("已登记并提交", "media.json 已更新");
       load();
     } catch (e) {
-      setNotice(e instanceof Error ? `登记失败：${e.message}` : "登记失败");
+      const msg = e instanceof Error ? e.message : "登记失败";
+      setNotice(`登记失败：${msg}`);
+      toast.error("登记失败", msg);
     } finally {
       setBusy(false);
     }
@@ -1766,9 +1919,12 @@ export function MediaScreen() {
     try {
       const r = await api.mediaUpload(file);
       setNotice(`上传成功：${r.url}`);
+      toast.success("上传成功", "URL 已登记进媒体库");
       load();
     } catch (e) {
-      setNotice(e instanceof Error ? `上传失败：${e.message}` : "上传失败");
+      const msg = e instanceof Error ? e.message : "上传失败";
+      setNotice(`上传失败：${msg}`);
+      toast.error("上传失败", msg);
     } finally {
       setUploading(false);
     }
@@ -1776,8 +1932,8 @@ export function MediaScreen() {
 
   const copy = (v: string) => {
     navigator.clipboard?.writeText(v).then(
-      () => setNotice("已复制 URL。"),
-      () => setNotice("复制失败，请手动复制。"),
+      () => toast.success("已复制 URL"),
+      () => toast.warning("复制失败", "请长按 / 选中手动复制"),
     );
   };
 
@@ -1791,34 +1947,48 @@ export function MediaScreen() {
         const { data } = await api.getSettings<Record<string, any>>("profile");
         const r = await api.putSettings("profile", { ...data, avatar: imgUrl });
         setNotice(`已设为头像并提交（${r.commitSha.slice(0, 7)}），部署后前台生效。`);
+        toast.success("已设为头像", `commit ${r.commitSha.slice(0, 7)} · 部署后生效`);
       } else {
         const { data } = await api.getSettings<Record<string, any>>("site");
         const r = await api.putSettings("site", { ...data, [target]: imgUrl });
         setNotice(`已设为${APPLY_LABEL[target]}并提交（${r.commitSha.slice(0, 7)}），部署后生效。`);
+        toast.success(`已设为${APPLY_LABEL[target]}`, `commit ${r.commitSha.slice(0, 7)} · 部署后生效`);
       }
       setOpenMenuFor(null);
     } catch (e) {
-      setNotice(e instanceof Error ? `设置失败：${e.message}` : "设置失败");
+      const msg = e instanceof Error ? e.message : "设置失败";
+      setNotice(`设置失败：${msg}`);
+      toast.error("设置失败", msg);
     } finally {
       setApplyBusy(null);
     }
   };
 
-  const remove = async (imgUrl: string) => {
-    if (armDelete !== imgUrl) {
-      setArmDelete(imgUrl);
-      window.setTimeout(() => setArmDelete((v) => (v === imgUrl ? null : v)), 4000);
-      return;
-    }
-    setArmDelete(null);
-    setDeleteBusy(imgUrl);
+  const remove = async (m: api.MediaItem) => {
+    const ok = await dialog.confirm({
+      title: "从媒体清单移除？",
+      message: (
+        <>
+          「{m.label || m.url}」将从 <span className="mono">media.json</span> 中移除并提交 commit。
+          远端图片文件本身不受影响，已引用它的内容也不会被改写。
+        </>
+      ),
+      confirmLabel: "移除",
+      cancelLabel: "取消",
+      danger: true,
+    });
+    if (!ok) return;
+    setDeleteBusy(m.url);
     setNotice(null);
     try {
-      await api.mediaRemove(imgUrl);
+      await api.mediaRemove(m.url);
       setNotice("已从媒体清单移除（远端图片文件本身不受影响）。");
+      toast.success("已从清单移除", "远端文件未删除");
       load();
     } catch (e) {
-      setNotice(e instanceof Error ? `移除失败：${e.message}` : "移除失败");
+      const msg = e instanceof Error ? e.message : "移除失败";
+      setNotice(`移除失败：${msg}`);
+      toast.error("移除失败", msg);
     } finally {
       setDeleteBusy(null);
     }
@@ -1838,8 +2008,8 @@ export function MediaScreen() {
         <Field label="备注（可选）">
           <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="如：2026 夏 · 夜空" />
         </Field>
-        <Btn kind="primary" onClick={register} disabled={busy || !url.trim()}>
-          {busy ? <Spinner size={14} /> : <AdminIcon name="plus" size={15} />} 登记并提交
+        <Btn kind="primary" onClick={register} loading={busy} disabled={!url.trim()}>
+          <AdminIcon name="plus" size={15} /> 登记并提交
         </Btn>
         {r2 ? (
           <label className="clickable flex min-h-[52px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--ia-line)] text-sm text-[var(--ia-mist)]">
@@ -1869,10 +2039,23 @@ export function MediaScreen() {
 
       <section className="glass-card rounded-2xl p-4">
         <span className="eyebrow">LIBRARY // 媒体库</span>
-        {error && <ErrorBox>{error}</ErrorBox>}
-        {items === null && !error && <div className="mt-3 text-[var(--ia-mist)]"><Spinner /></div>}
+        {error && (
+          <ErrorState className="mt-3" title="媒体库读取失败" message={error} onRetry={() => void load()} />
+        )}
+        {items === null && !error && (
+          <div className="mt-3 flex flex-col gap-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
+          </div>
+        )}
         {items && items.length === 0 && (
-          <p className="mt-3 text-xs text-[var(--ia-mist)]">还没有登记任何媒体。</p>
+          <EmptyState
+            className="mt-3"
+            icon="media"
+            title="还没有登记任何媒体"
+            hint="左侧登记外链图片，或在配置 R2 后直接上传文件。"
+          />
         )}
         {items && items.length > 0 && (
           <ul className="mt-3 flex flex-col gap-2">
@@ -1889,7 +2072,7 @@ export function MediaScreen() {
                     aria-label="复制 URL"
                     title="复制 URL"
                     onClick={() => copy(m.url)}
-                    className="clickable grid size-10 shrink-0 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-neon)]"
+                    className="clickable adm-ring grid size-10 shrink-0 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-neon)] transition-colors hover:border-[var(--ia-line-strong)]"
                   >
                     <AdminIcon name="copy" size={15} />
                   </button>
@@ -1898,7 +2081,7 @@ export function MediaScreen() {
                     aria-label="设置为…"
                     title="设置为头像 / 背景 / 封面"
                     onClick={() => setOpenMenuFor((v) => (v === m.url ? null : m.url))}
-                    className="clickable grid size-10 shrink-0 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)]"
+                    className="clickable adm-ring grid size-10 shrink-0 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-line-strong)] hover:text-[var(--ia-ink)]"
                     aria-expanded={openMenuFor === m.url}
                   >
                     <AdminIcon name="settings" size={15} />
@@ -1907,24 +2090,13 @@ export function MediaScreen() {
                     type="button"
                     aria-label="从清单移除"
                     title="从清单移除"
-                    onClick={() => remove(m.url)}
+                    onClick={() => void remove(m)}
                     disabled={deleteBusy === m.url}
-                    className="clickable grid size-10 shrink-0 place-items-center rounded-lg border text-[var(--ia-danger)]"
-                    style={{
-                      borderColor:
-                        armDelete === m.url
-                          ? "var(--ia-danger)"
-                          : "color-mix(in srgb, var(--ia-danger) 40%, transparent)",
-                      background:
-                        armDelete === m.url ? "color-mix(in srgb, var(--ia-danger) 12%, transparent)" : "transparent",
-                    }}
+                    className="clickable adm-ring grid size-10 shrink-0 place-items-center rounded-lg border border-[color-mix(in_srgb,var(--ia-danger)_40%,transparent)] text-[var(--ia-danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--ia-danger)_12%,transparent)]"
                   >
                     {deleteBusy === m.url ? <Spinner size={14} /> : <AdminIcon name="trash" size={14} />}
                   </button>
                 </div>
-                {armDelete === m.url && (
-                  <p className="mono mt-1.5 px-1 text-[10px] text-[var(--ia-danger)]">再点一次垃圾桶确认移除（仅从清单移除，不删远端文件）。</p>
-                )}
                 {openMenuFor === m.url && (
                   <div className="mt-2 grid grid-cols-2 gap-2 border-t border-[var(--ia-line)] pt-2 sm:grid-cols-4">
                     {(Object.keys(APPLY_LABEL) as ApplyTarget[]).map((t) => (
@@ -1933,7 +2105,7 @@ export function MediaScreen() {
                         type="button"
                         disabled={applyBusy !== null}
                         onClick={() => applyAs(t, m.url)}
-                        className="clickable flex min-h-[38px] items-center justify-center gap-1 rounded-lg border border-[var(--ia-line)] text-[11px] font-semibold text-[var(--ia-mist)]"
+                        className="clickable adm-ring flex min-h-[38px] items-center justify-center gap-1 rounded-lg border border-[var(--ia-line)] text-[11px] font-semibold text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-line-strong)] hover:text-[var(--ia-ink)]"
                       >
                         {applyBusy === `${t}:${m.url}` ? <Spinner size={12} /> : <AdminIcon name="check" size={11} />}
                         设为{APPLY_LABEL[t]}
@@ -1956,34 +2128,54 @@ export function MediaScreen() {
 
 function useSettings<T extends Record<string, any>>(name: api.SettingsName) {
   const [data, setData] = useState<T | null>(null);
+  /** 已提交版本的 JSON 快照，用于 dirty 判定（不误报）。 */
+  const [snapshot, setSnapshot] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState<api.PublishResult | null>(null);
 
-  useEffect(() => {
+  const reload = useCallback(() => {
+    setLoadError(null);
     api
       .getSettings<T>(name)
-      .then((r) => setData(r.data))
-      .catch((e) => setError(e instanceof Error ? e.message : "读取失败"));
+      .then((r) => {
+        setData(r.data);
+        setSnapshot(JSON.stringify(r.data));
+      })
+      .catch((e) => setLoadError(e instanceof Error ? e.message : "读取失败"));
   }, [name]);
 
-  const save = async () => {
-    if (!data) return;
+  useEffect(() => {
+    setData(null);
+    setSnapshot(null);
+    setSaved(null);
+    setError(null);
+    reload();
+  }, [reload]);
+
+  const dirty = data !== null && snapshot !== null && JSON.stringify(data) !== snapshot;
+
+  const save = async (): Promise<boolean> => {
+    if (!data) return false;
     setBusy(true);
     setError(null);
     setSaved(null);
     try {
       const r = await api.putSettings(name, data);
       setSaved(r);
+      setSnapshot(JSON.stringify(data));
+      return true;
     } catch (e) {
       /* §11.2：SETTINGS_INVALID 会带逐字段说明；保留表单不清空 */
       setError(e instanceof Error ? e.message : "保存失败");
+      return false;
     } finally {
       setBusy(false);
     }
   };
 
-  return { data, setData, error, busy, saved, save };
+  return { data, setData, error, loadError, busy, saved, dirty, save, reload };
 }
 
 function SettingsShell({
@@ -1997,33 +2189,77 @@ function SettingsShell({
   hook: ReturnType<typeof useSettings<any>>;
   children: React.ReactNode;
 }) {
+  const toast = useToast();
+  const dialog = useDialog();
+
+  /* v5.4：未保存的设置在离开前拦截（设置不落草稿，真丢失，用 danger） */
+  useAdminNavGuard(
+    hook.dirty
+      ? () =>
+          dialog.confirm({
+            title: "放弃未保存的设置？",
+            message: "这里的更改不会自动保存，离开后将丢失。",
+            confirmLabel: "放弃更改",
+            cancelLabel: "留在此页",
+            danger: true,
+          })
+      : null,
+  );
+  useEffect(() => {
+    if (!hook.dirty) return undefined;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [hook.dirty]);
+
+  /* v5.4：顶栏 SaveStatusPill */
+  useReportSaveStatus(
+    hook.busy
+      ? { tone: "saving", label: "正在提交设置…" }
+      : hook.dirty
+        ? { tone: "dirty", label: "设置有未保存更改" }
+        : hook.saved
+          ? { tone: "saved", label: `已提交 ${hook.saved.commitSha.slice(0, 7)}` }
+          : null,
+  );
+
+  const onSave = async () => {
+    const ok = await hook.save();
+    if (ok) toast.success("设置已提交", "GitHub Pages 部署完成后生效");
+    else toast.error("设置保存失败", "请查看表单上方的错误说明");
+  };
+
   return (
-    <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-4 pb-24 lg:pb-4">
+    <div className="flex w-full max-w-[960px] flex-col gap-4 pb-24 lg:pb-4">
       <div>
         <h2 className="text-base font-bold text-[var(--ia-ink)]">{title}</h2>
         <p className="mt-1 text-[11px] leading-relaxed text-[var(--ia-mist)]">{desc}</p>
       </div>
       {hook.error && <ErrorBox>{hook.error}</ErrorBox>}
-      {hook.saved && (
+      {hook.saved && !hook.dirty && (
         <Notice tone="success">
           已提交：<span className="mono">{hook.saved.commitSha.slice(0, 7)}</span> · 部署完成后生效。
           <a href={hook.saved.commitUrl} target="_blank" rel="noreferrer" className="clickable ml-1 underline">查看 commit ↗</a>
         </Notice>
       )}
-      {hook.data === null && !hook.error ? (
-        <div className="text-[var(--ia-mist)]"><Spinner /></div>
-      ) : hook.data ? (
+      {hook.loadError ? (
+        <ErrorState title="设置读取失败" message={hook.loadError} onRetry={hook.reload} />
+      ) : hook.data === null ? (
+        <ContentSkeleton lines={6} />
+      ) : (
         <>
           {/* §4：设置页桌面端分组两列布局 */}
           <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start">{children}</div>
           <BottomBar>
-            <Btn kind="primary" full onClick={hook.save} disabled={hook.busy} className="lg:max-w-xs">
-              {hook.busy ? <Spinner /> : <AdminIcon name="check" size={16} />}
-              {hook.busy ? "提交中…" : "保存并提交"}
+            <Btn kind="primary" full onClick={() => void onSave()} loading={hook.busy} disabled={!hook.dirty} className="lg:max-w-xs">
+              <AdminIcon name="check" size={16} />
+              {hook.dirty ? "保存并提交" : "没有未保存的更改"}
             </Btn>
           </BottomBar>
         </>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -2226,8 +2462,8 @@ export function SettingsProfileScreen() {
                 placeholder="GitHub 用户名"
                 className="flex-1"
               />
-              <Btn kind="primary" onClick={fetchGh} disabled={ghBusy} className="shrink-0">
-                {ghBusy ? <Spinner size={14} /> : <AdminIcon name="github" size={15} />} 拉取
+              <Btn kind="primary" onClick={fetchGh} loading={ghBusy} className="shrink-0">
+                <AdminIcon name="github" size={15} /> 拉取
               </Btn>
             </div>
             {ghErr && <ErrorBox>{ghErr}</ErrorBox>}
@@ -2433,39 +2669,264 @@ export function SettingsWorldlineScreen() {
 }
 
 export function ProjectsManagerScreen({ siteBase }: { siteBase: string }) {
+  void siteBase;
   const [data, setData] = useState<api.ProjectsOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const load = () => api.projectsOverview().then(setData).catch((e) => setError(e instanceof Error ? e.message : "读取项目失败"));
-  useEffect(() => { load(); }, []);
-  const setVisibility = async (slug: string, visibility: string) => { setBusy(slug); try { await api.setProjectVisibility(slug, visibility); await load(); } catch (e) { setError(e instanceof Error ? e.message : "保存失败"); } finally { setBusy(null); } };
-  const draftFromRepo = (repo: api.ProjectsOverview["repos"][number]) => {
-    sessionStorage.setItem("wl-project-repo-draft", JSON.stringify({ title: repo.repo, description: repo.description ?? "", github: { owner: repo.owner, repo: repo.repo }, repo: repo.url }));
-    location.href = `${siteBase}/admin/publish/project?repoDraft=1`;
+  const toast = useToast();
+  const navigate = useAdminNavigate();
+
+  const load = useCallback(
+    () =>
+      api
+        .projectsOverview()
+        .then((r) => {
+          setData(r);
+          setError(null);
+        })
+        .catch((e) => setError(e instanceof Error ? e.message : "读取项目失败")),
+    [],
+  );
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const setVisibility = async (slug: string, visibility: string) => {
+    setBusy(slug);
+    try {
+      await api.setProjectVisibility(slug, visibility);
+      await load();
+      toast.success("可见性已更新", `${slug} → ${visibility}`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "保存失败";
+      setError(msg);
+      toast.error("可见性更新失败", msg);
+    } finally {
+      setBusy(null);
+    }
   };
 
-  return <div className="mx-auto max-w-[1100px] space-y-8 pb-20"><div><h2 className="text-lg font-bold">Projects Manager</h2><p className="text-xs text-[var(--ia-mist)]">GitHub 技术事实只读快照；创建草稿只预填 owner / repo。</p></div>{error && <ErrorBox>{error}</ErrorBox>}
-    <section className="space-y-3"><h3 className="eyebrow">GITHUB REPOSITORIES</h3>{data ? <div className="grid gap-3 sm:grid-cols-2">{data.repos.map((repo) => <div className="rounded-xl border border-[var(--ia-line)] p-4" key={`${repo.owner}/${repo.repo}`}><b>{repo.owner}/{repo.repo}</b><p className="mt-1 line-clamp-2 text-xs text-[var(--ia-mist)]">{repo.description || "无描述"}</p><Btn kind="ghost" className="mt-3" onClick={() => draftFromRepo(repo)}>创建 Project Draft</Btn></div>)}</div> : <Spinner />}</section>
-    <section className="space-y-3"><h3 className="eyebrow">SITE PROJECTS</h3>{data ? <div className="space-y-2">{data.projects.map((project) => <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--ia-line)] p-3" key={project.slug}><div className="min-w-40 flex-1"><b>{project.title}</b><span className="ml-2 mono text-[11px] text-[var(--ia-mist)]">{project.github ? `${project.github.owner}/${project.github.repo}` : "无关联 repo"}</span></div><select aria-label={`${project.title} visibility`} value={project.visibility} disabled={busy === project.slug} onChange={(e) => void setVisibility(project.slug, e.target.value)} className="rounded border border-[var(--ia-line)] bg-transparent px-2 py-1 text-xs"><option value="public">public</option><option value="unlisted">unlisted</option><option value="hidden">hidden</option><option value="private">private</option></select>{project.concept && <span className="mono text-[10px] text-[var(--ia-warning)]">CONCEPT</span>}</div>)}</div> : null}</section></div>;
+  const draftFromRepo = (repo: api.ProjectsOverview["repos"][number]) => {
+    sessionStorage.setItem(
+      "wl-project-repo-draft",
+      JSON.stringify({ title: repo.repo, description: repo.description ?? "", github: { owner: repo.owner, repo: repo.repo }, repo: repo.url }),
+    );
+    void navigate({ screen: "publish-form", type: "project" }, { search: "?repoDraft=1" });
+  };
+
+  const VISIBILITY_OPTIONS = [
+    { value: "public", label: "public" },
+    { value: "unlisted", label: "unlisted" },
+    { value: "hidden", label: "hidden" },
+    { value: "private", label: "private" },
+  ];
+
+  return (
+    <div className="mx-auto flex max-w-[1100px] flex-col gap-6 pb-20">
+      <div>
+        <h2 className="text-base font-bold text-[var(--ia-ink)]">Projects Manager</h2>
+        <p className="mt-1 text-[11px] leading-relaxed text-[var(--ia-mist)]">
+          GitHub 技术事实只读快照；创建草稿只预填 owner / repo。
+        </p>
+      </div>
+
+      {error && !data && <ErrorState title="项目读取失败" message={error} onRetry={() => void load()} />}
+      {error && data && <ErrorBox>{error}</ErrorBox>}
+
+      <section className="flex flex-col gap-3">
+        <h3 className="eyebrow">GITHUB REPOSITORIES</h3>
+        {data ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {data.repos.map((repo) => (
+              <div className="rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] p-4" key={`${repo.owner}/${repo.repo}`}>
+                <b className="text-sm text-[var(--ia-ink)]">{repo.owner}/{repo.repo}</b>
+                <p className="mt-1 line-clamp-2 text-xs text-[var(--ia-mist)]">{repo.description || "无描述"}</p>
+                <Btn kind="secondary" size="sm" className="mt-3" onClick={() => draftFromRepo(repo)}>
+                  <AdminIcon name="plus" size={13} /> 创建 Project Draft
+                </Btn>
+              </div>
+            ))}
+          </div>
+        ) : (
+          !error && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-28 w-full" />
+              ))}
+            </div>
+          )
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h3 className="eyebrow">SITE PROJECTS</h3>
+        {data ? (
+          data.projects.length === 0 ? (
+            <EmptyState icon="project" title="还没有站内项目" hint="从上方仓库快照创建草稿，或在「发布」里手动新建。" />
+          ) : (
+            <div className="flex flex-col gap-2">
+              {data.projects.map((project) => (
+                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] p-3" key={project.slug}>
+                  <div className="min-w-40 flex-1">
+                    <b className="text-sm text-[var(--ia-ink)]">{project.title}</b>
+                    <span className="mono ml-2 text-[11px] text-[var(--ia-mist)]">
+                      {project.github ? `${project.github.owner}/${project.github.repo}` : "无关联 repo"}
+                    </span>
+                  </div>
+                  <Listbox
+                    ariaLabel={`${project.title} 可见性`}
+                    size="sm"
+                    className="w-40"
+                    value={project.visibility}
+                    disabled={busy === project.slug}
+                    onChange={(v) => void setVisibility(project.slug, v)}
+                    options={VISIBILITY_OPTIONS}
+                  />
+                  {project.concept && <span className="mono text-[10px] text-[var(--ia-warning)]">CONCEPT</span>}
+                </div>
+              ))}
+            </div>
+          )
+        ) : null}
+      </section>
+    </div>
+  );
 }
 
 export function SettingsBangumiScreen() {
-  const hook = useSettings<Record<string, any>>("bangumi"); const d = hook.data;
-  const [syncing, setSyncing] = useState(false); const [result, setResult] = useState<api.BangumiSyncResult | null>(null); const [syncError, setSyncError] = useState<string | null>(null);
-  const toggle = (scope: string) => hook.setData({ ...d!, syncScopes: (d!.syncScopes ?? []).includes(scope) ? d!.syncScopes.filter((item: string) => item !== scope) : [...(d!.syncScopes ?? []), scope] });
-  const sync = async () => { setSyncing(true); setSyncError(null); try { setResult(await api.bangumiSync()); } catch (e) { setSyncError(e instanceof Error ? e.message : "同步失败"); } finally { setSyncing(false); } };
-  return <SettingsShell title="Bangumi 同步" desc="Token 不会也不能在前端输入；如需私有收藏，请使用 Worker Secret BANGUMI_TOKEN。" hook={hook}>{d && <><section className="space-y-4 rounded-xl border border-[var(--ia-line)] p-4"><TextRow label="Bangumi 用户名" value={d.username ?? ""} onChange={(username) => hook.setData({ ...d, username })} /><div><span className="text-xs">同步范围</span><div className="mt-2 flex flex-wrap gap-3">{["watching", "planned", "completed", "paused", "dropped"].map((scope) => <OptRow key={scope} label={scope} checked={(d.syncScopes ?? []).includes(scope)} onChange={() => toggle(scope)} />)}</div></div><Field label="同步频率"><select value={d.schedule ?? "manual"} onChange={(e) => hook.setData({ ...d, schedule: e.target.value })} className="w-full rounded border border-[var(--ia-line)] bg-transparent p-2"><option value="manual">仅手动</option><option value="6h">每 6 小时</option><option value="daily">每天一次</option></select></Field><Field label="远端缺失策略"><select value={d.syncMissingPolicy ?? "keep"} onChange={(e) => hook.setData({ ...d, syncMissingPolicy: e.target.value })} className="w-full rounded border border-[var(--ia-line)] bg-transparent p-2"><option value="keep">保留站内记录</option><option value="hide">自动隐藏（不永久删除）</option></select></Field><Notice tone="neon">同步会补齐 Bangumi 简介和元数据，但不会覆盖站内评分、短评、长评、角色、关联和手动隐藏状态。</Notice><Btn kind="primary" onClick={() => void sync()} disabled={syncing}>{syncing ? <Spinner /> : "立即同步"}</Btn>{syncError && <ErrorBox>{syncError}</ErrorBox>}{result && <Notice tone="success">{result.message}（扫描 {result.scanned}，新增 {result.created}，更新 {result.updated}）</Notice>}</section></>}</SettingsShell>;
+  const hook = useSettings<Record<string, any>>("bangumi");
+  const d = hook.data;
+  const [syncing, setSyncing] = useState(false);
+  const [result, setResult] = useState<api.BangumiSyncResult | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const toast = useToast();
+  const toggle = (scope: string) =>
+    hook.setData({
+      ...d!,
+      syncScopes: (d!.syncScopes ?? []).includes(scope)
+        ? d!.syncScopes.filter((item: string) => item !== scope)
+        : [...(d!.syncScopes ?? []), scope],
+    });
+  const sync = async () => {
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      const r = await api.bangumiSync();
+      setResult(r);
+      toast.success("Bangumi 同步完成", `扫描 ${r.scanned} · 新增 ${r.created} · 更新 ${r.updated}`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "同步失败";
+      setSyncError(msg);
+      toast.error("Bangumi 同步失败", msg);
+    } finally {
+      setSyncing(false);
+    }
+  };
+  return (
+    <SettingsShell
+      title="Bangumi 同步"
+      desc="Token 不会也不能在前端输入；如需私有收藏，请使用 Worker Secret BANGUMI_TOKEN。"
+      hook={hook}
+    >
+      {d && (
+        <section className="flex flex-col gap-4 rounded-xl border border-[var(--ia-line)] p-4">
+          <TextRow label="Bangumi 用户名" value={d.username ?? ""} onChange={(username) => hook.setData({ ...d, username })} />
+          <div>
+            <span className="text-xs font-semibold text-[var(--ia-mist)]">同步范围</span>
+            <div className="mt-2 flex flex-wrap gap-3">
+              {["watching", "planned", "completed", "paused", "dropped"].map((scope) => (
+                <OptRow key={scope} label={scope} checked={(d.syncScopes ?? []).includes(scope)} onChange={() => toggle(scope)} />
+              ))}
+            </div>
+          </div>
+          <Field label="同步频率">
+            <Listbox
+              ariaLabel="同步频率"
+              value={String(d.schedule ?? "manual")}
+              onChange={(v) => hook.setData({ ...d, schedule: v })}
+              options={[
+                { value: "manual", label: "仅手动" },
+                { value: "6h", label: "每 6 小时" },
+                { value: "daily", label: "每天一次" },
+              ]}
+            />
+          </Field>
+          <Field label="远端缺失策略">
+            <Listbox
+              ariaLabel="远端缺失策略"
+              value={String(d.syncMissingPolicy ?? "keep")}
+              onChange={(v) => hook.setData({ ...d, syncMissingPolicy: v })}
+              options={[
+                { value: "keep", label: "保留站内记录" },
+                { value: "hide", label: "自动隐藏（不永久删除）" },
+              ]}
+            />
+          </Field>
+          <Notice tone="neon">同步会补齐 Bangumi 简介和元数据，但不会覆盖站内评分、短评、长评、角色、关联和手动隐藏状态。</Notice>
+          <Btn kind="primary" onClick={() => void sync()} loading={syncing}>
+            立即同步
+          </Btn>
+          {syncError && <ErrorBox>{syncError}</ErrorBox>}
+          {result && (
+            <Notice tone="success">
+              {result.message}（扫描 {result.scanned}，新增 {result.created}，更新 {result.updated}）
+            </Notice>
+          )}
+        </section>
+      )}
+    </SettingsShell>
+  );
 }
+/* =========================================================================
+ * Settings 合并单屏（v5.4 §Settings：site / profile / worldline / bangumi
+ * 局部切换，URL 深链接由 router 的 settings section 承担）
+ * ========================================================================= */
 
-export function ContentManagerScreen({ siteBase }: { siteBase: string }) {
-  const types: api.ContentType[] = ["anime", "post", "moment", "photo", "music", "bug", "project"];
-  const [type, setType] = useState<api.ContentType>("anime"); const [rows, setRows] = useState<api.ContentRow[]>([]); const [detail, setDetail] = useState<api.ContentDetail | null>(null); const [error, setError] = useState<string | null>(null); const [query, setQuery] = useState(""); const [busy, setBusy] = useState(false);
-  const load = () => { setDetail(null); api.contentList(type).then((r) => setRows(r.items)).catch((e) => setError(e instanceof Error ? e.message : "读取失败")); };
-  useEffect(() => { load(); }, [type]);
-  const edit = (row: api.ContentRow) => api.contentDetail(type, row.slug).then(setDetail).catch((e) => setError(e instanceof Error ? e.message : "读取失败"));
-  const save = async () => { if (!detail) return; setBusy(true); try { await api.updateContent(type, detail.slug, detail); await load(); } catch (e) { setError(e instanceof Error ? e.message : "保存失败"); } finally { setBusy(false); } };
-  const hide = async (row: api.ContentRow, visibility: "hidden" | "public") => { try { const d = await api.contentDetail(type, row.slug); const frontmatter = d.frontmatter.match(/^visibility:.*$/m) ? d.frontmatter.replace(/^visibility:.*$/m, `visibility: \"${visibility}\"`) : `${d.frontmatter}\nvisibility: \"${visibility}\"`; await api.updateContent(type, row.slug, { ...d, frontmatter }); load(); } catch (e) { setError(e instanceof Error ? e.message : "更新失败"); } };
-  const remove = async () => { if (!detail || !confirm(`永久删除「${detail.slug}」？此操作会删除 GitHub 文件且不可恢复。`)) return; const typed = prompt("请输入 slug 以确认永久删除："); if (typed !== detail.slug) return; setBusy(true); try { await api.deleteContent(type, detail.slug, detail.blobSha); setDetail(null); load(); } catch (e) { setError(e instanceof Error ? e.message : "删除失败"); } finally { setBusy(false); } };
-  const shown = rows.filter((r) => `${r.title} ${r.slug}`.toLowerCase().includes(query.toLowerCase()));
-  return <div className="mx-auto max-w-[1200px] space-y-5 pb-20"><div><h2 className="text-lg font-bold">Content Manager</h2><p className="text-xs text-[var(--ia-mist)]">编辑保留原始 frontmatter、未知字段与 Markdown 正文；保存与永久删除均校验 GitHub blob SHA。</p></div>{error && <ErrorBox>{error}</ErrorBox>}<div className="flex flex-wrap gap-2">{types.map((item) => <Btn key={item} kind={item === type ? "primary" : "ghost"} onClick={() => setType(item)}>{item}</Btn>)}</div><label className="block"><Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索标题或 slug" /></label><div className="overflow-x-auto rounded-xl border border-[var(--ia-line)]"><table className="w-full min-w-[760px] text-left text-xs"><thead className="mono text-[10px] text-[var(--ia-mist)]"><tr><th className="p-3">标题</th><th>slug</th><th>状态</th><th>可见性</th><th>来源</th><th>操作</th></tr></thead><tbody>{shown.map((row) => <tr key={row.slug} className="border-t border-[var(--ia-line)]"><td className="p-3 font-medium">{row.title}</td><td className="mono">{row.slug}</td><td>{row.status || "—"}</td><td>{row.visibility}{row.draft ? " / draft" : ""}</td><td>{row.source}</td><td className="space-x-2"><button className="text-[var(--ia-neon)]" onClick={() => void edit(row)}>编辑</button><button onClick={() => void hide(row, row.visibility === "hidden" ? "public" : "hidden")}>{row.visibility === "hidden" ? "恢复" : "隐藏"}</button><a className="text-[var(--ia-mist)]" href={`${siteBase}${row.htmlPath}`} target="_blank">前台</a><a className="text-[var(--ia-mist)]" href={row.githubUrl} target="_blank">GitHub</a></td></tr>)}</tbody></table></div>{detail && <section className="space-y-3 rounded-xl border border-[var(--ia-line)] p-4"><div className="flex items-center justify-between"><h3 className="font-semibold">编辑 {detail.slug}</h3><button onClick={() => setDetail(null)}>关闭</button></div><Field label="Frontmatter（原样保留，未知字段不会丢失）"><textarea className="min-h-56 w-full rounded border border-[var(--ia-line)] bg-transparent p-3 font-mono text-xs" value={detail.frontmatter} onChange={(e) => setDetail({ ...detail, frontmatter: e.target.value })} /></Field><Field label="Markdown 正文"><textarea className="min-h-56 w-full rounded border border-[var(--ia-line)] bg-transparent p-3 font-mono text-xs" value={detail.body} onChange={(e) => setDetail({ ...detail, body: e.target.value })} /></Field><div className="flex gap-2"><Btn kind="primary" onClick={() => void save()} disabled={busy}>保存</Btn><Btn kind="danger" onClick={() => void remove()} disabled={busy}>永久删除</Btn></div></section>}</div>;
+const SETTINGS_NAV: { section: SettingsSection; label: string; icon: string; desc: string }[] = [
+  { section: "site", label: "站点", icon: "home", desc: "标题 / 背景 / 页脚等站点级配置" },
+  { section: "profile", label: "档案", icon: "moment", desc: "名字 / 头像 / 链接与自我介绍" },
+  { section: "worldline", label: "世界线", icon: "worldline", desc: "变动率引擎参数与展示行为" },
+  { section: "bangumi", label: "Bangumi", icon: "anime", desc: "收藏同步范围与频率" },
+];
+
+export function SettingsScreen({ section }: { section: SettingsSection }) {
+  return (
+    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:items-start lg:gap-6">
+      {/* 二级导航：移动端横向滚动 pills，lg 起左侧竖列 sticky */}
+      <nav
+        aria-label="设置分区"
+        className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:-mx-6 md:px-6 lg:sticky lg:top-[72px] lg:mx-0 lg:flex-col lg:gap-1 lg:overflow-visible lg:px-0 lg:pb-0"
+      >
+        {SETTINGS_NAV.map((item) => {
+          const active = item.section === section;
+          return (
+            <NavLink
+              key={item.section}
+              to={{ screen: "settings", section: item.section }}
+              aria-current={active ? "page" : undefined}
+              className={`clickable adm-ring flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors lg:w-full ${
+                active
+                  ? "border-[color-mix(in_srgb,var(--ia-neon)_55%,transparent)] bg-[color-mix(in_srgb,var(--ia-neon)_12%,transparent)] text-[var(--ia-neon)]"
+                  : "border-[var(--ia-line)] text-[var(--ia-mist)] hover:border-[var(--ia-line-strong)] hover:text-[var(--ia-ink)]"
+              }`}
+            >
+              <AdminIcon name={item.icon} size={14} />
+              <span className="flex min-w-0 flex-col text-left">
+                <span>{item.label}</span>
+                <span className="hidden text-[10px] font-normal leading-snug text-[var(--ia-mist)] lg:block">{item.desc}</span>
+              </span>
+            </NavLink>
+          );
+        })}
+      </nav>
+
+      {/* 面板：section 变化时局部过渡，不整页刷新 */}
+      <div key={section} className="adm-panel-enter min-w-0">
+        {section === "site" && <SettingsSiteScreen />}
+        {section === "profile" && <SettingsProfileScreen />}
+        {section === "worldline" && <SettingsWorldlineScreen />}
+        {section === "bangumi" && <SettingsBangumiScreen />}
+      </div>
+    </div>
+  );
 }

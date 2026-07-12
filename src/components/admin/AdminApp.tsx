@@ -1,39 +1,48 @@
 /**
- * AdminApp（v5.0.2）——控制台外壳。
+ * AdminApp（v5.4）——控制台持久化外壳入口。
  *
- * - mount 时 GET /api/admin/session 做门控：
+ * - mount 时 GET /api/admin/session 做一次门控（此后内部导航不再重复校验；
+ *   真正的权限仍由后端逐请求校验 httpOnly cookie，401 会在各屏处理）：
  *     · 非登录页且未登录 → 跳 /admin/login
  *     · 登录页且已登录   → 跳 /admin/dashboard
- *   （这只是体验层跳转；真正的权限在后端逐请求校验 httpOnly cookie。）
- *
- * v5.0.2（§4 桌面适配）三档断点：
- *   mobile  <768px ：单列 + 底部 Tab + fixed 底部操作栏；
- *   tablet  ≥768px ：左侧 sidebar + 内容区（BottomBar 贴底）；
- *   desktop ≥1024px：sidebar + 宽幅主区 + 各屏内右侧 rail（Dashboard 部署面板 /
- *                    发布表单 meta 面板），操作按钮回归文档流。
- *
- * v5.0.2（§5）：顶栏加入昼夜切换（与前台共享 wl-scene-mode）；§9：新增草稿箱入口。
+ * - 每个 Astro 页面仍是深链接入口（props 不变）；挂载后由客户端路由接管，
+ *   Sidebar / Topbar / Breadcrumb 常驻，仅内容区局部切换（AdminContentOutlet）。
+ * - 移动端以 Drawer 取代旧底部 TabBar；桌面保持 220px 侧栏。
+ * - Toast / Dialog / SaveStatus 三个全局服务在此挂载。
  */
 
-import { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import * as api from "@/lib/admin/api";
 import { setAdminHint } from "@/config/admin";
-import { AdminIcon, SceneToggle, Spinner, TabBar, type AdminTab } from "./ui";
+import { Spinner } from "./ui";
+import { Drawer, DialogProvider, ToastProvider } from "./feedback";
+import {
+  AdminRouterProvider,
+  useAdminLocation,
+  useAdminNavigate,
+  type AdminRoute,
+} from "./router";
+import {
+  AdminContentOutlet,
+  DrawerNavContent,
+  SaveStatusProvider,
+  Sidebar,
+  Topbar,
+  titleForRoute,
+} from "./shell";
 import {
   DashboardScreen,
   DraftsScreen,
   LoginScreen,
   MediaScreen,
+  ProjectsManagerScreen,
   PublishFormScreen,
   PublishIndexScreen,
-  SettingsProfileScreen,
-  SettingsSiteScreen,
-  SettingsWorldlineScreen,
-  SettingsBangumiScreen,
-  ProjectsManagerScreen,
-  ContentManagerScreen,
+  SettingsScreen,
 } from "./screens";
+import { ContentManagerScreen } from "./content-manager";
 
+/** 旧版屏幕标识：保持 Astro 页面 props 兼容（每页一个入口）。 */
 export type AdminScreen =
   | "login"
   | "dashboard"
@@ -55,24 +64,39 @@ export interface AdminAppProps {
   summaryUrl: string;
 }
 
-const TITLES: Record<AdminScreen, string> = {
-  login: "登录",
-  dashboard: "总览",
-  "publish-index": "发布",
-  "publish-form": "发布",
-  drafts: "草稿箱",
-  media: "媒体",
-  "settings-profile": "设置",
-  "settings-site": "设置",
-  "settings-worldline": "设置",
-  "settings-bangumi": "设置",
-  projects: "项目",
-  content: "内容",
-};
+function legacyToRoute(screen: AdminScreen, publishType?: string): AdminRoute {
+  switch (screen) {
+    case "dashboard":
+    case "login":
+      return { screen: "dashboard" };
+    case "publish-index":
+      return { screen: "publish-index" };
+    case "publish-form":
+      return {
+        screen: "publish-form",
+        type: (publishType ?? "moment") as import("@/lib/admin/api").ContentType,
+      };
+    case "drafts":
+      return { screen: "drafts" };
+    case "media":
+      return { screen: "media" };
+    case "projects":
+      return { screen: "projects" };
+    case "content":
+      return { screen: "content" };
+    case "settings-profile":
+      return { screen: "settings", section: "profile" };
+    case "settings-site":
+      return { screen: "settings", section: "site" };
+    case "settings-worldline":
+      return { screen: "settings", section: "worldline" };
+    case "settings-bangumi":
+      return { screen: "settings", section: "bangumi" };
+  }
+}
 
 export default function AdminApp({ screen, publishType, siteBase, summaryUrl }: AdminAppProps) {
   const [checking, setChecking] = useState(true);
-  const [authed, setAuthed] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -80,7 +104,6 @@ export default function AdminApp({ screen, publishType, siteBase, summaryUrl }: 
       .getSession()
       .then((s) => {
         if (!alive) return;
-        setAuthed(s.authenticated);
         setAdminHint(s.authenticated);
         if (!s.authenticated && screen !== "login") {
           location.replace(`${siteBase}/admin/login`);
@@ -104,7 +127,9 @@ export default function AdminApp({ screen, publishType, siteBase, summaryUrl }: 
     return () => {
       alive = false;
     };
-  }, [screen, siteBase]);
+    // 门控只在首次挂载执行一次；此后由客户端路由接管，不再整页重启。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (checking) {
     return (
@@ -121,22 +146,34 @@ export default function AdminApp({ screen, publishType, siteBase, summaryUrl }: 
     return <LoginScreen siteBase={siteBase} />;
   }
 
-  const tabs: AdminTab[] = [
-    { key: "dashboard", label: "总览", icon: "dashboard", href: `${siteBase}/admin/dashboard` },
-    { key: "publish", label: "发布", icon: "publish", href: `${siteBase}/admin/publish` },
-    { key: "drafts", label: "草稿", icon: "drafts", href: `${siteBase}/admin/drafts` },
-    { key: "media", label: "媒体", icon: "media", href: `${siteBase}/admin/media` },
-    { key: "settings", label: "设置", icon: "settings", href: `${siteBase}/admin/settings/profile` },
-    { key: "projects", label: "项目", icon: "project", href: `${siteBase}/admin/projects` },
-    { key: "content", label: "内容", icon: "publish", href: `${siteBase}/admin/content` },
-  ];
-  const activeKey = screen.startsWith("settings")
-    ? "settings"
-    : screen.startsWith("publish")
-      ? "publish"
-      : screen;
+  return (
+    <AdminRouterProvider siteBase={siteBase} initialRoute={legacyToRoute(screen, publishType)}>
+      <DialogProvider>
+        <ToastProvider>
+          <SaveStatusProvider>
+            <AdminShellBody siteBase={siteBase} summaryUrl={summaryUrl} />
+          </SaveStatusProvider>
+        </ToastProvider>
+      </DialogProvider>
+    </AdminRouterProvider>
+  );
+}
 
-  const logout = async () => {
+function AdminShellBody({ siteBase, summaryUrl }: { siteBase: string; summaryUrl: string }) {
+  const loc = useAdminLocation();
+  const navigate = useAdminNavigate();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // 路由成功切换后再收起 Drawer；guard 取消时 Drawer 留在原位。
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [loc.path]);
+
+  useEffect(() => {
+    document.title = `${titleForRoute(loc.route)} · Console`;
+  }, [loc.route]);
+
+  const logout = useCallback(async () => {
     try {
       await api.logout();
     } catch {
@@ -144,100 +181,88 @@ export default function AdminApp({ screen, publishType, siteBase, summaryUrl }: 
     }
     setAdminHint(false);
     location.href = `${siteBase}/admin/login`;
-  };
+  }, [siteBase]);
 
-  const settingsTabs = [
-    { key: "settings-profile", label: "档案", href: `${siteBase}/admin/settings/profile` },
-    { key: "settings-site", label: "站点", href: `${siteBase}/admin/settings/site` },
-    { key: "settings-worldline", label: "世界线", href: `${siteBase}/admin/settings/worldline` },
-    { key: "settings-bangumi", label: "Bangumi", href: `${siteBase}/admin/settings/bangumi` },
-  ];
+  /**
+   * 兜底委托：各屏残留的普通 <a href="…/admin/…"> 也走客户端路由
+   * （NavLink 已自行处理并 preventDefault，这里只接住剩余的）。
+   */
+  const onClickDelegate = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (e.defaultPrevented) return;
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      const a = target?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a) return;
+      if (a.target && a.target !== "_self") return;
+      if (a.hasAttribute("download")) return;
+      const href = a.getAttribute("href") ?? "";
+      if (!href.startsWith(`${siteBase}/admin`)) return;
+      if (href.startsWith(`${siteBase}/admin/login`)) return;
+      e.preventDefault();
+      void navigate(href);
+    },
+    [siteBase, navigate],
+  );
+
+  const outletKey =
+    loc.route.screen === "publish-form"
+      ? `pf:${loc.route.type}:${loc.search}`
+      : loc.route.screen === "settings"
+        ? "settings"
+        : `${loc.route.screen}:${loc.search}`;
 
   return (
-    <div className="min-h-[100dvh] pb-[calc(76px+env(safe-area-inset-bottom))] md:pb-10 md:pl-[220px]">
-      {/* 顶栏 */}
-      <header className="sticky top-0 z-40 border-b border-[var(--ia-line)] bg-[color-mix(in_srgb,var(--ia-bg)_88%,transparent)] backdrop-blur-md">
-        <div className="mx-auto flex h-14 w-full max-w-[1280px] items-center justify-between px-4 lg:px-6">
-          <a href={`${siteBase}/admin/dashboard`} className="clickable flex items-center gap-2.5">
-            <span className="relative flex size-2.5">
-              <span
-                className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60"
-                style={{ background: authed ? "var(--ia-success)" : "var(--ia-warning)" }}
-              />
-              <span
-                className="relative inline-flex size-2.5 rounded-full"
-                style={{ background: authed ? "var(--ia-success)" : "var(--ia-warning)" }}
-              />
-            </span>
-            <span className="mono text-xs font-bold uppercase tracking-widest text-[var(--ia-ink)]">
-              Console <span className="text-[var(--ia-mist)]">// {TITLES[screen]}</span>
-            </span>
-          </a>
-          <div className="flex items-center gap-2">
-            {/* v5.0.2 §5：昼夜切换，与前台共用同一份 wl-scene-mode 持久化 */}
-            <SceneToggle />
-            <a
-              href={`${siteBase}/`}
-              className="clickable grid size-9 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)]"
-              aria-label="回前台"
-              title="回前台"
-            >
-              <AdminIcon name="home" size={15} />
-            </a>
-            <button
-              type="button"
-              onClick={logout}
-              className="clickable grid size-9 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)]"
-              aria-label="登出"
-              title="登出"
-            >
-              <AdminIcon name="logout" size={15} />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* 设置子导航 */}
-      {activeKey === "settings" && (
-        <div className="mx-auto flex w-full max-w-[1280px] gap-2 px-4 pt-4 lg:px-6">
-          {settingsTabs.map((t) => (
-            <a
-              key={t.key}
-              href={t.href}
-              className="clickable rounded-full border px-3.5 py-1.5 text-xs font-semibold"
-              style={{
-                borderColor: screen === t.key ? "var(--ia-neon)" : "var(--ia-line)",
-                color: screen === t.key ? "var(--ia-neon)" : "var(--ia-mist)",
-                background:
-                  screen === t.key
-                    ? "color-mix(in srgb, var(--ia-neon) 10%, transparent)"
-                    : "transparent",
-              }}
-            >
-              {t.label}
-            </a>
-          ))}
-        </div>
-      )}
-
-      {/* 内容区：mobile 单列；lg 起放宽给各屏做 grid / 右侧 rail */}
-      <main className="mx-auto w-full max-w-[1280px] px-4 py-5 md:px-6 lg:px-6 lg:py-7">
-        {screen === "dashboard" && <DashboardScreen siteBase={siteBase} summaryUrl={summaryUrl} />}
-        {screen === "publish-index" && <PublishIndexScreen siteBase={siteBase} />}
-        {screen === "publish-form" && (
-          <PublishFormScreen siteBase={siteBase} type={publishType ?? ""} />
-        )}
-        {screen === "drafts" && <DraftsScreen siteBase={siteBase} />}
-        {screen === "media" && <MediaScreen />}
-        {screen === "settings-profile" && <SettingsProfileScreen />}
-        {screen === "settings-site" && <SettingsSiteScreen />}
-        {screen === "settings-worldline" && <SettingsWorldlineScreen />}
-        {screen === "settings-bangumi" && <SettingsBangumiScreen />}
-        {screen === "projects" && <ProjectsManagerScreen siteBase={siteBase} />}
-        {screen === "content" && <ContentManagerScreen siteBase={siteBase} />}
-      </main>
-
-      <TabBar tabs={tabs} activeKey={activeKey} />
+    <div className="min-h-[100dvh] pb-10 md:pl-[220px]" onClick={onClickDelegate}>
+      <Topbar
+        onMenu={() => setDrawerOpen(true)}
+        drawerOpen={drawerOpen}
+        homeHref={`${siteBase}/`}
+        onLogout={logout}
+      />
+      <Sidebar />
+      <Drawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        title="控制台导航"
+        id="admin-drawer"
+      >
+        <DrawerNavContent
+          onClose={() => setDrawerOpen(false)}
+          homeHref={`${siteBase}/`}
+          onLogout={logout}
+        />
+      </Drawer>
+      <AdminContentOutlet k={outletKey}>
+        {renderScreen(loc.route, outletKey, siteBase, summaryUrl)}
+      </AdminContentOutlet>
     </div>
   );
+}
+
+function renderScreen(
+  route: AdminRoute,
+  outletKey: string,
+  siteBase: string,
+  summaryUrl: string,
+): React.ReactNode {
+  switch (route.screen) {
+    case "dashboard":
+      return <DashboardScreen siteBase={siteBase} summaryUrl={summaryUrl} />;
+    case "publish-index":
+      return <PublishIndexScreen siteBase={siteBase} />;
+    case "publish-form":
+      // key 含 type 与 query（?draft= / ?repoDraft=），切换草稿时整体重建表单状态
+      return <PublishFormScreen key={outletKey} siteBase={siteBase} type={route.type} />;
+    case "drafts":
+      return <DraftsScreen siteBase={siteBase} />;
+    case "media":
+      return <MediaScreen />;
+    case "projects":
+      return <ProjectsManagerScreen siteBase={siteBase} />;
+    case "content":
+      return <ContentManagerScreen siteBase={siteBase} />;
+    case "settings":
+      return <SettingsScreen section={route.section} />;
+  }
 }

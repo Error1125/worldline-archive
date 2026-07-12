@@ -141,6 +141,36 @@ const ICON_PATHS: Record<string, React.ReactNode> = {
       <path d="M4 7.5 12 12l8-4.5M12 12v9" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
     </>
   ),
+  menu: (
+    <path d="M4 6.5h16M4 12h16M4 17.5h16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  ),
+  info: (
+    <>
+      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M12 11v5.5m0-8.6v-.4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </>
+  ),
+  search: (
+    <>
+      <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.7" />
+      <path d="m15.5 15.5 5 5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </>
+  ),
+  upload: (
+    <path d="M12 15V4m0 0-4 4m4-4 4 4M4.5 15v3.5a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V15" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+  ),
+  eye: (
+    <>
+      <path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="2.8" fill="none" stroke="currentColor" strokeWidth="1.7" />
+    </>
+  ),
+  eyeOff: (
+    <>
+      <path d="M4.5 6.5C3 8 2.5 12 2.5 12S6 18.2 12 18.2c1.4 0 2.7-.3 3.8-.9M9 6.2c.9-.3 1.9-.4 3-.4 6 0 9.5 6.2 9.5 6.2s-.8 1.5-2.4 3" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m4 4 16 16M9.9 9.9a2.8 2.8 0 0 0 4 4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </>
+  ),
 };
 
 export function AdminIcon({
@@ -168,41 +198,80 @@ export function AdminIcon({
 
 /* ---------------- buttons ---------------- */
 
+export type BtnKind = "primary" | "secondary" | "ghost" | "danger" | "icon" | "link";
+
+/**
+ * v5.4 统一按钮：
+ * - loading：显示 Spinner，同时保留原文案占位（宽度不跳），并禁用防重复提交；
+ * - focus-visible：统一 neon 焦点环（.adm-ring）；
+ * - kind=icon：方形图标按钮（需自带 aria-label）；kind=link：文本链接样式按钮。
+ */
 export function Btn({
   children,
-  onClick,
   kind = "ghost",
+  size = "md",
+  loading = false,
   disabled,
   full,
   type = "button",
   className = "",
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  kind?: "primary" | "ghost" | "danger";
-  disabled?: boolean;
+  ref,
+  ...rest
+}: Omit<React.ComponentProps<"button">, "type"> & {
+  kind?: BtnKind;
+  size?: "md" | "sm";
+  loading?: boolean;
   full?: boolean;
   type?: "button" | "submit";
-  className?: string;
 }) {
-  const base =
-    "clickable inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40";
-  const kinds = {
+  const isIcon = kind === "icon";
+  const isLink = kind === "link";
+  const sizing = isIcon
+    ? size === "sm"
+      ? "size-9 rounded-lg"
+      : "size-11 rounded-xl"
+    : isLink
+      ? "min-h-[32px] px-1 rounded-md"
+      : size === "sm"
+        ? "min-h-[36px] rounded-lg px-3 text-[13px]"
+        : "min-h-[44px] rounded-xl px-4 text-sm";
+  const base = `adm-ring clickable relative inline-flex items-center justify-center gap-2 font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40 motion-safe:active:scale-[0.98] ${sizing}`;
+  const kinds: Record<BtnKind, string> = {
     primary:
-      "border border-[color-mix(in_srgb,var(--ia-neon)_55%,transparent)] bg-[color-mix(in_srgb,var(--ia-neon)_16%,transparent)] text-[var(--ia-neon)] active:bg-[color-mix(in_srgb,var(--ia-neon)_26%,transparent)]",
+      "border border-[color-mix(in_srgb,var(--ia-neon)_55%,transparent)] bg-[color-mix(in_srgb,var(--ia-neon)_16%,transparent)] text-[var(--ia-neon)] hover:bg-[color-mix(in_srgb,var(--ia-neon)_24%,transparent)] active:bg-[color-mix(in_srgb,var(--ia-neon)_28%,transparent)]",
+    secondary:
+      "border border-[var(--ia-line-strong)] bg-[var(--ia-panel-strong)] text-[var(--ia-ink)] hover:border-[color-mix(in_srgb,var(--ia-neon)_45%,var(--ia-line-strong))] hover:text-[var(--ia-neon)]",
     ghost:
-      "border border-[var(--ia-line)] bg-[var(--ia-panel)] text-[var(--ia-mist)] active:text-[var(--ia-ink)]",
+      "border border-[var(--ia-line)] bg-[var(--ia-panel)] text-[var(--ia-mist)] hover:border-[var(--ia-line-strong)] hover:text-[var(--ia-ink)] active:text-[var(--ia-ink)]",
     danger:
-      "border border-[color-mix(in_srgb,var(--ia-danger)_50%,transparent)] bg-[color-mix(in_srgb,var(--ia-danger)_12%,transparent)] text-[var(--ia-danger)]",
-  } as const;
+      "border border-[color-mix(in_srgb,var(--ia-danger)_50%,transparent)] bg-[color-mix(in_srgb,var(--ia-danger)_12%,transparent)] text-[var(--ia-danger)] hover:bg-[color-mix(in_srgb,var(--ia-danger)_20%,transparent)]",
+    icon:
+      "border border-[var(--ia-line)] bg-[var(--ia-panel)] text-[var(--ia-mist)] hover:border-[var(--ia-line-strong)] hover:text-[var(--ia-ink)]",
+    link:
+      "border-0 bg-transparent px-1 text-sm text-[var(--ia-neon)] underline-offset-4 hover:underline",
+  };
+  const sp = isIcon ? 14 : size === "sm" ? 13 : 15;
   return (
     <button
       type={type}
-      onClick={onClick}
-      disabled={disabled}
+      ref={ref}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={`${base} ${kinds[kind]} ${full ? "w-full" : ""} ${className}`}
+      {...rest}
     >
-      {children}
+      {loading ? (
+        <>
+          <span className="invisible inline-flex items-center gap-2" aria-hidden="true">
+            {children}
+          </span>
+          <span className="absolute inset-0 grid place-items-center">
+            <Spinner size={sp} />
+          </span>
+        </>
+      ) : (
+        children
+      )}
     </button>
   );
 }
@@ -216,30 +285,51 @@ export function Field({
   label,
   required,
   help,
+  invalid,
+  error,
+  fieldId,
   children,
 }: {
   label: string;
   required?: boolean;
   help?: string;
+  /** 校验未通过：标签变红、子控件描红（配合提交时定位滚动）。 */
+  invalid?: boolean;
+  /** 具体错误文案（优先于 help 展示）。 */
+  error?: string;
+  /** 写入 data-field，供“定位到第一个错误字段”滚动查询。 */
+  fieldId?: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="block">
-      <span className="mb-1.5 flex items-baseline gap-1.5 text-xs font-semibold text-[var(--ia-mist)]">
+    <label className="block" data-field={fieldId}>
+      <span
+        className={`mb-1.5 flex items-baseline gap-1.5 text-xs font-semibold ${invalid ? "text-[var(--ia-danger)]" : "text-[var(--ia-mist)]"}`}
+      >
         {label}
         {required && <span className="text-[var(--ia-danger)]">*</span>}
       </span>
-      {children}
-      {help && (
+      <span
+        className={
+          invalid
+            ? "block [&>input]:!border-[var(--ia-danger)] [&>textarea]:!border-[var(--ia-danger)] [&>button]:!border-[var(--ia-danger)] [&>div>input]:!border-[var(--ia-danger)]"
+            : "block"
+        }
+      >
+        {children}
+      </span>
+      {invalid && error ? (
+        <span className="mt-1 block text-[11px] leading-relaxed text-[var(--ia-danger)]">{error}</span>
+      ) : help ? (
         <span className="mt-1 block text-[11px] leading-relaxed text-[color-mix(in_srgb,var(--ia-mist)_70%,transparent)]">
           {help}
         </span>
-      )}
+      ) : null}
     </label>
   );
 }
 
-export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
+export function Input(props: React.ComponentProps<"input">) {
   return <input {...props} className={`${controlCls} ${props.className ?? ""}`} />;
 }
 
@@ -266,6 +356,178 @@ export function Select({
         </option>
       ))}
     </select>
+  );
+}
+
+/**
+ * v5.4 自绘下拉（替代原生 select 的视觉断裂）：
+ * button[aria-haspopup=listbox] + 弹层 role=listbox / role=option；
+ * 支持 ↑↓ / Home / End / Enter / Escape / Tab，外点关闭。
+ */
+export function Listbox({
+  value,
+  onChange,
+  options,
+  ariaLabel,
+  size = "md",
+  disabled,
+  className = "",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  ariaLabel?: string;
+  size?: "md" | "sm";
+  disabled?: boolean;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const rootRef = React.useRef<HTMLDivElement | null>(null);
+  const listRef = React.useRef<HTMLUListElement | null>(null);
+  const btnRef = React.useRef<HTMLButtonElement | null>(null);
+  const uid = React.useId();
+
+  const selIdx = Math.max(
+    0,
+    options.findIndex((o) => o.value === value),
+  );
+  const selected = options[selIdx];
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDoc = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    setActiveIdx(selIdx);
+    requestAnimationFrame(() => {
+      listRef.current
+        ?.querySelector<HTMLElement>(`[data-idx="${selIdx}"]`)
+        ?.scrollIntoView({ block: "nearest" });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const commit = (idx: number) => {
+    const opt = options[idx];
+    if (opt) onChange(opt.value);
+    setOpen(false);
+    btnRef.current?.focus({ preventScroll: true });
+  };
+
+  const move = (idx: number) => {
+    const next = Math.min(options.length - 1, Math.max(0, idx));
+    setActiveIdx(next);
+    listRef.current
+      ?.querySelector<HTMLElement>(`[data-idx="${next}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (!open) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        setOpen(true);
+      }
+      return;
+    }
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        move(activeIdx + 1);
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        move(activeIdx - 1);
+        break;
+      case "Home":
+        e.preventDefault();
+        move(0);
+        break;
+      case "End":
+        e.preventDefault();
+        move(options.length - 1);
+        break;
+      case "Enter":
+      case " ":
+        e.preventDefault();
+        commit(activeIdx);
+        break;
+      case "Escape":
+        e.preventDefault();
+        e.stopPropagation();
+        setOpen(false);
+        btnRef.current?.focus({ preventScroll: true });
+        break;
+      case "Tab":
+        setOpen(false);
+        break;
+    }
+  };
+
+  const btnSize = size === "sm" ? "min-h-[36px] rounded-lg px-3 py-0 text-[13px]" : "py-3";
+
+  return (
+    <div ref={rootRef} className={`relative ${className}`} onKeyDown={onKeyDown}>
+      <button
+        ref={btnRef}
+        type="button"
+        role="combobox"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={`${uid}-list`}
+        aria-label={ariaLabel}
+        disabled={disabled}
+        onClick={() => setOpen((v) => !v)}
+        className={`adm-ring clickable ${controlCls} flex items-center justify-between gap-2 text-left disabled:cursor-not-allowed disabled:opacity-40 ${btnSize}`}
+      >
+        <span className="min-w-0 truncate">{selected?.label ?? value}</span>
+        <span
+          aria-hidden="true"
+          className="shrink-0 text-[var(--ia-mist)] transition-transform"
+          style={{ transform: open ? "rotate(-90deg)" : "rotate(90deg)" }}
+        >
+          <AdminIcon name="arrow" size={12} />
+        </span>
+      </button>
+      {open && (
+        <ul
+          ref={listRef}
+          id={`${uid}-list`}
+          role="listbox"
+          aria-label={ariaLabel}
+          className="adm-panel-enter absolute z-[60] mt-1.5 max-h-64 w-full min-w-[10rem] overflow-y-auto rounded-xl border border-[var(--ia-line-strong)] bg-[var(--ia-bg-2)] p-1 shadow-[0_18px_50px_rgba(2,6,20,0.55)]"
+        >
+          {options.map((o, i) => {
+            const isSel = o.value === value;
+            const isActive = i === activeIdx;
+            return (
+              <li
+                key={o.value}
+                role="option"
+                aria-selected={isSel}
+                data-idx={i}
+                onMouseEnter={() => setActiveIdx(i)}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => commit(i)}
+                className={`clickable flex min-h-[38px] cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 text-sm ${
+                  isActive ? "bg-[color-mix(in_srgb,var(--ia-neon)_12%,transparent)]" : ""
+                } ${isSel ? "text-[var(--ia-neon)]" : "text-[var(--ia-ink)]"}`}
+              >
+                <span className="min-w-0 truncate">{o.label}</span>
+                {isSel && <AdminIcon name="check" size={13} className="shrink-0" />}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -528,7 +790,8 @@ export function Section({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="clickable flex min-h-[48px] w-full items-center justify-between px-4 text-left"
+        aria-expanded={open}
+        className="adm-ring clickable flex min-h-[48px] w-full items-center justify-between px-4 text-left"
       >
         <span className="eyebrow">{title}</span>
         <span
@@ -589,6 +852,98 @@ export function ErrorBox({ children }: { children: React.ReactNode }) {
   );
 }
 
+/* ---------------- v5.4 loading / empty / error states ---------------- */
+
+/** 单条骨架块（局部切换时的占位，替代全屏 Spinner）。 */
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div aria-hidden="true" className={`adm-skeleton ${className}`} />;
+}
+
+/** 内容级骨架：标题 + 若干行，可选卡片外壳。 */
+export function ContentSkeleton({
+  lines = 4,
+  card = true,
+  className = "",
+}: {
+  lines?: number;
+  card?: boolean;
+  className?: string;
+}) {
+  const body = (
+    <div className="flex flex-col gap-3" aria-hidden="true">
+      <Skeleton className="h-5 w-2/5" />
+      {Array.from({ length: lines }).map((_, i) => (
+        <Skeleton key={i} className={`h-4 ${i % 3 === 2 ? "w-3/5" : "w-full"}`} />
+      ))}
+    </div>
+  );
+  if (!card) return <div className={className}>{body}</div>;
+  return <div className={`glass-card rounded-2xl p-4 ${className}`}>{body}</div>;
+}
+
+/** 空状态：图标 + 主/副文案 + 可选操作。 */
+export function EmptyState({
+  icon = "drafts",
+  title,
+  hint,
+  children,
+  className = "",
+}: {
+  icon?: string;
+  title: string;
+  hint?: string;
+  children?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`flex flex-col items-center gap-2.5 rounded-2xl border border-dashed border-[var(--ia-line)] px-6 py-10 text-center ${className}`}
+    >
+      <span className="grid size-11 place-items-center rounded-full border border-[var(--ia-line)] text-[var(--ia-mist)]">
+        <AdminIcon name={icon} size={20} />
+      </span>
+      <p className="text-sm font-semibold text-[var(--ia-ink)]">{title}</p>
+      {hint && <p className="max-w-sm text-xs leading-relaxed text-[var(--ia-mist)]">{hint}</p>}
+      {children && <div className="mt-1.5 flex flex-wrap items-center justify-center gap-2">{children}</div>}
+    </div>
+  );
+}
+
+/** 错误状态：说明 + 重试按钮（列表 / 详情加载失败用）。 */
+export function ErrorState({
+  title = "加载失败",
+  message,
+  onRetry,
+  retrying,
+  className = "",
+}: {
+  title?: string;
+  message?: string;
+  onRetry?: () => void;
+  retrying?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`flex flex-col items-center gap-2.5 rounded-2xl border border-[color-mix(in_srgb,var(--ia-danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--ia-danger)_6%,transparent)] px-6 py-9 text-center ${className}`}
+    >
+      <span className="grid size-11 place-items-center rounded-full border border-[color-mix(in_srgb,var(--ia-danger)_45%,transparent)] text-[var(--ia-danger)]">
+        <AdminIcon name="warn" size={20} />
+      </span>
+      <p className="text-sm font-semibold text-[var(--ia-ink)]">{title}</p>
+      {message && (
+        <p className="max-w-md break-words text-xs leading-relaxed text-[var(--ia-mist)]">{message}</p>
+      )}
+      {onRetry && (
+        <Btn kind="secondary" size="sm" onClick={onRetry} loading={retrying} className="mt-1.5">
+          <AdminIcon name="refresh" size={13} />
+          重试
+        </Btn>
+      )}
+    </div>
+  );
+}
+
 export function InfoRow({ k, children }: { k: string; children: React.ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-3 border-b border-[var(--ia-line)] py-2 text-sm last:border-b-0">
@@ -599,7 +954,7 @@ export function InfoRow({ k, children }: { k: string; children: React.ReactNode 
 }
 
 /** 底部固定操作栏（发布按钮等）。
- *  v5.0.2：md 起底部 Tab 已隐藏 → 贴底；lg 起改为文档流内联（桌面端不需要悬浮条）。 */
+ *  v5.4：底部 TabBar 已由 Drawer 取代 → 移动端直接贴底（含安全区）；lg 起改为文档流内联。 */
 export function BottomBar({
   children,
   className = "",
@@ -609,7 +964,7 @@ export function BottomBar({
 }) {
   return (
     <div
-      className={`fixed inset-x-0 bottom-[calc(58px+env(safe-area-inset-bottom))] z-40 border-t border-[var(--ia-line)] bg-[color-mix(in_srgb,var(--ia-bg)_88%,transparent)] px-4 py-3 backdrop-blur-md md:bottom-0 md:left-[220px] lg:static lg:inset-auto lg:z-auto lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none ${className}`}
+      className={`fixed inset-x-0 bottom-0 z-40 border-t border-[var(--ia-line)] bg-[color-mix(in_srgb,var(--ia-bg)_88%,transparent)] px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md md:left-[220px] lg:static lg:inset-auto lg:z-auto lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none ${className}`}
     >
       <div className="mx-auto flex max-w-2xl gap-3 lg:mx-0 lg:max-w-none">{children}</div>
     </div>
@@ -740,73 +1095,4 @@ export function timeAgo(iso: string): string {
   const d = Math.floor(h / 24);
   if (d < 30) return `${d} 天前`;
   return new Date(t).toISOString().slice(0, 10);
-}
-
-/* ---------------- bottom TabBar / desktop sidebar ---------------- */
-
-export interface AdminTab {
-  key: string;
-  label: string;
-  icon: string;
-  href: string;
-}
-
-export function TabBar({
-  tabs,
-  activeKey,
-}: {
-  tabs: AdminTab[];
-  activeKey: string;
-}) {
-  return (
-    <>
-      {/* mobile：底部 Tab */}
-      <nav
-        aria-label="控制台导航"
-        className="fixed inset-x-0 bottom-0 z-50 flex border-t border-[var(--ia-line)] bg-[color-mix(in_srgb,var(--ia-bg)_92%,transparent)] pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
-      >
-        {tabs.map((t) => {
-          const active = t.key === activeKey;
-          return (
-            <a
-              key={t.key}
-              href={t.href}
-              aria-current={active ? "page" : undefined}
-              className="clickable flex min-h-[58px] flex-1 flex-col items-center justify-center gap-0.5"
-              style={{ color: active ? "var(--ia-neon)" : "var(--ia-mist)" }}
-            >
-              <AdminIcon name={t.icon} size={19} />
-              <span className="text-[10px] font-semibold">{t.label}</span>
-            </a>
-          );
-        })}
-      </nav>
-      {/* desktop：左侧栏 */}
-      <nav
-        aria-label="控制台导航"
-        className="fixed inset-y-0 left-0 z-40 hidden w-[220px] flex-col gap-1 border-r border-[var(--ia-line)] bg-[var(--ia-panel)] p-4 pt-20 md:flex"
-      >
-        {tabs.map((t) => {
-          const active = t.key === activeKey;
-          return (
-            <a
-              key={t.key}
-              href={t.href}
-              aria-current={active ? "page" : undefined}
-              className="clickable flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors"
-              style={{
-                color: active ? "var(--ia-neon)" : "var(--ia-mist)",
-                background: active
-                  ? "color-mix(in srgb, var(--ia-neon) 10%, transparent)"
-                  : "transparent",
-              }}
-            >
-              <AdminIcon name={t.icon} size={17} />
-              {t.label}
-            </a>
-          );
-        })}
-      </nav>
-    </>
-  );
 }
