@@ -5269,6 +5269,29 @@ html[data-scene-mode="day"] [data-motion-scene="moments"] .glass-card { box-shad
 
 .adm-ring:focus-visible { outline: 2px solid var(--ia-neon); outline-offset: 2px; }
 
+/* ---- v5.4.1 Hotfix-04：后台 Card 分类 ----
+   AdminPanel（.glass-card.adm-static）：纯容器 —— 保留玻璃观感与昼夜配色，
+   去掉整卡 hover 抬升 / spotlight 光晕 / 描边强化 / tag 重着色，
+   把 hover 反馈完全让位给容器内部的 Button / Listbox / Tile 等具体控件；
+   用于表格、表单、统计区、Deploy、Settings 等一切「卡内有多个控件」的场景。
+   AdminActionCard（.adm-action-card）：整张卡确实只是一个操作时才使用，
+   保留整卡 hover / cursor:pointer / 按压反馈（如发布索引的类型卡）。 */
+.glass-card.adm-static {
+  transition: none;
+}
+.glass-card.adm-static:hover {
+  transform: none;
+  border-color: var(--ia-line);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+.glass-card.adm-static:hover::after { opacity: 0; }
+.glass-card.adm-static:hover .tag-chip { color: var(--ia-mist); border-color: var(--ia-line); }
+html[data-scene-mode="day"] .glass-card.adm-static:hover {
+  border-color: var(--ia-line);
+  box-shadow: var(--ia-card-shadow), 0 1px 0 rgba(255, 255, 255, 0.72) inset;
+}
+.adm-action-card { cursor: pointer; }
+
 @keyframes adm-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes adm-fade-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes adm-rise-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }

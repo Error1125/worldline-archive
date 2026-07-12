@@ -236,19 +236,22 @@ export function Btn({
         ? "min-h-[36px] rounded-lg px-3 text-[13px]"
         : "min-h-[44px] rounded-xl px-4 text-sm";
   const base = `adm-ring clickable relative inline-flex items-center justify-center gap-2 font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40 motion-safe:active:scale-[0.98] ${sizing}`;
+  /* v5.4.1 Hotfix-04：每个 kind 都具备独立的 hover / active / focus-visible /
+     loading / disabled 反馈；位移类按压（scale）走 motion-safe，
+     reduced-motion 下自动取消位移但保留颜色 / 边框反馈。 */
   const kinds: Record<BtnKind, string> = {
     primary:
-      "border border-[color-mix(in_srgb,var(--ia-neon)_55%,transparent)] bg-[color-mix(in_srgb,var(--ia-neon)_16%,transparent)] text-[var(--ia-neon)] hover:bg-[color-mix(in_srgb,var(--ia-neon)_24%,transparent)] active:bg-[color-mix(in_srgb,var(--ia-neon)_28%,transparent)]",
+      "border border-[color-mix(in_srgb,var(--ia-neon)_55%,transparent)] bg-[color-mix(in_srgb,var(--ia-neon)_16%,transparent)] text-[var(--ia-neon)] hover:border-[color-mix(in_srgb,var(--ia-neon)_75%,transparent)] hover:bg-[color-mix(in_srgb,var(--ia-neon)_24%,transparent)] active:bg-[color-mix(in_srgb,var(--ia-neon)_30%,transparent)]",
     secondary:
-      "border border-[var(--ia-line-strong)] bg-[var(--ia-panel-strong)] text-[var(--ia-ink)] hover:border-[color-mix(in_srgb,var(--ia-neon)_45%,var(--ia-line-strong))] hover:text-[var(--ia-neon)]",
+      "border border-[var(--ia-line-strong)] bg-[var(--ia-panel-strong)] text-[var(--ia-ink)] hover:border-[color-mix(in_srgb,var(--ia-neon)_45%,var(--ia-line-strong))] hover:text-[var(--ia-neon)] active:bg-[color-mix(in_srgb,var(--ia-neon)_10%,var(--ia-panel-strong))] active:text-[var(--ia-neon)]",
     ghost:
-      "border border-[var(--ia-line)] bg-[var(--ia-panel)] text-[var(--ia-mist)] hover:border-[var(--ia-line-strong)] hover:text-[var(--ia-ink)] active:text-[var(--ia-ink)]",
+      "border border-[var(--ia-line)] bg-[var(--ia-panel)] text-[var(--ia-mist)] hover:border-[var(--ia-line-strong)] hover:bg-[var(--ia-panel-strong)] hover:text-[var(--ia-ink)] active:bg-[var(--ia-panel-strong)] active:text-[var(--ia-ink)]",
     danger:
-      "border border-[color-mix(in_srgb,var(--ia-danger)_50%,transparent)] bg-[color-mix(in_srgb,var(--ia-danger)_12%,transparent)] text-[var(--ia-danger)] hover:bg-[color-mix(in_srgb,var(--ia-danger)_20%,transparent)]",
+      "border border-[color-mix(in_srgb,var(--ia-danger)_50%,transparent)] bg-[color-mix(in_srgb,var(--ia-danger)_12%,transparent)] text-[var(--ia-danger)] hover:border-[color-mix(in_srgb,var(--ia-danger)_70%,transparent)] hover:bg-[color-mix(in_srgb,var(--ia-danger)_20%,transparent)] active:bg-[color-mix(in_srgb,var(--ia-danger)_28%,transparent)]",
     icon:
-      "border border-[var(--ia-line)] bg-[var(--ia-panel)] text-[var(--ia-mist)] hover:border-[var(--ia-line-strong)] hover:text-[var(--ia-ink)]",
+      "border border-[var(--ia-line)] bg-[var(--ia-panel)] text-[var(--ia-mist)] hover:border-[var(--ia-line-strong)] hover:bg-[var(--ia-panel-strong)] hover:text-[var(--ia-ink)] active:bg-[var(--ia-panel-strong)] active:text-[var(--ia-ink)]",
     link:
-      "border-0 bg-transparent px-1 text-sm text-[var(--ia-neon)] underline-offset-4 hover:underline",
+      "border-0 bg-transparent px-1 text-sm text-[var(--ia-neon)] underline-offset-4 hover:underline active:opacity-75",
   };
   const sp = isIcon ? 14 : size === "sm" ? 13 : 15;
   return (
@@ -485,12 +488,16 @@ export function Listbox({
         aria-label={ariaLabel}
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        className={`adm-ring clickable ${controlCls} flex items-center justify-between gap-2 text-left disabled:cursor-not-allowed disabled:opacity-40 ${btnSize}`}
+        className={`adm-ring clickable ${controlCls} flex items-center justify-between gap-2 text-left hover:border-[var(--ia-line-strong)] hover:bg-[var(--ia-panel-strong)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[var(--ia-line)] disabled:hover:bg-[var(--ia-panel)] ${
+          open
+            ? "!border-[color-mix(in_srgb,var(--ia-neon)_45%,var(--ia-line-strong))] !bg-[var(--ia-panel-strong)]"
+            : ""
+        } ${btnSize}`}
       >
         <span className="min-w-0 truncate">{selected?.label ?? value}</span>
         <span
           aria-hidden="true"
-          className="shrink-0 text-[var(--ia-mist)] transition-transform"
+          className={`shrink-0 transition-all ${open ? "text-[var(--ia-neon)]" : "text-[var(--ia-mist)]"}`}
           style={{ transform: open ? "rotate(-90deg)" : "rotate(90deg)" }}
         >
           <AdminIcon name="arrow" size={12} />
@@ -507,6 +514,15 @@ export function Listbox({
           {options.map((o, i) => {
             const isSel = o.value === value;
             const isActive = i === activeIdx;
+            /* v5.4.1 Hotfix-04：hover / 键盘 active（14%）与 selected 稳定态
+               （7% + neon 文字 + 对勾）分层，二者叠加更亮；按压再加深。 */
+            const optionBg = isActive
+              ? isSel
+                ? "bg-[color-mix(in_srgb,var(--ia-neon)_18%,transparent)]"
+                : "bg-[color-mix(in_srgb,var(--ia-neon)_14%,transparent)]"
+              : isSel
+                ? "bg-[color-mix(in_srgb,var(--ia-neon)_7%,transparent)]"
+                : "";
             return (
               <li
                 key={o.value}
@@ -516,9 +532,9 @@ export function Listbox({
                 onMouseEnter={() => setActiveIdx(i)}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => commit(i)}
-                className={`clickable flex min-h-[38px] cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 text-sm ${
-                  isActive ? "bg-[color-mix(in_srgb,var(--ia-neon)_12%,transparent)]" : ""
-                } ${isSel ? "text-[var(--ia-neon)]" : "text-[var(--ia-ink)]"}`}
+                className={`clickable flex min-h-[38px] cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 text-sm transition-colors active:bg-[color-mix(in_srgb,var(--ia-neon)_22%,transparent)] ${optionBg} ${
+                  isSel ? "font-semibold text-[var(--ia-neon)]" : "text-[var(--ia-ink)]"
+                }`}
               >
                 <span className="min-w-0 truncate">{o.label}</span>
                 {isSel && <AdminIcon name="check" size={13} className="shrink-0" />}
@@ -544,7 +560,7 @@ export function Toggle({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="clickable flex min-h-[44px] w-full items-center justify-between rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] px-3.5 text-sm text-[var(--ia-ink)]"
+      className="adm-ring clickable flex min-h-[44px] w-full items-center justify-between rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] px-3.5 text-sm text-[var(--ia-ink)] transition-colors hover:border-[var(--ia-line-strong)] hover:bg-[var(--ia-panel-strong)] active:bg-[var(--ia-panel-strong)] motion-safe:active:scale-[0.99]"
       aria-pressed={checked}
     >
       <span>{label}</span>
@@ -785,24 +801,72 @@ export function Section({
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  /* v5.4.1 Hotfix-04：折叠区容器是 AdminPanel（不整卡发光），
+     hover 只作用于标题行；展开时标题行保持稳定 active 表现，
+     箭头随展开旋转并变色。 */
   return (
-    <section className="glass-card overflow-hidden rounded-2xl">
+    <section className="glass-card adm-static overflow-hidden rounded-2xl">
       <button
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className="adm-ring clickable flex min-h-[48px] w-full items-center justify-between px-4 text-left"
+        className={`adm-ring clickable group flex min-h-[48px] w-full items-center justify-between px-4 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--ia-neon)_6%,transparent)] active:bg-[color-mix(in_srgb,var(--ia-neon)_10%,transparent)] ${
+          open ? "border-b border-[var(--ia-line)] bg-[color-mix(in_srgb,var(--ia-neon)_4%,transparent)]" : ""
+        }`}
       >
-        <span className="eyebrow">{title}</span>
+        <span className="eyebrow transition-colors group-hover:text-[var(--ia-neon)]">{title}</span>
         <span
-          className="text-[var(--ia-mist)] transition-transform"
-          style={{ transform: open ? "rotate(90deg)" : "none" }}
+          className={`transition-all ${open ? "rotate-90 text-[var(--ia-neon)]" : "text-[var(--ia-mist)] group-hover:text-[var(--ia-ink)]"}`}
         >
           <AdminIcon name="arrow" size={14} />
         </span>
       </button>
-      {open && <div className="flex flex-col gap-4 px-4 pb-4">{children}</div>}
+      {open && <div className="flex flex-col gap-4 px-4 pb-4 pt-3.5">{children}</div>}
     </section>
+  );
+}
+
+/* ---------------- v5.4.1 Hotfix-04：Card 分类 ---------------- */
+
+/**
+ * AdminPanel —— 后台「纯容器」卡片：保留玻璃观感（含昼夜配色），
+ * 不整体上浮、不抢内部控件 hover、不显示 spotlight。
+ * 用于表格、表单、统计区、Deploy、Settings 等场景。
+ */
+export function AdminPanel({
+  as = "section",
+  className = "",
+  children,
+  ...rest
+}: {
+  as?: "section" | "div" | "aside" | "article";
+  className?: string;
+  ref?: React.Ref<HTMLElement>;
+} & React.HTMLAttributes<HTMLElement>) {
+  const Tag = as as React.ElementType;
+  return (
+    <Tag className={`glass-card adm-static ${className}`} {...rest}>
+      {children}
+    </Tag>
+  );
+}
+
+/**
+ * AdminActionCard —— 仅当整张卡本身就是唯一操作时使用：
+ * 整卡 hover / cursor:pointer / 按压反馈；卡内不应再放第二个独立按钮。
+ */
+export function AdminActionCard({
+  className = "",
+  children,
+  ...rest
+}: { className?: string } & React.AnchorHTMLAttributes<HTMLAnchorElement>) {
+  return (
+    <a
+      className={`glass-card adm-action-card clickable adm-ring transition-colors hover:border-[var(--ia-line-strong)] motion-safe:active:scale-[0.99] ${className}`}
+      {...rest}
+    >
+      {children}
+    </a>
   );
 }
 
@@ -878,7 +942,7 @@ export function ContentSkeleton({
     </div>
   );
   if (!card) return <div className={className}>{body}</div>;
-  return <div className={`glass-card rounded-2xl p-4 ${className}`}>{body}</div>;
+  return <div className={`glass-card adm-static rounded-2xl p-4 ${className}`}>{body}</div>;
 }
 
 /** 空状态：图标 + 主/副文案 + 可选操作。 */

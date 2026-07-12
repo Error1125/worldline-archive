@@ -411,7 +411,7 @@ export function ContentManagerScreen({ siteBase }: { siteBase: string }) {
         rel="noreferrer"
         title="在前台查看"
         aria-label="在前台查看"
-        className="adm-ring clickable grid size-9 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-line-strong)] hover:text-[var(--ia-ink)]"
+        className="adm-ring clickable grid size-9 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-line-strong)] hover:bg-[var(--ia-panel-strong)] hover:text-[var(--ia-ink)] active:bg-[var(--ia-panel-strong)] motion-safe:active:scale-[0.95]"
       >
         <AdminIcon name="external" size={14} />
       </a>
@@ -421,7 +421,7 @@ export function ContentManagerScreen({ siteBase }: { siteBase: string }) {
         rel="noreferrer"
         title="在 GitHub 查看"
         aria-label="在 GitHub 查看"
-        className="adm-ring clickable grid size-9 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-line-strong)] hover:text-[var(--ia-ink)]"
+        className="adm-ring clickable grid size-9 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-line-strong)] hover:bg-[var(--ia-panel-strong)] hover:text-[var(--ia-ink)] active:bg-[var(--ia-panel-strong)] motion-safe:active:scale-[0.95]"
       >
         <AdminIcon name="github" size={14} />
       </a>
@@ -568,7 +568,7 @@ export function ContentManagerScreen({ siteBase }: { siteBase: string }) {
             {shown.map((row) => (
               <div
                 key={row.slug}
-                className={`glass-card rounded-2xl p-3.5 ${
+                className={`glass-card adm-static rounded-2xl p-3.5 ${
                   editing?.slug === row.slug
                     ? "border border-[color-mix(in_srgb,var(--ia-neon)_45%,transparent)]"
                     : ""
@@ -597,7 +597,7 @@ export function ContentManagerScreen({ siteBase }: { siteBase: string }) {
       {editing && (
         <section
           ref={editorRef}
-          className="corner-ticks glass-card adm-panel-enter scroll-mt-20 rounded-2xl p-4"
+          className="corner-ticks glass-card adm-static adm-panel-enter scroll-mt-20 rounded-2xl p-4"
           aria-label={`编辑 ${editing.slug}`}
         >
           <div className="flex items-center justify-between gap-3">

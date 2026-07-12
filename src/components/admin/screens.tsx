@@ -23,7 +23,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as api from "@/lib/admin/api";
 import { AdminApiError } from "@/lib/admin/api";
-import { saveApiBase, resolveApiBase, setAdminHint, ADMIN_API_BASE_ENV } from "@/config/admin";
+import { saveApiBase, resolveApiBase, normalizeApiBase, setAdminHint, ADMIN_API_BASE_ENV } from "@/config/admin";
 import { RECORD_TYPES, getRecordType, type FieldDef } from "./adminFields";
 import * as draftsLib from "@/lib/admin/drafts";
 import { readMarkdownFile } from "@/lib/admin/markdown";
@@ -45,6 +45,7 @@ import {
   Listbox,
   Notice,
   Section,
+  AdminActionCard,
   Skeleton,
   Spinner,
   StatusPill,
@@ -83,8 +84,8 @@ export function LoginScreen({ siteBase }: { siteBase: string }) {
 
   /** 提交时保存本机 API 地址：与构建期地址相同则清掉本机覆盖（保持 env 为唯一来源） */
   const persistApiBase = () => {
-    const v = apiBase.trim().replace(/\/+$/, "");
-    if (!v || v === envBase) saveApiBase("");
+    const v = apiBase.trim();
+    if (!v || normalizeApiBase(v) === normalizeApiBase(envBase)) saveApiBase("");
     else saveApiBase(v);
   };
 
@@ -105,7 +106,7 @@ export function LoginScreen({ siteBase }: { siteBase: string }) {
       if (!session.authenticated) {
         throw new AdminApiError(
           "SESSION_NOT_SAVED",
-          "登录成功但浏览器未保存会话，可能是第三方 Cookie / Safari 隐私策略问题。",
+          "登录成功但浏览器未保存会话：前端与 API 跨站时，Safari 等浏览器的默认隐私策略会拦截第三方 Cookie。正式修复是同站部署（自定义域名 + COOKIE_SAME_SITE=Lax），见 docs/SAME_SITE_AUTH.md。",
           0,
         );
       }
@@ -202,10 +203,12 @@ export function LoginScreen({ siteBase }: { siteBase: string }) {
           <Field
             label="后端 API 地址"
             required
-            help="Cloudflare Worker 地址（https://xxx.workers.dev）。填写后保存在本机浏览器。"
+            help='Worker 地址（https://xxx.workers.dev / https://api.example.com）；同站路由部署可填 "/"。保存在本机浏览器。'
           >
             <Input
-              type="url"
+              type="text"
+              inputMode="url"
+              spellCheck={false}
               value={apiBase}
               onChange={(e) => setApiBase(e.target.value)}
               placeholder="https://worldline-admin.xxx.workers.dev"
@@ -227,7 +230,7 @@ export function LoginScreen({ siteBase }: { siteBase: string }) {
           <button
             type="button"
             onClick={() => setAdvOpen((v) => !v)}
-            className="clickable flex min-h-[44px] w-full items-center justify-between px-3.5 text-left"
+            className="adm-ring clickable flex min-h-[44px] w-full items-center justify-between px-3.5 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--ia-neon)_6%,transparent)] active:bg-[color-mix(in_srgb,var(--ia-neon)_10%,transparent)]"
           >
             <span className="mono text-[11px] uppercase tracking-wider text-[var(--ia-mist)]">
               高级设置 / 调试
@@ -245,12 +248,14 @@ export function LoginScreen({ siteBase }: { siteBase: string }) {
                 label="后端 API 地址"
                 help={
                   hasEnvBase
-                    ? "构建期已注入默认地址；此处填写会覆盖并保存在本机浏览器，留空 / 重置则回落到默认地址。"
-                    : "填写 Worker 地址后保存在本机浏览器。"
+                    ? '构建期已注入默认地址；此处填写会覆盖并保存在本机浏览器（同站路由部署可填 "/"），留空 / 重置则回落到默认地址。'
+                    : '填写 Worker 地址后保存在本机浏览器；同站路由部署（前端域名/api/*）可直接填 "/"。'
                 }
               >
                 <Input
-                  type="url"
+                  type="text"
+                  inputMode="url"
+                  spellCheck={false}
                   value={apiBase}
                   onChange={(e) => setApiBase(e.target.value)}
                   placeholder={envBase || "https://worldline-admin.xxx.workers.dev"}
@@ -283,8 +288,10 @@ export function LoginScreen({ siteBase }: { siteBase: string }) {
               )}
               <p className="mono text-[10px] leading-relaxed text-[var(--ia-mist)] opacity-80">
                 // 若登录成功后又跳回本页：多为浏览器第三方 Cookie / SameSite 限制
-                （GitHub Pages 与 workers.dev 属跨站）。可换浏览器 / 关闭隐私拦截；
-                长期方案是同站自定义域名或 Cloudflare Pages + Functions。
+                （GitHub Pages 与 workers.dev 属跨站）。v5.4.1 起正式方案是同站部署：
+                前端绑定自定义域名，Worker 绑定同域 API（api.example.com 或
+                前端域名/api/*，此处填 "/"），并在 Worker 侧设 COOKIE_SAME_SITE=Lax。
+                步骤见 docs/SAME_SITE_AUTH.md，无需用户关闭 Safari 隐私设置。
               </p>
             </div>
           )}
@@ -412,7 +419,7 @@ export function DashboardScreen({
       {/* ---------------- 左 / 主区 ---------------- */}
       <div className="flex min-w-0 flex-col gap-4">
         {/* worldline 状态（Frontend Live：与首页读同一引擎输出） */}
-        <section className="glass-card corner-ticks relative rounded-2xl p-4 lg:p-5">
+        <section className="glass-card adm-static corner-ticks relative rounded-2xl p-4 lg:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="eyebrow">WORLDLINE // 变动率（前台在线值）</span>
             <span className="flex items-center gap-1.5">
@@ -477,23 +484,23 @@ export function DashboardScreen({
         </section>
 
         {/* 快速发布 */}
-        <section className="glass-card rounded-2xl p-4 lg:p-5">
+        <section className="glass-card adm-static rounded-2xl p-4 lg:p-5">
           <span className="eyebrow">QUICK PUBLISH // 快速发布</span>
           <div className="mt-3 grid grid-cols-4 gap-2 lg:grid-cols-8">
             {RECORD_TYPES.map((t) => (
               <a
                 key={t.type}
                 href={`${siteBase}/admin/publish/${t.type}`}
-                className="clickable adm-ring flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] text-center transition-colors hover:border-[var(--ia-line-strong)] hover:bg-[var(--ia-panel-strong)] motion-safe:active:scale-[0.98]"
+                className="group clickable adm-ring flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] text-center transition-all hover:border-current hover:bg-[var(--ia-panel-strong)] active:bg-[color-mix(in_srgb,currentColor_12%,var(--ia-panel))] motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0 motion-safe:active:scale-[0.97]"
                 style={{ color: t.accent }}
               >
-                <AdminIcon name={t.icon} size={19} />
-                <span className="text-[10px] font-semibold text-[var(--ia-mist)]">{t.label}</span>
+                <AdminIcon name={t.icon} size={19} className="transition-transform motion-safe:group-hover:scale-110" />
+                <span className="text-[10px] font-semibold text-[var(--ia-mist)] transition-colors group-hover:text-[var(--ia-ink)]">{t.label}</span>
               </a>
             ))}
             <a
               href={`${siteBase}/admin/publish`}
-              className="clickable adm-ring flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-[var(--ia-line)] text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-line-strong)] hover:bg-[var(--ia-panel)] motion-safe:active:scale-[0.98]"
+              className="clickable adm-ring flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-[var(--ia-line)] text-[var(--ia-mist)] transition-all hover:border-[var(--ia-line-strong)] hover:bg-[var(--ia-panel)] hover:text-[var(--ia-ink)] active:bg-[var(--ia-panel-strong)] motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0 motion-safe:active:scale-[0.97]"
             >
               <AdminIcon name="plus" size={19} />
               <span className="text-[10px] font-semibold">全部</span>
@@ -502,7 +509,7 @@ export function DashboardScreen({
         </section>
 
         {/* 内容统计 */}
-        <section className="glass-card rounded-2xl p-4 lg:p-5">
+        <section className="glass-card adm-static rounded-2xl p-4 lg:p-5">
           <div className="flex items-center justify-between">
             <span className="eyebrow">RECORDS // 存档统计</span>
             {summary && (
@@ -535,13 +542,13 @@ export function DashboardScreen({
 
         {/* 最近记录 */}
         {summary && summary.recent.length > 0 && (
-          <section className="glass-card rounded-2xl p-4 lg:p-5">
+          <section className="glass-card adm-static rounded-2xl p-4 lg:p-5">
             <span className="eyebrow">RECENT // 最近记录</span>
             <ul className="mt-2 flex flex-col">
               {summary.recent.map((r, i) => (
                 <li key={i} className="border-b border-[var(--ia-line)] py-2.5 last:border-b-0">
-                  <a href={`${siteBase}${r.href}`} className="clickable flex items-baseline justify-between gap-3">
-                    <span className="min-w-0 truncate text-sm text-[var(--ia-ink)]">
+                  <a href={`${siteBase}${r.href}`} className="group clickable adm-ring flex items-baseline justify-between gap-3 rounded-md">
+                    <span className="min-w-0 truncate text-sm text-[var(--ia-ink)] transition-colors group-hover:text-[var(--ia-neon)]">
                       <span className="mono mr-1.5 text-[10px] uppercase text-[var(--ia-neon)]">{r.typeLabel}</span>
                       {r.title}
                     </span>
@@ -557,14 +564,14 @@ export function DashboardScreen({
       {/* ---------------- 右侧 rail（lg 起并列；移动端顺排） ---------------- */}
       <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-[72px]">
         {/* 仓库 / 部署状态（§8 / §12 / §16.6） */}
-        <section className="glass-card rounded-2xl p-4">
+        <section className="glass-card adm-static rounded-2xl p-4">
           <div className="flex items-center justify-between">
             <span className="eyebrow">DEPLOY // 仓库与部署</span>
             <button
               type="button"
               onClick={loadStatus}
               aria-label="刷新状态"
-              className="clickable adm-ring grid size-8 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-line-strong)] hover:text-[var(--ia-ink)]"
+              className="clickable adm-ring grid size-8 place-items-center rounded-lg border border-[var(--ia-line)] text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-line-strong)] hover:bg-[var(--ia-panel-strong)] hover:text-[var(--ia-ink)] active:bg-[var(--ia-panel-strong)] motion-safe:active:scale-[0.95]"
             >
               <AdminIcon name="refresh" size={14} />
             </button>
@@ -620,7 +627,7 @@ export function DashboardScreen({
                   href={`${status.repo.url}/actions`}
                   target="_blank"
                   rel="noreferrer"
-                  className="clickable adm-ring inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-[var(--ia-line)] px-3 text-xs font-semibold text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-line-strong)] hover:text-[var(--ia-ink)]"
+                  className="clickable adm-ring inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-[var(--ia-line)] px-3 text-xs font-semibold text-[var(--ia-mist)] transition-colors hover:border-[var(--ia-line-strong)] hover:bg-[var(--ia-panel-strong)] hover:text-[var(--ia-ink)] active:bg-[var(--ia-panel-strong)] motion-safe:active:scale-[0.98]"
                 >
                   <AdminIcon name="external" size={12} /> Actions
                 </a>
@@ -644,7 +651,7 @@ export function DashboardScreen({
         </section>
 
         {/* 草稿箱（§9 / §12） */}
-        <section className="glass-card rounded-2xl p-4">
+        <section className="glass-card adm-static rounded-2xl p-4">
           <div className="flex items-center justify-between">
             <span className="eyebrow">DRAFTS // 草稿箱</span>
             <span className="mono text-[11px] text-[var(--ia-mist)]">本机 {localDrafts} 条</span>
@@ -654,14 +661,14 @@ export function DashboardScreen({
           </p>
           <a
             href={`${siteBase}/admin/drafts`}
-            className="clickable mt-3 flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-[var(--ia-line)] text-xs font-semibold text-[var(--ia-neon)]"
+            className="clickable adm-ring mt-3 flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-[var(--ia-line)] text-xs font-semibold text-[var(--ia-neon)] transition-colors hover:border-[color-mix(in_srgb,var(--ia-neon)_45%,transparent)] hover:bg-[color-mix(in_srgb,var(--ia-neon)_10%,transparent)] active:bg-[color-mix(in_srgb,var(--ia-neon)_16%,transparent)] motion-safe:active:scale-[0.98]"
           >
             <AdminIcon name="drafts" size={14} /> 打开草稿箱
           </a>
         </section>
 
         {/* Profile 完成度（§12） */}
-        <section className="glass-card rounded-2xl p-4">
+        <section className="glass-card adm-static rounded-2xl p-4">
           <span className="eyebrow">PROFILE // 档案完成度</span>
           {profile === null && (
             <div className="mt-3 flex flex-col gap-2">
@@ -702,7 +709,7 @@ export function DashboardScreen({
         </section>
 
         {/* 配置健康检查（§11.3 / §12） */}
-        <section className="glass-card rounded-2xl p-4">
+        <section className="glass-card adm-static rounded-2xl p-4">
           <span className="eyebrow">HEALTH // 配置体检</span>
           {healthInfo === null && (
             <div className="mt-3 flex flex-col gap-2">
@@ -753,10 +760,10 @@ export function PublishIndexScreen({ siteBase }: { siteBase: string }) {
       </p>
       <div className="flex flex-col gap-3 md:grid md:grid-cols-2 xl:grid-cols-3">
         {RECORD_TYPES.map((t) => (
-          <a
+          <AdminActionCard
             key={t.type}
             href={`${siteBase}/admin/publish/${t.type}`}
-            className="glass-card clickable adm-ring flex items-center gap-3.5 rounded-2xl p-4 transition-colors hover:border-[var(--ia-line-strong)] motion-safe:active:scale-[0.99]"
+            className="flex items-center gap-3.5 rounded-2xl p-4"
           >
             <span
               className="icon-badge grid size-12 shrink-0 place-items-center rounded-xl"
@@ -772,7 +779,7 @@ export function PublishIndexScreen({ siteBase }: { siteBase: string }) {
               <span className="mt-0.5 block text-xs text-[var(--ia-mist)]">{t.desc}</span>
             </span>
             <AdminIcon name="arrow" size={16} className="shrink-0 text-[var(--ia-mist)]" />
-          </a>
+          </AdminActionCard>
         ))}
       </div>
     </div>
@@ -1499,7 +1506,7 @@ export function PublishFormScreen({
 
     return (
       <div className="mx-auto flex max-w-2xl flex-col gap-4">
-        <section className="glass-card corner-ticks relative rounded-2xl p-5 text-center">
+        <section className="glass-card adm-static corner-ticks relative rounded-2xl p-5 text-center">
           <span className="mx-auto grid size-14 place-items-center rounded-full border border-[color-mix(in_srgb,var(--ia-success)_50%,transparent)] bg-[color-mix(in_srgb,var(--ia-success)_12%,transparent)] text-[var(--ia-success)]">
             <AdminIcon name="check" size={26} />
           </span>
@@ -1507,7 +1514,7 @@ export function PublishFormScreen({
           <p className="mono mt-1 text-[11px] text-[var(--ia-mist)]">{result.message}</p>
         </section>
 
-        <section className="glass-card rounded-2xl p-4">
+        <section className="glass-card adm-static rounded-2xl p-4">
           <Steps items={steps} />
         </section>
 
@@ -1586,7 +1593,7 @@ export function PublishFormScreen({
             </div>
           </div>
 
-          <div className="glass-card flex flex-col gap-4 rounded-2xl p-4 lg:p-5">
+          <div className="glass-card adm-static flex flex-col gap-4 rounded-2xl p-4 lg:p-5">
             {def.type === "project" && (
               <div className="rounded-xl border border-[var(--ia-line)] bg-[var(--ia-panel)] p-3">
                 <p className="text-sm font-semibold text-[var(--ia-ink)]">从 GitHub 仓库导入</p>
@@ -1689,7 +1696,7 @@ export function PublishFormScreen({
           </Section>
 
           {/* 桌面操作卡（移动端由 BottomBar 承担） */}
-          <div className="glass-card hidden flex-col gap-2.5 rounded-2xl p-4 lg:flex">
+          <div className="glass-card adm-static hidden flex-col gap-2.5 rounded-2xl p-4 lg:flex">
             <Btn kind="primary" full onClick={submit} loading={busy}>
               <AdminIcon name="publish" size={16} />
               发布{def.label}{state.draft ? "（草稿）" : ""}
@@ -1790,7 +1797,7 @@ export function DraftsScreen({ siteBase }: { siteBase: string }) {
         const t = getRecordType(d.type);
         const editHref = `${siteBase}/admin/publish/${d.type}?draft=${encodeURIComponent(d.id)}`;
         return (
-          <section key={d.id} className="glass-card rounded-2xl p-4">
+          <section key={d.id} className="glass-card adm-static rounded-2xl p-4">
             <div className="flex items-start gap-3">
               <span
                 className="icon-badge grid size-11 shrink-0 place-items-center rounded-xl"
@@ -1996,7 +2003,7 @@ export function MediaScreen() {
 
   return (
     <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[380px_minmax(0,1fr)] lg:items-start lg:gap-5">
-      <section className="glass-card flex flex-col gap-3 rounded-2xl p-4 lg:sticky lg:top-[72px]">
+      <section className="glass-card adm-static flex flex-col gap-3 rounded-2xl p-4 lg:sticky lg:top-[72px]">
         <span className="eyebrow">REGISTER // 登记外链图片</span>
         <p className="text-[11px] leading-relaxed text-[var(--ia-mist)]">
           把图床 / 对象存储的图片 URL 登记进 <span className="mono">media.json</span>，方便发布时引用。
@@ -2037,7 +2044,7 @@ export function MediaScreen() {
         {notice && <p className="mono break-all text-[11px] text-[var(--ia-neon)]">{notice}</p>}
       </section>
 
-      <section className="glass-card rounded-2xl p-4">
+      <section className="glass-card adm-static rounded-2xl p-4">
         <span className="eyebrow">LIBRARY // 媒体库</span>
         {error && (
           <ErrorState className="mt-3" title="媒体库读取失败" message={error} onRetry={() => void load()} />
