@@ -50,16 +50,39 @@
   color-scheme: dark;
 }
 
-#wl-boot { position:fixed; inset:0; z-index:9999; display:none; place-content:center; justify-items:center; gap:1rem; background:var(--ia-bg); color:var(--ia-neon); letter-spacing:.18em; }
-#wl-boot i { width:min(16rem,60vw); height:2px; overflow:hidden; background:var(--ia-line); }
-#wl-boot i::after { content:""; display:block; width:45%; height:100%; background:var(--ia-neon); animation:wl-boot 850ms var(--ease-standard) infinite alternate; }
-html[data-loader-state="pending"] #wl-boot { display:grid; }
+/* ---- v5.4.1 Hotfix-03：首页 Loader 单一状态机 ----
+   #wl-boot 不再是独立的「通用加载条」，而是与 React WorldlineLoader 同一视觉的
+   pre-hydration 静态第一帧（复用下方 .wl-loader 全套样式）：
+   - 仅在 pending 且 React 尚未接管时显示；React 挂载（data-loader-hydrated="1"）
+     即在同一绘制帧内隐藏，接管无缝，绝不出现两套 Loader 依次播放；
+   - pending 期间锁定滚动、隐藏正文并关闭其 pointer-events；
+   - 静态帧进度条不启动填充（scaleX(0)，填充统一由 React 驱动），
+     轨道只做轻微待机呼吸，暗示链路建立中；
+   - 主题 tag 由 head 脚本写入的 data-wl-loader-theme 用 CSS 选中显示，
+     React 侧读取同一属性 → 静态帧与动画帧永远同一主题。 */
+#wl-boot { display: none; }
+html[data-loader-state="pending"] { overflow: hidden; }
+html[data-loader-state="pending"]:not([data-loader-hydrated="1"]) #wl-boot { display: grid; }
 html[data-loader-state="pending"] .wl-app { opacity:0; pointer-events:none; }
-html[data-loader-state="complete"] #wl-boot { opacity:0; visibility:hidden; transition:opacity var(--motion-base) var(--ease-exit), visibility 0s linear var(--motion-base); }
 html[data-loader-state="complete"] .wl-app { animation:wl-app-enter var(--motion-slow) var(--ease-enter) both; }
-@keyframes wl-boot { from { transform:translateX(-120%); } to { transform:translateX(280%); } }
 @keyframes wl-app-enter { from { opacity:0; transform:translateY(10px); filter:blur(6px); } to { opacity:1; transform:none; filter:none; } }
-@media (prefers-reduced-motion: reduce) { #wl-boot i::after, .wl-app { animation:none !important; } }
+
+#wl-boot .wl-loader-tag { display: none; }
+html[data-wl-loader-theme="0"] #wl-boot .wl-loader-tag[data-wl-tag="0"],
+html[data-wl-loader-theme="1"] #wl-boot .wl-loader-tag[data-wl-tag="1"],
+html[data-wl-loader-theme="2"] #wl-boot .wl-loader-tag[data-wl-tag="2"],
+html:not([data-wl-loader-theme]) #wl-boot .wl-loader-tag[data-wl-tag="0"] { display: inline-flex; }
+
+#wl-boot .wl-loader-bar { animation: wl-bar-standby 1.6s ease-in-out infinite; }
+#wl-boot .wl-loader-bar > i { animation: none; transform: scaleX(0); }
+@keyframes wl-bar-standby { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .wl-app { animation:none !important; }
+  #wl-boot .wl-loader-bar { animation:none; }
+  /* reduced 下静态帧与 React 帧一致：进度条呈完成态 */
+  #wl-boot .wl-loader-bar > i { transform: scaleX(1); }
+}
 
 .card-interactive { transition: transform var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard); }
 .card-interactive:hover { transform: translateY(-3px); }
@@ -952,6 +975,20 @@ html.wl-loading {
     opacity: 0.8;
     transform: translateX(-0.5px);
   }
+}
+
+/* v5.4.1 Hotfix-03：reduced-motion —— Loader 呈「完整帧快速淡入淡出」：
+   无 glitch / 无数字闪烁 / 无逐行动画，进度条直接完成态；
+   React 在 reduced 下渲染 .is-reduced（短停留 + 快速退出）。 */
+.wl-loader.is-reduced { transition-duration: 0.25s; }
+.wl-loader.is-reduced .wl-loader-bar > i { animation: none; transform: scaleX(1); }
+.wl-loader.is-reduced .wl-loader-lines p { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .wl-loader { animation-duration: 120ms; transition-duration: 0.25s; }
+  .wl-loader-title { animation: none; }
+  .wl-flicker { animation: none !important; }
+  .wl-loader-lines p { transition: none; }
+  .wl-loader-bar > i { animation: none; transform: scaleX(1); }
 }
 
 /* 眉题里的呼吸光标块 */

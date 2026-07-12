@@ -14,6 +14,7 @@ import Starfield from "@/components/effects/Starfield.tsx";
 import SakuraPetals from "@/components/effects/SakuraPetals.tsx";
 import SceneBackground from "@/components/effects/SceneBackground.tsx";
 import WorldlineLoader from "@/components/effects/WorldlineLoader.tsx";
+import { LOADER_THEMES } from "@/components/effects/worldlineLoaderThemes";
 import { getTimelineItems } from "@/lib/content";
 import { getWorldlineValue } from "@/lib/worldline";
 import DanmakuBackground from "@/components/effects/DanmakuBackground.tsx";
@@ -64,13 +65,34 @@ const searchPayload = {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <script is:inline>
+    <script is:inline define:vars={{ wlThemeCount: LOADER_THEMES.length }}>
+      /* v5.4.1 Hotfix-03：首页 Loader 单一状态机 —— paint 前判定与选题。
+         - pending：本次要播放。静态占位帧（#wl-boot，与 React WorldlineLoader
+           同一视觉的第一帧）从第一帧起可见，正文隐藏、滚动锁定；
+           React 挂载后置 data-loader-hydrated="1" 无缝接管并播放完整动画。
+         - complete：不播放（非首页 / 本会话已播过）。
+         - prefers-reduced-motion 不再直接跳过，改为标记 reduced，
+           由同一状态机播放「完整帧快速淡入淡出」。 */
       (function () {
-        var isHome = document.documentElement.dataset.wlHome === "true";
-        var shouldBoot = false;
-        try { shouldBoot = isHome && !sessionStorage.getItem("wl-loader-played") && !matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { shouldBoot = isHome; }
-        document.documentElement.dataset.loaderState = shouldBoot ? "pending" : "complete";
-        if (shouldBoot) window.setTimeout(function () { if (document.documentElement.dataset.loaderState !== "complete") document.documentElement.dataset.loaderState = "complete"; }, 5000);
+        var root = document.documentElement;
+        var isHome = root.dataset.wlHome === "true";
+        var play = false;
+        try { play = isHome && !sessionStorage.getItem("wl-loader-played"); } catch (e) { play = isHome; }
+        if (!play) { root.dataset.loaderState = "complete"; return; }
+        root.dataset.wlLoaderTheme = String(Math.floor(Math.random() * wlThemeCount));
+        try {
+          if (matchMedia("(prefers-reduced-motion: reduce)").matches) root.dataset.wlLoaderMotion = "reduced";
+        } catch (e) { /* matchMedia 不可用时按完整动画处理 */ }
+        root.dataset.loaderState = "pending";
+        /* 兜底：hydration 永远没来（脚本被拦 / 报错）也绝不锁死页面；
+           React 一旦接管（data-loader-hydrated="1"）就由它负责收尾。 */
+        window.setTimeout(function () {
+          if (root.dataset.loaderState === "pending" && root.dataset.loaderHydrated !== "1") {
+            root.dataset.loaderState = "complete";
+            delete root.dataset.wlLoaderTheme;
+            delete root.dataset.wlLoaderMotion;
+          }
+        }, 6000);
       })();
     </script>
     <script is:inline>
@@ -104,7 +126,30 @@ const searchPayload = {
   </head>
 
   <body class="min-h-screen text-[var(--ia-ink)] antialiased">
-    <div id="wl-boot" aria-hidden="true"><span class="mono">WORLDLINE ARCHIVE</span><i></i></div>
+    <!-- v5.4.1 Hotfix-03：pre-hydration 静态占位帧 —— 与 WorldlineLoader 同一视觉的
+         第一帧（tag / 标题 / 世界线数值 / 空进度条）。仅在 data-loader-state="pending"
+         且 React 尚未接管（无 data-loader-hydrated）时可见；React 挂载即在同一绘制帧
+         内隐藏并由同一状态机继续播放，不再出现第二套通用加载条。 -->
+    <div id="wl-boot" class="wl-loader" aria-hidden="true">
+      <div class="wl-loader-scanlines"></div>
+      <div class="wl-loader-core">
+        {LOADER_THEMES.map((t, i) => (
+          <span class="wl-loader-tag mono" data-wl-tag={String(i)}>{t.tag}</span>
+        ))}
+        <h1 class="wl-loader-title" data-text="WORLDLINE ARCHIVE">WORLDLINE ARCHIVE</h1>
+        <p class="wl-loader-sub mono">INITIALIZING OBSERVATION SYSTEM</p>
+        <div class="wl-loader-divergence mono">
+          {wlLoaderValue.split("").map((d, i) => (
+            <span
+              class={d !== "." && i % 3 === 1 ? "wl-flicker" : undefined}
+              style={`animation-delay:${(i * 137) % 900}ms`}
+            >{d}</span>
+          ))}
+        </div>
+        <div class="wl-loader-bar"><i></i></div>
+        <div class="wl-loader-lines mono"></div>
+      </div>
+    </div>
     <!-- 背景层：星云渐变（z-0），路由间持久化，避免闪烁 -->
     <div class="ia-nebula" transition:persist="nebula" aria-hidden="true"></div>
 
