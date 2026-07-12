@@ -1,5 +1,11 @@
 /**
- * v5.4 Content Manager（重写）。
+ * v5.4 Content Manager（重写）；v5.4.1 Hotfix：
+ * - Hotfix-01：Toolbar 与表格并入同一张卡（Toolbar 独立占一行 → 边界 →
+ *   表头 → 表行），去掉 sticky / z-index 叠层，表头不再被工具栏遮挡；
+ *   加载 / 错误 / 空态都发生在表体内，表头与列宽（table-fixed + colgroup）
+ *   在刷新 / 筛选 / Loading 期间保持稳定；移动端保持 v5.4 卡片布局。
+ * - Hotfix-04：容器为 AdminPanel（不抢内部控件 hover），行内操作按钮 /
+ *   图标链接补齐 hover / active / focus 反馈。
  *
  * 相比 v5.3 的压缩原型：
  * - loading 骨架 / 空态 / 错误重试三态齐备；筛选（类型 / 状态 / 搜索）用 Listbox；
@@ -386,6 +392,17 @@ export function ContentManagerScreen({ siteBase }: { siteBase: string }) {
 
   const hasFilter = query.trim() !== "" || status !== "all";
 
+  /* v5.4.1 Hotfix-01：列表状态单一来源 —— 桌面端在表体内渲染对应状态
+     （表头 / Toolbar 常驻不动），移动端沿用卡片式三态。 */
+  const listState: "loading" | "error" | "empty" | "ready" =
+    rows === null && !listError
+      ? "loading"
+      : listError && rows === null
+        ? "error"
+        : shown && shown.length === 0
+          ? "empty"
+          : "ready";
+
   const rowActions = (row: api.ContentRow) => (
     <span className="inline-flex items-center gap-1.5">
       <Btn
@@ -438,118 +455,142 @@ export function ContentManagerScreen({ siteBase }: { siteBase: string }) {
         </p>
       </div>
 
-      {/* 工具栏：搜索 / 类型 / 状态 / 刷新 */}
-      <div className="glass-card sticky top-[64px] z-30 flex flex-col gap-2.5 rounded-2xl p-3 md:flex-row md:items-center">
-        <div className="relative min-w-0 flex-1">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ia-mist)]">
-            <AdminIcon name="search" size={14} />
-          </span>
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜索标题或 slug"
-            aria-label="搜索标题或 slug"
-            className="!py-2.5 pl-9"
-          />
-        </div>
-        <div className="flex items-center gap-2.5">
-          <Listbox
-            value={type}
-            onChange={(v) => void changeType(v)}
-            options={TYPE_OPTIONS}
-            ariaLabel="内容类型"
-            size="sm"
-            className="w-32"
-          />
-          <Listbox
-            value={status}
-            onChange={setStatus}
-            options={STATUS_OPTIONS}
-            ariaLabel="状态筛选"
-            size="sm"
-            className="w-32"
-          />
-          <Btn
-            kind="icon"
-            size="sm"
-            loading={refreshing && rows !== null}
-            onClick={() => void load({ soft: true })}
-            aria-label="刷新列表"
-            title="刷新列表"
-          >
-            <AdminIcon name="refresh" size={14} />
-          </Btn>
-        </div>
-      </div>
-
-      {/* 列表三态 */}
-      {rows === null && !listError ? (
-        <div className="flex flex-col gap-2" aria-hidden="true">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-14 w-full" />
-          ))}
-        </div>
-      ) : listError && rows === null ? (
-        <ErrorState message={listError} onRetry={() => void load()} retrying={refreshing} />
-      ) : shown && shown.length === 0 ? (
-        hasFilter ? (
-          <EmptyState icon="search" title="没有匹配的记录" hint="试试更换关键字或状态筛选。">
-            <Btn
-              kind="secondary"
+      {/* v5.4.1 Hotfix-01：Content Manager 单卡结构 ——
+          Toolbar 独立占一行 → 边界 → 表头 → 表行；
+          不使用 sticky / 负 margin / absolute overlay / z-index 叠层。
+          容器为「安静面板」（filter-panel：无整卡 hover / 无 spotlight，
+          与 Hotfix-04 的 AdminPanel 行为一致）。 */}
+      <section aria-label="内容列表" className="filter-panel rounded-2xl">
+        {/* Toolbar：搜索 / 类型 / 状态 / 刷新（小屏自然换行） */}
+        <div className="flex flex-col gap-2.5 p-3 md:flex-row md:items-center md:border-b md:border-[var(--ia-line)]">
+          <div className="relative min-w-0 flex-1">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ia-mist)]">
+              <AdminIcon name="search" size={14} />
+            </span>
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="搜索标题或 slug"
+              aria-label="搜索标题或 slug"
+              className="!py-2.5 pl-9"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Listbox
+              value={type}
+              onChange={(v) => void changeType(v)}
+              options={TYPE_OPTIONS}
+              ariaLabel="内容类型"
               size="sm"
-              onClick={() => {
-                setQuery("");
-                setStatus("all");
-              }}
+              className="w-32"
+            />
+            <Listbox
+              value={status}
+              onChange={setStatus}
+              options={STATUS_OPTIONS}
+              ariaLabel="状态筛选"
+              size="sm"
+              className="w-32"
+            />
+            <Btn
+              kind="icon"
+              size="sm"
+              loading={refreshing && rows !== null}
+              onClick={() => void load({ soft: true })}
+              aria-label="刷新列表"
+              title="刷新列表"
             >
-              清除筛选
+              <AdminIcon name="refresh" size={14} />
             </Btn>
-          </EmptyState>
-        ) : (
-          <EmptyState
-            icon="drafts"
-            title="这个类型还没有记录"
-            hint="发布第一条记录后，就可以在这里管理它。"
-          >
-            <NavLink
-              to={{ screen: "publish-form", type }}
-              className="adm-ring clickable inline-flex min-h-[36px] items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--ia-neon)_55%,transparent)] bg-[color-mix(in_srgb,var(--ia-neon)_16%,transparent)] px-3 text-[13px] font-semibold text-[var(--ia-neon)]"
-            >
-              <AdminIcon name="plus" size={13} />
-              去发布
-            </NavLink>
-          </EmptyState>
-        )
-      ) : shown ? (
-        <>
-          {/* 桌面表格 */}
-          <div className="hidden overflow-x-auto rounded-2xl border border-[var(--ia-line)] md:block">
-            <table className="w-full min-w-[820px] text-left text-xs">
-              <thead className="mono text-[10px] uppercase tracking-wider text-[var(--ia-mist)]">
-                <tr className="border-b border-[var(--ia-line)]">
-                  <th className="p-3 font-medium">标题</th>
-                  <th className="p-3 font-medium">slug</th>
-                  <th className="p-3 font-medium">状态</th>
-                  <th className="p-3 font-medium">更新时间</th>
-                  <th className="p-3 font-medium">操作</th>
+          </div>
+        </div>
+
+        {/* 桌面表格：表头常驻；loading / 错误 / 空态都发生在表体，
+            table-fixed + colgroup 保证过滤 / 刷新时列宽与表头稳定不跳动 */}
+        <div className="hidden overflow-x-auto rounded-b-2xl md:block">
+          <table className="w-full min-w-[880px] table-fixed text-left text-xs">
+            <colgroup>
+              <col />
+              <col style={{ width: 180 }} />
+              <col style={{ width: 168 }} />
+              <col style={{ width: 112 }} />
+              <col style={{ width: 236 }} />
+            </colgroup>
+            <thead className="mono text-[10px] uppercase tracking-wider text-[var(--ia-mist)]">
+              <tr>
+                <th className="p-3 font-medium">标题</th>
+                <th className="p-3 font-medium">slug</th>
+                <th className="p-3 font-medium">状态</th>
+                <th className="p-3 font-medium">更新时间</th>
+                <th className="p-3 font-medium">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {listState === "loading" ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={i} className="border-t border-[var(--ia-line)]" aria-hidden="true">
+                    <td className="p-3"><Skeleton className="h-4 w-4/5" /></td>
+                    <td className="p-3"><Skeleton className="h-4 w-3/5" /></td>
+                    <td className="p-3"><Skeleton className="h-5 w-24" /></td>
+                    <td className="p-3"><Skeleton className="h-4 w-16" /></td>
+                    <td className="p-3"><Skeleton className="h-9 w-48" /></td>
+                  </tr>
+                ))
+              ) : listState === "error" ? (
+                <tr className="border-t border-[var(--ia-line)]">
+                  <td colSpan={5} className="p-3">
+                    <ErrorState message={listError ?? undefined} onRetry={() => void load()} retrying={refreshing} />
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {shown.map((row) => (
+              ) : listState === "empty" ? (
+                <tr className="border-t border-[var(--ia-line)]">
+                  <td colSpan={5} className="p-3">
+                    {hasFilter ? (
+                      <EmptyState icon="search" title="没有匹配的记录" hint="试试更换关键字或状态筛选。">
+                        <Btn
+                          kind="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setQuery("");
+                            setStatus("all");
+                          }}
+                        >
+                          清除筛选
+                        </Btn>
+                      </EmptyState>
+                    ) : (
+                      <EmptyState
+                        icon="drafts"
+                        title="这个类型还没有记录"
+                        hint="发布第一条记录后，就可以在这里管理它。"
+                      >
+                        <NavLink
+                          to={{ screen: "publish-form", type }}
+                          className="adm-ring clickable inline-flex min-h-[36px] items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--ia-neon)_55%,transparent)] bg-[color-mix(in_srgb,var(--ia-neon)_16%,transparent)] px-3 text-[13px] font-semibold text-[var(--ia-neon)] transition-colors hover:bg-[color-mix(in_srgb,var(--ia-neon)_24%,transparent)] active:bg-[color-mix(in_srgb,var(--ia-neon)_30%,transparent)] motion-safe:active:scale-[0.98]"
+                        >
+                          <AdminIcon name="plus" size={13} />
+                          去发布
+                        </NavLink>
+                      </EmptyState>
+                    )}
+                  </td>
+                </tr>
+              ) : shown ? (
+                shown.map((row) => (
                   <tr
                     key={row.slug}
-                    className={`border-t border-[var(--ia-line)] transition-colors first:border-t-0 hover:bg-[color-mix(in_srgb,var(--ia-neon)_4%,transparent)] ${
+                    className={`border-t border-[var(--ia-line)] transition-colors hover:bg-[color-mix(in_srgb,var(--ia-neon)_4%,transparent)] ${
                       editing?.slug === row.slug
                         ? "bg-[color-mix(in_srgb,var(--ia-neon)_7%,transparent)]"
                         : ""
                     }`}
                   >
-                    <td className="max-w-[260px] p-3">
+                    <td className="p-3">
                       <span className="block truncate font-medium text-[var(--ia-ink)]">
                         {row.title || row.slug}
                       </span>
                     </td>
-                    <td className="mono max-w-[180px] p-3">
+                    <td className="mono p-3">
                       <span className="block truncate text-[var(--ia-mist)]">{row.slug}</span>
                     </td>
                     <td className="p-3">{rowStatusPills(row)}</td>
@@ -558,40 +599,79 @@ export function ContentManagerScreen({ siteBase }: { siteBase: string }) {
                     </td>
                     <td className="p-3">{rowActions(row)}</td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                ))
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-          {/* 移动端卡片 */}
-          <div className="flex flex-col gap-2.5 md:hidden">
-            {shown.map((row) => (
-              <div
-                key={row.slug}
-                className={`glass-card adm-static rounded-2xl p-3.5 ${
-                  editing?.slug === row.slug
-                    ? "border border-[color-mix(in_srgb,var(--ia-neon)_45%,transparent)]"
-                    : ""
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-[var(--ia-ink)]">
-                      {row.title || row.slug}
-                    </p>
-                    <p className="mono mt-0.5 truncate text-[11px] text-[var(--ia-mist)]">
-                      {row.slug}
-                      {row.updatedAt ? ` · ${timeAgo(row.updatedAt)}` : ""}
-                    </p>
-                  </div>
-                  {rowStatusPills(row)}
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-1.5">{rowActions(row)}</div>
-              </div>
+      {/* 移动端：三态与卡片列表（沿用 v5.4 卡片布局，不回归） */}
+      <div className="flex flex-col gap-2.5 md:hidden">
+        {listState === "loading" ? (
+          <div className="flex flex-col gap-2" aria-hidden="true">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full" />
             ))}
           </div>
-        </>
-      ) : null}
+        ) : listState === "error" ? (
+          <ErrorState message={listError ?? undefined} onRetry={() => void load()} retrying={refreshing} />
+        ) : listState === "empty" ? (
+          hasFilter ? (
+            <EmptyState icon="search" title="没有匹配的记录" hint="试试更换关键字或状态筛选。">
+              <Btn
+                kind="secondary"
+                size="sm"
+                onClick={() => {
+                  setQuery("");
+                  setStatus("all");
+                }}
+              >
+                清除筛选
+              </Btn>
+            </EmptyState>
+          ) : (
+            <EmptyState
+              icon="drafts"
+              title="这个类型还没有记录"
+              hint="发布第一条记录后，就可以在这里管理它。"
+            >
+              <NavLink
+                to={{ screen: "publish-form", type }}
+                className="adm-ring clickable inline-flex min-h-[36px] items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--ia-neon)_55%,transparent)] bg-[color-mix(in_srgb,var(--ia-neon)_16%,transparent)] px-3 text-[13px] font-semibold text-[var(--ia-neon)] transition-colors hover:bg-[color-mix(in_srgb,var(--ia-neon)_24%,transparent)] active:bg-[color-mix(in_srgb,var(--ia-neon)_30%,transparent)] motion-safe:active:scale-[0.98]"
+              >
+                <AdminIcon name="plus" size={13} />
+                去发布
+              </NavLink>
+            </EmptyState>
+          )
+        ) : shown ? (
+          shown.map((row) => (
+            <div
+              key={row.slug}
+              className={`glass-card adm-static rounded-2xl p-3.5 ${
+                editing?.slug === row.slug
+                  ? "border border-[color-mix(in_srgb,var(--ia-neon)_45%,transparent)]"
+                  : ""
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-[var(--ia-ink)]">
+                    {row.title || row.slug}
+                  </p>
+                  <p className="mono mt-0.5 truncate text-[11px] text-[var(--ia-mist)]">
+                    {row.slug}
+                    {row.updatedAt ? ` · ${timeAgo(row.updatedAt)}` : ""}
+                  </p>
+                </div>
+                {rowStatusPills(row)}
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">{rowActions(row)}</div>
+            </div>
+          ))
+        ) : null}
+      </div>
 
       {/* 行内编辑面板 */}
       {editing && (
