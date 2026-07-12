@@ -4329,6 +4329,7 @@ html[data-scene-mode="day"] .icon-badge {
 }
 .filter-select-label {
   display: inline-block;
+  flex: 1 1 auto;
   min-width: 2em;
   text-align: center;
   white-space: nowrap;
@@ -4764,9 +4765,11 @@ html[data-scene-mode="day"] .filter-panel {
 .worldline-view-stage { min-width: 0; overflow: hidden; }
 .worldline-stage-panel { min-width: 0; }
 .worldline-toolbar-main .filter-search { flex: 1 1 360px; }
-.filter-select { position: relative; z-index: 5; flex: 0 0 auto; width: fit-content; }
-.filter-select-menu { position: absolute; right: 0; top: calc(100% + .45rem); min-width: max(100%, 96px); overflow: hidden; padding: .3rem; border: 1px solid var(--ia-line-strong); border-radius: .75rem; background: color-mix(in srgb, var(--ia-panel) 96%, transparent); box-shadow: 0 16px 38px rgba(0,0,0,.24); backdrop-filter: blur(16px); }
-.filter-select-menu button { display:flex; width:100%; align-items:center; justify-content:space-between; gap:1rem; border-radius:.5rem; padding:.55rem .65rem; color:var(--ia-mist); font:12px var(--font-mono); text-align:left; white-space:nowrap; }
+.filter-select { position: relative; z-index: 80; flex: 0 0 auto; width: fit-content; }
+.filter-select-menu { position: absolute; z-index: 90; right: 0; top: calc(100% + .45rem); min-width: max(100%, 96px); overflow: hidden; padding: .3rem; border: 1px solid var(--ia-line-strong); border-radius: .75rem; background: color-mix(in srgb, var(--ia-panel) 96%, transparent); box-shadow: 0 16px 38px rgba(0,0,0,.24); backdrop-filter: blur(16px); }
+.filter-select-menu button { position:relative; display:flex; width:100%; align-items:center; justify-content:center; gap:1rem; border-radius:.5rem; padding:.55rem 1.6rem .55rem .65rem; color:var(--ia-mist); font:12px var(--font-mono); text-align:center; white-space:nowrap; }
+.filter-select-menu button span:first-child { flex:1 1 auto; text-align:center; }
+.filter-select-menu button span[aria-hidden="true"] { position:absolute; right:.65rem; }
 .filter-select-menu button:hover, .filter-select-menu button[aria-selected="true"] { color:var(--ia-ink); background:color-mix(in srgb, var(--ia-neon) 14%, transparent); }
 @media (max-width: 639px) { .worldline-toolbar-main { align-items:stretch; } .filter-bar .filter-search { flex-basis:100%; min-width:100%; } .filter-count-line { min-height:40px; display:inline-flex; align-items:center; } .worldline-type-chips { flex-wrap:nowrap; overflow-x:auto; padding-bottom:.2rem; } .worldline-type-chips .filter-chip { flex:none; min-height:40px; } }
 
@@ -5271,6 +5274,80 @@ html.ia-cursor .hero-search { cursor: text !important; }
 [data-motion-scene="posts"] [data-motion-item] p, [data-motion-scene="bugs"] [data-motion-item] p { animation:wl-scene-document 280ms var(--motion-scene-ease) 90ms both; }
 
 @media (prefers-reduced-motion: reduce) { [data-motion-scene] *, [data-motion-scene] *::before, [data-motion-scene] *::after { animation:none !important; transition-duration:.01ms !important; filter:none !important; transform:none !important; } }
+
+/* v5.4 photos hotfix: Motion owns only the outer list layout; the inner
+   polaroid stack owns static rotation, offset and hover spread. */
+.photos-filter-panel,
+.photos-toolbar-main {
+  overflow: visible;
+}
+.photos-filter-panel {
+  position: relative;
+  z-index: 70;
+}
+.photos-toolbar-main {
+  align-items: center;
+}
+.photo-wall {
+  position: relative;
+  z-index: 1;
+  grid-template-columns: repeat(3, minmax(200px, 1fr));
+  gap: clamp(3rem, 6vw, 6rem) clamp(2rem, 4vw, 4rem);
+  align-items: start;
+}
+.photo-motion-slot {
+  min-width: 0;
+  padding: 0.6rem;
+}
+.photo-stack {
+  cursor: pointer;
+  transform: translate(var(--photo-shift-x, 0), var(--photo-shift-y, 0)) rotate(var(--photo-rotate, 0deg));
+  transform-origin: 50% 48%;
+  will-change: transform;
+}
+.photo-stack .photo-polaroid {
+  transform: none;
+}
+.photo-polaroid-fallback {
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--ia-star) 26%, transparent), transparent 32%),
+    linear-gradient(135deg, var(--ia-panel), var(--ia-bg-2));
+}
+@media (hover: hover) and (pointer: fine) {
+  .photo-stack:hover,
+  .photo-stack:focus-visible {
+    transform: translate(var(--photo-shift-x, 0), calc(var(--photo-shift-y, 0px) - 4px)) rotate(var(--photo-rotate, 0deg));
+  }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .photo-wall {
+    grid-template-columns: repeat(2, minmax(200px, 1fr));
+  }
+}
+@media (max-width: 768px) {
+  .photo-wall {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    overflow-x: clip;
+  }
+  .photo-motion-slot {
+    padding-inline: 0.85rem;
+  }
+  .photo-stack {
+    transform: translate(calc(var(--photo-shift-x, 0px) * 0.35), calc(var(--photo-shift-y, 0px) * 0.35)) rotate(calc(var(--photo-rotate, 0deg) * 0.45)) !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-motion-scene="photos"] .photo-stack {
+    transform: translate(var(--photo-shift-x, 0), var(--photo-shift-y, 0)) rotate(var(--photo-rotate, 0deg)) !important;
+  }
+  [data-motion-scene="photos"] .photo-polaroid-frame img,
+  [data-motion-scene="photos"] .photo-stack-back {
+    transition: none !important;
+  }
+}
 
 /* v5.3 moments feed: natural two-column flow without CSS columns, preserving
    source, keyboard and screen-reader order. */

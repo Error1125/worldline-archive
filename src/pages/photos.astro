@@ -1,5 +1,34 @@
 ---
-import SiteLayout from "@/components/layout/SiteLayout.astro"; import PageHeader from "@/components/common/PageHeader.astro"; import EmptyState from "@/components/common/EmptyState.astro"; import PhotosFeed from "@/components/photos/PhotosFeed"; import {getPhotos} from "@/lib/content"; import {withBase} from "@/lib/paths";
-const photos=await getPhotos();const map=new Map<string,number>();for(const p of photos)if(p.data.album)map.set(p.data.album,(map.get(p.data.album)??0)+1);const albums=[...map].map(([value,count])=>({value,count}));const items=photos.map(x=>({id:x.id,title:x.data.title,date:x.data.date.toISOString(),album:x.data.album,description:x.data.description,tags:x.data.tags??[],images:x.data.images.map(i=>withBase(typeof i==="string"?i:i.url))}));
+import SiteLayout from "@/components/layout/SiteLayout.astro";
+import PageHeader from "@/components/common/PageHeader.astro";
+import EmptyState from "@/components/common/EmptyState.astro";
+import PhotosFeed from "@/components/photos/PhotosFeed";
+import { getPhotos } from "@/lib/content";
+import { withBase } from "@/lib/paths";
+
+const photos = await getPhotos();
+const albumMap = new Map<string, number>();
+
+for (const photo of photos) {
+  if (photo.data.album) albumMap.set(photo.data.album, (albumMap.get(photo.data.album) ?? 0) + 1);
+}
+
+const albums = [...albumMap.entries()].map(([value, count]) => ({ value, count }));
+const items = photos.map((entry) => ({
+  id: entry.id,
+  title: entry.data.title,
+  date: entry.data.date.toISOString(),
+  album: entry.data.album,
+  description: entry.data.description,
+  tags: entry.data.tags ?? [],
+  mood: entry.data.mood,
+  location: entry.data.location,
+  href: withBase(`/photos/${entry.id}`),
+  images: entry.data.images.map((image) => withBase(typeof image === "string" ? image : image.url)),
+}));
 ---
-<SiteLayout title="照片" description="屏幕之外的光。" motionScene="photos"><PageHeader eyebrow="PHOTOS // 相册" title="屏幕之外" subtitle="照片与相册。" icon="photo" class="mb-8"/>{photos.length?<PhotosFeed client:load items={items} albums={albums}/>:<EmptyState icon="photo"/>}</SiteLayout>
+
+<SiteLayout title="照片" description="屏幕之外的光。" motionScene="photos">
+  <PageHeader eyebrow="PHOTOS // 相册" title="屏幕之外" subtitle="照片与相册。" icon="photo" class="mb-8" />
+  {photos.length ? <PhotosFeed client:load items={items} albums={albums} /> : <EmptyState icon="photo" />}
+</SiteLayout>

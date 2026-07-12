@@ -22,6 +22,11 @@ export default function FilterSelect<T extends string>({
     requestAnimationFrame(() => trigger.current?.focus());
   };
 
+  const choose = (next: T) => {
+    onChange(next);
+    close();
+  };
+
   useEffect(() => {
     const onPointer = (event: MouseEvent) => {
       if (root.current && !root.current.contains(event.target as Node)) setOpen(false);
@@ -30,9 +35,13 @@ export default function FilterSelect<T extends string>({
     return () => document.removeEventListener("mousedown", onPointer);
   }, []);
 
+  const setByIndex = (index: number) => {
+    onChange(options[(index + options.length) % options.length].value);
+  };
+
   const move = (direction: number) => {
     const index = options.findIndex((item) => item.value === value);
-    onChange(options[(index + direction + options.length) % options.length].value);
+    setByIndex(index + direction);
   };
 
   return (
@@ -54,6 +63,14 @@ export default function FilterSelect<T extends string>({
             event.preventDefault();
             setOpen(true);
             move(-1);
+          } else if (event.key === "Home") {
+            event.preventDefault();
+            setOpen(true);
+            setByIndex(0);
+          } else if (event.key === "End") {
+            event.preventDefault();
+            setOpen(true);
+            setByIndex(options.length - 1);
           } else if (event.key === "Escape" && open) {
             close();
           }
@@ -70,9 +87,18 @@ export default function FilterSelect<T extends string>({
               key={option.value}
               role="option"
               aria-selected={option.value === value}
-              onClick={() => {
-                onChange(option.value);
-                close();
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                choose(option.value);
+              }}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+              onClick={(event) => {
+                event.stopPropagation();
+                choose(option.value);
               }}
               onKeyDown={(event) => {
                 if (event.key === "Escape") close();
@@ -82,10 +108,15 @@ export default function FilterSelect<T extends string>({
                 } else if (event.key === "ArrowUp") {
                   event.preventDefault();
                   move(-1);
+                } else if (event.key === "Home") {
+                  event.preventDefault();
+                  setByIndex(0);
+                } else if (event.key === "End") {
+                  event.preventDefault();
+                  setByIndex(options.length - 1);
                 } else if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  onChange(option.value);
-                  close();
+                  choose(option.value);
                 }
               }}
             >
