@@ -50,7 +50,7 @@ export default function WorldlineRecordsExplorer({ items, types, initialView = "
     <div className="filter-panel worldline-toolbar mb-8 flex flex-col gap-3 p-4 sm:p-5">
       <div className="filter-bar worldline-toolbar-main">
         <label className="filter-search"><span aria-hidden>⌕</span><input type="search" value={rawQuery} onChange={(event) => setRawQuery(event.target.value)} placeholder="搜索标题、摘要、标签或类型" aria-label="搜索世界线记录" /></label>
-        <FilterSelect value={sort} onChange={setSort} options={[{ value: "latest", label: "最新优先" }, { value: "oldest", label: "最早优先" }]} />
+        <FilterSelect value={sort} onChange={setSort} options={[{ value: "latest", label: "最新" }, { value: "oldest", label: "最早" }]} />
         <span className="filter-count-line" aria-live="polite">{filteredRecords.length} records</span>
       </div>
       <div className="filter-group worldline-type-chips" role="group" aria-label="按类型筛选">

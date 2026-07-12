@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import MotionList from "@/components/motion/MotionList";
+import FilterSelect from "@/components/ui/FilterSelect";
 
 export interface MomentFeedItem {
   id: string;
@@ -95,7 +96,7 @@ export default function MomentsFeed({ moments, moods, tags }: Props) {
         )}
         <div className="filter-bar">
           <label className="filter-search"><span aria-hidden="true">⌕</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索这些碎碎念…" aria-label="搜索说说" /></label>
-          <div className="filter-group" role="group" aria-label="排序方式"><button type="button" className="filter-chip" data-active={sort === "newest"} onClick={() => setSort("newest")}>最新</button><button type="button" className="filter-chip" data-active={sort === "oldest"} onClick={() => setSort("oldest")}>最早</button></div>
+          <FilterSelect value={sort} onChange={setSort} options={[{ value: "newest", label: "最新" }, { value: "oldest", label: "最早" }]} />
           <span className="filter-count-line">{visibleMoments.length} moments</span>
         </div>
       </div>
