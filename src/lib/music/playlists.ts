@@ -8,7 +8,10 @@ function playlistId(name: string) { return `local-${name.trim().toLowerCase().re
 export function createLocalPlaylists(tracks: MusicArchiveTrack[]): MusicPlaylist[] {
   const groups = new Map<string, MusicArchiveTrack[]>();
   for (const track of tracks) {
-    const key = track.playlist?.trim() || LOCAL_FALLBACK_PLAYLIST_ID;
+    // Existing archives do not always carry a playlist label. Album is the
+    // next real collection boundary, so it keeps the shelf meaningful without
+    // inventing a second content model.
+    const key = track.playlist?.trim() || track.album?.trim() || LOCAL_FALLBACK_PLAYLIST_ID;
     groups.set(key, [...(groups.get(key) ?? []), track]);
   }
   return [...groups.entries()].map(([key, grouped], index) => {

@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import type { MusicArchiveTrack, MusicPlayerState, MusicPlaylist } from "@/lib/apple-music/types";
 
 const KEY = "wl-music-state-v3";
-const EMPTY: MusicPlayerState = { playing: false, currentTime: 0, duration: 0, progress: 0, muted: false, updatedAt: 0 };
+const EMPTY: MusicPlayerState = { playing: false, currentTime: 0, duration: 0, progress: 0, muted: false, volume: .8, updatedAt: 0 };
 let playlists: MusicPlaylist[] = [];
 let state: MusicPlayerState = EMPTY;
 let audio: HTMLAudioElement | undefined;
@@ -14,13 +14,13 @@ const allTracks = () => playlists.flatMap((playlist) => playlist.tracks);
 const getPlaylistById = (id = state.playlistId) => playlists.find((playlist) => playlist.id === id);
 const findTrack = (trackId = state.trackId) => allTracks().find((track) => track.id === trackId);
 function pagePlaylists() { return typeof window === "undefined" ? [] : (window as Window & { __WL_MUSIC_PLAYLISTS__?: MusicPlaylist[] }).__WL_MUSIC_PLAYLISTS__ ?? []; }
-function persist() { try { localStorage.setItem(KEY, JSON.stringify({ playlistId: state.playlistId, trackId: state.trackId, muted: state.muted })); } catch {} }
+function persist() { try { localStorage.setItem(KEY, JSON.stringify({ playlistId: state.playlistId, trackId: state.trackId, muted: state.muted, volume: state.volume })); } catch {} }
 function apply(next: Partial<MusicPlayerState>) { state = { ...state, ...next, updatedAt: Date.now() }; persist(); notify(); }
 function defaultPlaylist() { return playlists.find((playlist) => playlist.featured) ?? playlists[0]; }
 function safeInitialState(saved: Partial<MusicPlayerState>): MusicPlayerState {
   const playlist = playlists.find((item) => item.id === saved.playlistId) ?? defaultPlaylist();
   const track = playlist?.tracks.find((item) => item.id === saved.trackId) ?? playlist?.tracks.find((item) => item.featured) ?? playlist?.tracks[0];
-  return { ...EMPTY, playlistId: playlist?.id, trackId: track?.id, muted: saved.muted === true, updatedAt: Date.now() };
+  return { ...EMPTY, playlistId: playlist?.id, trackId: track?.id, muted: saved.muted === true, volume: typeof saved.volume === "number" ? saved.volume : .8, updatedAt: Date.now() };
 }
 export function restoreMusicState() {
   if (restored || typeof window === "undefined") return;
@@ -32,7 +32,7 @@ function syncAudioState() { if (!audio) return; apply({ currentTime: audio.curre
 function clearAudio() { if (!audio) return; audio.pause(); audio.src = ""; audio.load(); audio = undefined; }
 function audioFor(track: MusicArchiveTrack): HTMLAudioElement {
   if (audio && audio.src === track.previewUrl) return audio;
-  clearAudio(); audio = new Audio(track.previewUrl); audio.preload = "metadata"; audio.muted = state.muted;
+  clearAudio(); audio = new Audio(track.previewUrl); audio.preload = "metadata"; audio.muted = state.muted; audio.volume = state.volume ?? .8;
   audio.addEventListener("loadedmetadata", syncAudioState); audio.addEventListener("timeupdate", syncAudioState);
   audio.addEventListener("pause", () => apply({ playing: false }));
   audio.addEventListener("ended", () => nextTrack());
@@ -57,6 +57,7 @@ export function playTrack(trackId = state.trackId, playlistId = state.playlistId
 }
 export function togglePlaying() { if (state.playing) { audio?.pause(); return; } playTrack(); }
 export function toggleMuted() { const muted = !state.muted; if (audio) audio.muted = muted; apply({ muted }); }
+export function setVolume(volume: number) { const next = Math.max(0, Math.min(1, volume)); if (audio) audio.volume = next; apply({ volume: next, muted: next === 0 }); }
 export function nextTrack(direction = 1) { const playlist = getPlaylistById(); if (!playlist?.tracks.length) return; const index = playlist.tracks.findIndex((track) => track.id === state.trackId); const next = playlist.tracks[(index + direction + playlist.tracks.length) % playlist.tracks.length]; if (next) playTrack(next.id, playlist.id); }
 export const prevTrack = () => nextTrack(-1);
 export function getState() { return state; }

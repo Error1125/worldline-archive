@@ -39,7 +39,7 @@ export interface PlayableMusicTrack extends MusicArchiveTrack { previewUrl: stri
 
 export interface MusicPlayerState {
   playlistId?: string; trackId?: string; playing: boolean; currentTime: number; duration: number;
-  progress: number; muted: boolean; error?: string; updatedAt: number;
+  progress: number; muted: boolean; volume?: number; error?: string; updatedAt: number;
 }
 
 export interface AppleTrack {
