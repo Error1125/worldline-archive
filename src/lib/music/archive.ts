@@ -4,7 +4,7 @@ import type { MusicArchiveTrack } from "@/lib/apple-music/types";
 type MusicData = {
   title: string; artist: string; album?: string; date: Date; type: "song" | "album" | "playlist";
   cover?: string; tags: string[]; mood?: string; moods?: string[]; comment?: string; thoughts?: string;
-  featured?: boolean; appleMusicUrl?: string;
+  featured?: boolean; appleMusicUrl?: string; playlist?: string;
   appleMusic?: { url?: string; artworkUrl?: string; previewUrl?: string; releaseDate?: string; durationMs?: number; genres?: string[] };
   rating?: number; status?: MusicArchiveTrack["status"];
 };
@@ -39,6 +39,7 @@ export function mapMusicArchiveEntry(entry: MusicEntry): MusicArchiveTrack {
     rating: data.rating,
     status: data.status,
     featured: data.featured === true,
+    playlist: data.playlist,
   };
 }
 

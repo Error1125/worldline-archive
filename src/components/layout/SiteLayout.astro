@@ -18,6 +18,7 @@ import { LOADER_THEMES } from "@/components/effects/worldlineLoaderThemes";
 import { getTimelineItems } from "@/lib/content";
 import { getMusic } from "@/lib/content";
 import { mapMusicArchiveEntry } from "@/lib/music/archive";
+import { createLocalPlaylists } from "@/lib/music/playlists";
 import { getWorldlineValue } from "@/lib/worldline";
 import DanmakuBackground from "@/components/effects/DanmakuBackground.tsx";
 import CustomCursor from "@/components/effects/CustomCursor.tsx";
@@ -48,7 +49,7 @@ const pageDesc = description ?? siteConfig.description;
 // v4.1：为「浏览器式站内搜索」（HeroSearch / Header）准备可 JSON 序列化的检索索引。
 // href 预先经 withBase() 处理，客户端可直接跳转；indexHref 指向「世界线记录 · 观测索引」。
 const rawIndex = await getSearchIndex();
-const musicPlaylist = (await getMusic()).map(mapMusicArchiveEntry);
+const musicPlaylists = createLocalPlaylists((await getMusic()).map(mapMusicArchiveEntry));
 const searchPayload = {
   indexHref: withBase("/timeline"),
   docs: rawIndex.map((d) => ({
@@ -129,7 +130,7 @@ const searchPayload = {
   </head>
 
   <body class="min-h-screen text-[var(--ia-ink)] antialiased">
-    <script is:inline define:vars={{ musicPlaylist }}>window.__WL_MUSIC_PLAYLIST__ = musicPlaylist;</script>
+    <script is:inline define:vars={{ musicPlaylists }}>window.__WL_MUSIC_PLAYLISTS__ = musicPlaylists;</script>
     <!-- v5.4.1 Hotfix-03：pre-hydration 静态占位帧 —— 与 WorldlineLoader 同一视觉的
          第一帧（tag / 标题 / 世界线数值 / 空进度条）。仅在 data-loader-state="pending"
          且 React 尚未接管（无 data-loader-hydrated）时可见；React 挂载即在同一绘制帧

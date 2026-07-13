@@ -1,0 +1,3 @@
+import type { MusicPlaylist } from "@/lib/apple-music/types";
+import PlaylistPackageCard from "@/components/music/PlaylistPackageCard";
+export default function PlaylistShelf({ playlists, activePlaylistId, onSelect }: { playlists: MusicPlaylist[]; activePlaylistId?: string; onSelect: (id: string) => void }) { return <section className="playlist-shelf-section" aria-labelledby="playlist-shelf-title"><div><p className="section-kicker">PLAYLIST SHELF</p><h2 id="playlist-shelf-title">播放列表</h2></div><div className="playlist-shelf">{playlists.map((playlist) => <PlaylistPackageCard key={playlist.id} playlist={playlist} active={playlist.id === activePlaylistId} onSelect={() => onSelect(playlist.id)} />)}</div></section>; }
