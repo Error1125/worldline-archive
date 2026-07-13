@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { withBase } from "@/lib/paths";
-import { getTrack, nextTrack, playlist, togglePlaying, useMusicState } from "@/lib/music/store";
+import { getPlaylist, getTrack, nextTrack, togglePlaying, useMusicState } from "@/lib/music/store";
 
 /**
  * GlobalMusicPlayer —— 非首页全局音乐浮球 / Mini Player（v3）。
@@ -60,7 +60,7 @@ export default function GlobalMusicPlayer() {
     return () => document.removeEventListener("astro:after-swap", collapse);
   }, []);
 
-  const track = getTrack(state.index);
+  const track = getTrack();
   if (onHome || !track) return null;
 
   const pct = Math.round(Math.min(1, Math.max(0, state.progress)) * 100);
@@ -77,7 +77,7 @@ export default function GlobalMusicPlayer() {
       >
         <PlayPauseIcon playing={state.playing} />
       </button>
-      {playlist.length > 1 && (
+      {getPlaylist().length > 1 && (
         <button type="button" className="gm-btn clickable" onClick={nextTrack} aria-label="下一首">
           <NextIcon />
         </button>

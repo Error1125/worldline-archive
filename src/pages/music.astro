@@ -1,4 +1,16 @@
 ---
-import SiteLayout from"@/components/layout/SiteLayout.astro";import PageHeader from"@/components/common/PageHeader.astro";import EmptyState from"@/components/common/EmptyState.astro";import MusicPlayer from"@/components/music/MusicPlayer";import MusicFeed from"@/components/music/MusicFeed";import {getMusic}from"@/lib/content";const music=await getMusic();const labels:Record<string,string>={song:"单曲",album:"专辑",playlist:"歌单"};const kinds=Object.entries(labels).map(([value,label])=>({value,label,count:music.filter(x=>x.data.type===value).length})).filter(x=>x.count);const m=new Map<string,number>();for(const x of music)for(const t of x.data.tags)m.set(t,(m.get(t)??0)+1);const tags=[...m].map(([value,count])=>({value,count}));const items=music.map(x=>({id:x.id,title:x.data.title,artist:x.data.artist,album:x.data.album,type:x.data.type,cover:x.data.cover,tags:x.data.tags,comment:x.data.comment,url:x.data.appleMusicUrl,date:x.data.date.toISOString()}));
+import SiteLayout from "@/components/layout/SiteLayout.astro";
+import PageHeader from "@/components/common/PageHeader.astro";
+import EmptyState from "@/components/common/EmptyState.astro";
+import MusicFeed from "@/components/music/MusicFeed";
+import { getMusic } from "@/lib/content";
+import { mapMusicArchiveEntry, selectFeaturedRecord } from "@/lib/music/archive";
+import { withBase } from "@/lib/paths";
+const entries = await getMusic(); const music = entries.map(mapMusicArchiveEntry); const featured = selectFeaturedRecord(music);
+const labels = { song: "单曲", album: "专辑", playlist: "歌单" }; const kinds = Object.entries(labels).map(([value, label]) => ({ value, label, count: music.filter((item) => item.kind === value).length })).filter((item) => item.count);
+const tagCount = new Map<string, number>(); music.forEach((item) => item.tags.forEach((tag) => tagCount.set(tag, (tagCount.get(tag) ?? 0) + 1))); const tags = [...tagCount].map(([value, count]) => ({ value, count }));
 ---
-<SiteLayout title="音乐" description="深夜循环的歌。" motionScene="music"><PageHeader eyebrow="MUSIC // 音乐碎片" title="深夜循环" subtitle="最近喜欢的歌、专辑与歌单。" icon="music" class="mb-8"/><div class="mb-8"><MusicPlayer client:load/></div>{music.length?<MusicFeed client:load items={items} kinds={kinds} tags={tags}/>:<EmptyState icon="music"/>}</SiteLayout>
+<SiteLayout title="音乐档案" description="个人音乐档案与唱片架。" motionScene="music"><PageHeader eyebrow="MUSIC ARCHIVE // 唱片架" title="深夜循环" subtitle="一份手动维护的音乐档案。" icon="music" class="mb-8" />
+  {featured && <section class="music-feature"><div class="music-feature-art" aria-hidden="true"><div class="vinyl-disc"><i class="vinyl-disc-label">WL</i></div>{featured.artworkUrl ? <img src={withBase(featured.artworkUrl)} alt="" /> : <span>♫</span>}</div><div class="music-feature-copy"><span class="tag-chip">CURRENT ROTATION</span><h2>{featured.title}</h2><p>{featured.artist}{featured.album && ` · ${featured.album}`}</p>{featured.thoughts && <p class="music-feature-thoughts">{featured.thoughts}</p>}<div class="music-actions">{featured.previewUrl && <button type="button" data-preview-track={featured.id}>试听</button>}{featured.appleMusicUrl && <a href={featured.appleMusicUrl} target="_blank" rel="noreferrer noopener">Apple Music ↗</a>}<a href={featured.href}>查看档案 →</a></div></div></section>}
+  {music.length ? <MusicFeed client:load items={music} kinds={kinds} tags={tags} /> : <EmptyState icon="music" />}
+</SiteLayout>

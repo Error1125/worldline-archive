@@ -201,6 +201,21 @@ const music = defineCollection({
     playlist: z.string().optional(),
     /** 原创氛围句，禁止复制真实歌词 */
     lyricsQuote: z.string().optional(),
+    /** Manually maintained Apple Music metadata; no API credentials are stored. */
+    appleMusic: z.object({
+      id: z.string().optional(),
+      url: z.string().url().optional(),
+      storefront: z.string().regex(/^[a-z]{2,3}$/).optional(),
+      artworkUrl: z.string().refine((value) => value.startsWith("/") || /^https:\/\//.test(value), "Use an HTTPS URL or a site path").optional(),
+      previewUrl: z.string().url().optional(),
+      releaseDate: z.string().optional(),
+      durationMs: z.number().int().positive().optional(),
+      genres: z.array(z.string()).optional(),
+    }).optional(),
+    status: z.enum(["favorite", "rotation", "memory", "archived"]).optional(),
+    rating: z.number().min(0).max(10).optional(),
+    thoughts: z.string().optional(),
+    moods: z.array(z.string()).default([]),
   }),
 });
 
