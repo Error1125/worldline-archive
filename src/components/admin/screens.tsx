@@ -1339,6 +1339,11 @@ export function PublishFormScreen({
       payload[k] = v;
     }
     if (def.hasBody && body.trim()) payload.body = body;
+    if (def.type === "music") {
+      const appleMusic = { id: payload.appleMusicId, storefront: payload.appleMusicStorefront, artworkUrl: payload.appleMusicArtworkUrl, previewUrl: payload.appleMusicPreviewUrl, releaseDate: payload.appleMusicReleaseDate, durationMs: payload.appleMusicDurationMs, genres: payload.appleMusicGenres };
+      ["appleMusicId", "appleMusicStorefront", "appleMusicArtworkUrl", "appleMusicPreviewUrl", "appleMusicReleaseDate", "appleMusicDurationMs", "appleMusicGenres"].forEach((key) => delete payload[key]);
+      if (Object.values(appleMusic).some((value) => value !== undefined)) payload.appleMusic = appleMusic;
+    }
     return payload;
   };
 

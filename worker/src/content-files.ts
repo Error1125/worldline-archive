@@ -166,6 +166,7 @@ const ENUMS: Record<string, string[]> = {
   "bug.status": ["fixed", "investigating", "wontfix", "note", "resolved", "archived"],
   "bug.severity": ["low", "medium", "high", "critical"],
   "music.type": ["song", "album", "playlist"],
+  "music.status": ["favorite", "rotation", "memory", "archived"],
 };
 
 export function validatePayload(type: RecordType, p: Record<string, unknown>): void {
@@ -189,7 +190,18 @@ export function validatePayload(type: RecordType, p: Record<string, unknown>): v
     checkEnum("status", p.status, "bug.status");
     checkEnum("severity", p.severity, "bug.severity");
   }
-  if (type === "music") checkEnum("type", p.type, "music.type");
+  if (type === "music") {
+    checkEnum("type", p.type, "music.type"); checkEnum("status", p.status, "music.status");
+    if (!isEmpty(p.rating) && (typeof p.rating !== "number" || p.rating < 0 || p.rating > 10)) throw new ValidationError(["rating"]);
+    const metadata = p.appleMusic;
+    if (!isEmpty(metadata)) {
+      if (typeof metadata !== "object" || Array.isArray(metadata)) throw new ValidationError(["appleMusic"]);
+      const apple = metadata as Record<string, unknown>;
+      if (!isEmpty(apple.durationMs) && (typeof apple.durationMs !== "number" || !Number.isInteger(apple.durationMs) || apple.durationMs <= 0)) throw new ValidationError(["appleMusic.durationMs"]);
+      if (!isEmpty(apple.storefront) && (typeof apple.storefront !== "string" || !/^[a-z]{2,3}$/.test(apple.storefront))) throw new ValidationError(["appleMusic.storefront"]);
+      for (const key of ["url", "previewUrl"]) if (!isEmpty(apple[key]) && (typeof apple[key] !== "string" || !/^https?:\/\//.test(apple[key]))) throw new ValidationError([`appleMusic.${key}`]);
+    }
+  }
   if (type === "photo" && (!Array.isArray(p.images) || p.images.length < 1)) {
     throw new ValidationError(["images"]);
   }
@@ -266,6 +278,11 @@ function buildFrontmatter(type: RecordType, p: Record<string, unknown>, date: Da
         line("appleMusicUrl", p.appleMusicUrl),
         line("externalUrl", p.externalUrl),
         line("playlist", p.playlist),
+        line("status", p.status),
+        typeof p.rating === "number" ? line("rating", p.rating, "raw") : null,
+        line("thoughts", p.thoughts),
+        line("moods", p.moods, "arr"),
+        p.appleMusic && typeof p.appleMusic === "object" && !Array.isArray(p.appleMusic) && Object.keys(p.appleMusic as object).length ? line("appleMusic", JSON.stringify(p.appleMusic), "raw") : null,
         ...baseLines(p),
       ]);
     case "anime":
