@@ -5488,3 +5488,294 @@ html[data-scene-mode="day"] .glass-card.adm-static:hover {
   .adm-outlet-exit, .adm-dialog-out, .adm-drawer-out, .adm-toast-out, .adm-overlay-out { animation: adm-fade-out 1ms linear both; }
   .adm-skeleton { animation: none; }
 }
+
+/* Phase A only: full-turn crystal album rotor. Every blade owns one fixed slot on the same cylinder. */
+.rotor-crystal-wheel {
+  position: relative;
+  min-height: 590px;
+  overflow: hidden;
+  outline: 0;
+  overscroll-behavior: contain;
+  touch-action: pan-x;
+  user-select: none;
+}
+
+.rotor-crystal-stage {
+  position: relative;
+  min-height: 550px;
+  pointer-events: none;
+  transform-style: preserve-3d;
+}
+
+.rotor-crystal-stage::before,
+.rotor-crystal-stage::after {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  top: 50%;
+  width: 16px;
+  height: calc(var(--rotor-radius-y) * 1.72);
+  border: 1px solid rgba(141, 220, 255, .2);
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(141, 220, 255, .08), transparent 26% 74%, rgba(164, 112, 255, .08));
+  box-shadow: inset 0 0 18px rgba(112, 205, 255, .08), 0 0 20px rgba(94, 185, 255, .06);
+  transform: translateY(-50%);
+}
+
+.rotor-crystal-stage::before { left: calc(50% - var(--blade-width) / 2 - 24px); }
+.rotor-crystal-stage::after { right: calc(50% - var(--blade-width) / 2 - 24px); }
+
+.rotor-crystal-blade {
+  position: absolute;
+  top: calc(50% - var(--blade-height) / 2);
+  left: calc(50% - var(--blade-width) / 2);
+  width: var(--blade-width);
+  height: var(--blade-height);
+  margin: 0;
+  padding: 0;
+  pointer-events: auto;
+  border: 0;
+  border-radius: 12px;
+  color: #f4fdff;
+  background: transparent;
+  cursor: pointer;
+  isolation: isolate;
+  transform-style: preserve-3d;
+  backface-visibility: visible;
+  will-change: transform, filter, opacity;
+}
+
+.rotor-crystal-blade > span {
+  position: absolute;
+  pointer-events: none;
+  transform-style: preserve-3d;
+}
+
+.rotor-crystal-body {
+  inset: 0;
+  z-index: 0;
+  opacity: calc(.42 + var(--face-reveal) * .58);
+  border-radius: 12px 5px 14px 6px;
+  background:
+    radial-gradient(ellipse at var(--highlight-x) var(--highlight-y), rgba(255, 255, 255, .36), transparent 24%),
+    linear-gradient(132deg, rgba(226, 251, 255, .28), rgba(84, 171, 219, .14) 44%, rgba(96, 67, 163, .22)),
+    rgba(18, 29, 65, .7);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, .54),
+    inset 0 -10px 22px rgba(3, 10, 34, .32),
+    0 18px 38px rgba(0, 0, 0, .28);
+  backdrop-filter: blur(12px) saturate(132%);
+  clip-path: polygon(2% 0, 98% 2%, 100% 91%, 96% 100%, 3% 97%, 0 8%);
+}
+
+.rotor-crystal-art {
+  inset: 10px;
+  z-index: 1;
+  opacity: var(--art-visibility);
+  overflow: hidden;
+  border: 1px solid rgba(228, 250, 255, .34);
+  border-radius: 7px 3px 9px 4px;
+  background:
+    radial-gradient(circle at 68% 30%, hsl(var(--art-hue-alt) 88% 72% / .92), transparent 22%),
+    linear-gradient(126deg, hsl(var(--art-hue) 82% 57% / .88), hsl(var(--art-hue-alt) 68% 26% / .94));
+  box-shadow: inset 0 0 22px rgba(255, 255, 255, .1), 0 0 12px rgba(0, 0, 0, .18);
+  filter: var(--art-filter);
+  transform: translateZ(2px) scale(calc(.96 + var(--face-reveal) * .04));
+}
+
+.rotor-crystal-art::before,
+.rotor-crystal-art::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.rotor-crystal-art::before {
+  inset: -18% 35% -18% -4%;
+  background: linear-gradient(118deg, transparent 14%, rgba(255, 255, 255, .58) 15% 18%, transparent 19% 44%, rgba(3, 9, 34, .62) 45% 69%, transparent 70%);
+  transform: skewX(-13deg);
+}
+
+.rotor-crystal-art::after {
+  right: 8%;
+  bottom: 10%;
+  width: 31%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 255, 255, .34);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 32%, rgba(255, 255, 255, .65), transparent 10%), radial-gradient(circle, transparent 27%, rgba(4, 8, 30, .7) 29% 43%, transparent 45%);
+  box-shadow: 0 0 0 9px rgba(255, 255, 255, .05), 0 0 32px rgba(255, 255, 255, .14);
+}
+
+.rotor-crystal-blade[data-art-variant="1"] .rotor-crystal-art {
+  background: radial-gradient(circle at 30% 45%, #f6d96e 0 10%, transparent 11%), repeating-radial-gradient(circle at 30% 45%, transparent 0 14px, rgba(255, 255, 255, .2) 15px 16px), linear-gradient(135deg, #8c315f, #211f5e 58%, #162238);
+}
+
+.rotor-crystal-blade[data-art-variant="2"] .rotor-crystal-art {
+  background: linear-gradient(165deg, transparent 42%, rgba(255, 255, 255, .76) 43% 48%, transparent 49%), repeating-linear-gradient(75deg, rgba(255, 255, 255, .14) 0 8px, transparent 8px 22px), linear-gradient(120deg, #1e8c94, #173262 54%, #a85a8b);
+}
+
+.rotor-crystal-blade[data-art-variant="3"] .rotor-crystal-art {
+  background: conic-gradient(from 205deg at 68% 58%, #f4cc37, #f45f58, #422b83, #45b7c2, #f4cc37);
+}
+
+.rotor-crystal-blade[data-art-variant="4"] .rotor-crystal-art {
+  background: radial-gradient(ellipse at 68% 44%, rgba(255, 255, 255, .72), transparent 5%), linear-gradient(33deg, transparent 47%, rgba(4, 8, 29, .72) 48% 55%, transparent 56%), linear-gradient(147deg, #d9e8eb, #538ec0 42%, #29265f 74%, #b5557c);
+}
+
+.rotor-crystal-refraction {
+  inset: 4px;
+  z-index: 2;
+  opacity: calc(.36 + var(--face-reveal) * .64);
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse at var(--highlight-x) 24%, rgba(209, 251, 255, .34), transparent 24%),
+    linear-gradient(100deg, transparent 18%, rgba(88, 231, 255, .16) 32%, transparent 46%, rgba(223, 113, 255, .14) 72%, transparent 84%);
+}
+
+.rotor-crystal-glare {
+  inset: 2px;
+  z-index: 5;
+  opacity: calc(.32 + var(--face-reveal) * .68);
+  border-radius: inherit;
+  background: radial-gradient(ellipse at var(--highlight-x) var(--highlight-y), rgba(255, 255, 255, .52), transparent 16%);
+  mix-blend-mode: screen;
+  transform: translateZ(5px);
+}
+
+.rotor-crystal-glow {
+  inset: 24% 28%;
+  z-index: 3;
+  opacity: calc(.22 + var(--face-reveal) * .78);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, hsl(var(--art-hue) 90% 70% / .2), transparent 70%);
+  filter: blur(15px);
+  transform: translateZ(4px);
+}
+
+.rotor-crystal-noise {
+  inset: 2px;
+  z-index: 4;
+  border-radius: inherit;
+  opacity: .11;
+  background-image: radial-gradient(rgba(255, 255, 255, .72) .55px, transparent .8px), radial-gradient(rgba(111, 219, 255, .38) .45px, transparent .72px);
+  background-position: 0 0, 4px 6px;
+  background-size: 8px 8px, 13px 13px;
+}
+
+.rotor-crystal-front-edge {
+  inset: 0;
+  z-index: 6;
+  border: 1px solid rgba(222, 249, 255, .76);
+  border-radius: 12px 5px 14px 6px;
+  box-shadow: inset 0 0 0 1px rgba(159, 226, 255, .15), inset 0 0 15px rgba(255, 255, 255, .2), 0 0 5px rgba(166, 237, 255, .42);
+  transform: translateZ(6px);
+}
+
+.rotor-crystal-thickness {
+  inset: 5px 5px calc(var(--blade-thickness) * -.55) 5px;
+  z-index: -1;
+  border: 1px solid rgba(126, 222, 255, .54);
+  border-radius: 10px;
+  opacity: calc(.35 + var(--edge-strength) * .55);
+  background: linear-gradient(180deg, rgba(169, 242, 255, .46), rgba(39, 62, 125, .82));
+  box-shadow: inset 0 -9px 13px rgba(1, 5, 24, .55), 0 6px 10px rgba(0, 0, 0, .2);
+  transform: translateZ(calc(var(--blade-thickness) * -1));
+}
+
+.rotor-crystal-spine {
+  z-index: 9;
+  right: 5px;
+  bottom: 0;
+  left: 5px;
+  height: var(--blade-thickness);
+  overflow: hidden;
+  border: 1px solid rgba(214, 249, 255, .72);
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, hsl(var(--art-hue) 88% 68% / .72), hsl(var(--art-hue-alt) 82% 64% / .76)),
+    rgba(18, 35, 68, .96);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .68), inset 0 -5px 8px rgba(3, 9, 32, .5), 0 0 8px rgba(117, 221, 255, .22);
+  transform: translateY(50%) rotateX(-90deg);
+  backface-visibility: visible;
+}
+
+.rotor-crystal-spine i {
+  position: absolute;
+  inset: 2px auto 2px 5px;
+  width: 34%;
+  border-radius: 999px;
+  background: rgba(242, 254, 255, .76);
+  box-shadow: 0 0 8px rgba(255, 255, 255, .45);
+}
+
+.rotor-crystal-spine b {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  color: rgba(248, 255, 255, .94);
+  font: 700 .55rem/1 monospace;
+  letter-spacing: .14em;
+  text-shadow: 0 1px 4px #02061a;
+  transform: translateY(-50%);
+}
+
+.rotor-crystal-number {
+  z-index: 8;
+  opacity: var(--face-reveal);
+  right: 18px;
+  bottom: 15px;
+  color: rgba(242, 253, 255, .88);
+  font: 700 .62rem/1 monospace;
+  letter-spacing: .16em;
+  text-shadow: 0 1px 5px #020719;
+  transform: translateZ(8px);
+  backface-visibility: hidden;
+}
+
+.rotor-crystal-blade:focus-visible .rotor-crystal-front-edge {
+  outline: 2px solid rgba(174, 245, 255, .9);
+  outline-offset: 4px;
+}
+
+.rotor-crystal-controls {
+  position: absolute;
+  z-index: 130;
+  right: 1rem;
+  bottom: 1rem;
+  display: grid;
+  gap: .45rem;
+}
+
+.rotor-crystal-controls button {
+  width: 2.45rem;
+  height: 2.45rem;
+  border: 1px solid var(--ia-line-strong);
+  border-radius: 50%;
+  color: var(--ia-ink);
+  background: color-mix(in srgb, var(--ia-panel) 78%, transparent);
+  font-size: 1rem;
+}
+
+.lab-compare-implementation .rotor-crystal-wheel { min-height: 560px; }
+.lab-compare-implementation .rotor-crystal-stage { min-height: 520px; }
+.lab-compare-implementation .rotor-crystal-controls { display: none; }
+
+@media (max-width: 760px) {
+  .rotor-crystal-wheel { min-height: 510px; }
+  .rotor-crystal-stage { min-height: 470px; }
+  .rotor-crystal-blade {
+    width: min(var(--blade-width), 78vw);
+    height: calc(min(var(--blade-width), 78vw) * .525);
+    top: calc(50% - min(var(--blade-width), 78vw) * .2625);
+    left: calc(50% - min(var(--blade-width), 78vw) / 2);
+  }
+  .rotor-crystal-stage::before { left: 7vw; }
+  .rotor-crystal-stage::after { right: 7vw; }
+  .rotor-crystal-axis { width: 88vw; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rotor-crystal-blade { will-change: auto; }
+  .rotor-crystal-glare { mix-blend-mode: normal; }
+}
