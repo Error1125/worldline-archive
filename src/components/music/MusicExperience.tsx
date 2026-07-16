@@ -5,7 +5,9 @@ import MusicHeroPlayer from "@/components/music/MusicHeroPlayer";
 import PlaylistShelf from "@/components/music/PlaylistShelf";
 import type { FolioSourceRect, FolioTransitionState } from "@/components/music/TrackWheelDialog";
 
-const loadTrackWheelDialog = () => import("@/components/music/TrackWheelDialog");
+const importTrackWheelDialog = () => import("@/components/music/TrackWheelDialog");
+let trackWheelDialogPromise: ReturnType<typeof importTrackWheelDialog> | undefined;
+const loadTrackWheelDialog = () => trackWheelDialogPromise ??= importTrackWheelDialog();
 const TrackWheelDialog = lazy(loadTrackWheelDialog);
 
 type FolioTransition = {
@@ -19,7 +21,7 @@ export default function MusicExperience({ playlists }: { playlists: MusicPlaylis
   const state = useMusicState();
   const [transition, setTransition] = useState<FolioTransition>();
   const overlayTrigger = useRef<HTMLButtonElement | null>(null);
-  const timingProfile = useRef({ mobile: false, reduced: false });
+  const openingPlaylist = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     restoreMusicState();
@@ -45,61 +47,40 @@ export default function MusicExperience({ playlists }: { playlists: MusicPlaylis
     };
   }, [transitionOpen]);
 
-  useEffect(() => {
-    if (!transition) return;
-    const { mobile, reduced } = timingProfile.current;
-    const delay = transition.state === "lifting"
-      ? reduced ? 55 : mobile ? 85 : 140
-      : transition.state === "opening"
-        ? reduced ? 65 : mobile ? 190 : 280
-        : transition.state === "expanding"
-          ? reduced ? 80 : mobile ? 260 : 340
-          : transition.state === "collapsing"
-            ? reduced ? 90 : mobile ? 230 : 300
-            : transition.state === "closing"
-              ? reduced ? 120 : mobile ? 310 : 440
-              : undefined;
-    if (delay === undefined) return;
-
-    const timer = window.setTimeout(() => {
-      if (transition.state === "closing") {
-        const trigger = overlayTrigger.current;
-        setTransition(undefined);
-        requestAnimationFrame(() => trigger?.focus());
-        return;
-      }
-      const nextState: Partial<Record<FolioTransitionState, FolioTransitionState>> = {
-        lifting: "opening",
-        opening: "expanding",
-        expanding: "open",
-        collapsing: "closing",
-      };
-      const next = nextState[transition.state];
-      if (next) setTransition(current => current ? { ...current, state: next } : current);
-    }, delay);
-    return () => window.clearTimeout(timer);
-  }, [transition]);
-
   const requestClose = useCallback(() => {
     setTransition(current => {
-      if (!current || current.state === "collapsing" || current.state === "closing") return current;
-      return { ...current, state: "collapsing" };
+      if (!current || current.state === "closing") return current;
+      return { ...current, state: "closing" };
     });
   }, []);
 
-  const beginOpen = (playlistId: string, trigger: HTMLButtonElement) => {
-    if (transition) return;
+  const handleOpened = useCallback(() => {
+    setTransition(current => current?.state === "opening" ? { ...current, state: "open" } : current);
+  }, []);
+
+  const handleClosed = useCallback(() => {
+    const trigger = overlayTrigger.current;
+    openingPlaylist.current = undefined;
+    setTransition(undefined);
+    requestAnimationFrame(() => trigger?.focus());
+  }, []);
+
+  const beginOpen = async (playlistId: string, trigger: HTMLButtonElement) => {
+    if (transition || openingPlaylist.current) return;
+    openingPlaylist.current = playlistId;
     const source = trigger.querySelector<HTMLElement>(".album-folio") ?? trigger;
     const rect = source.getBoundingClientRect();
-    timingProfile.current = {
-      mobile: window.matchMedia("(max-width: 767px)").matches,
-      reduced: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    };
     overlayTrigger.current = trigger;
-    void loadTrackWheelDialog();
+    try {
+      await loadTrackWheelDialog();
+    } catch (error) {
+      openingPlaylist.current = undefined;
+      console.error("Unable to prepare the crystal track wheel", error);
+      return;
+    }
     setTransition({
       playlistId,
-      state: "lifting",
+      state: "opening",
       sourceRect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
     });
   };
@@ -108,7 +89,14 @@ export default function MusicExperience({ playlists }: { playlists: MusicPlaylis
     <MusicHeroPlayer />
     <PlaylistShelf playlists={playlists} activePlaylistId={state.playlistId} transitioningPlaylistId={transition?.playlistId} onSelect={beginOpen} />
     {openPlaylist && transition && <Suspense fallback={null}>
-      <TrackWheelDialog playlist={openPlaylist} sourceRect={transition.sourceRect} transitionState={transition.state} onClose={requestClose} />
+      <TrackWheelDialog
+        playlist={openPlaylist}
+        sourceRect={transition.sourceRect}
+        transitionState={transition.state}
+        onClose={requestClose}
+        onOpened={handleOpened}
+        onClosed={handleClosed}
+      />
     </Suspense>}
   </div>;
 }
