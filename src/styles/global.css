@@ -5959,13 +5959,13 @@ html[data-scene-mode="day"] .glass-card.adm-static:hover {
   transform-origin: 50% 44%;
 }
 
-.folio-wheel-transition {
+.track-wheel-overlay {
   overflow: hidden;
   background: transparent;
   isolation: isolate;
 }
 
-.folio-transition-scrim {
+.track-wheel-overlay-scrim {
   position: fixed;
   z-index: 0;
   inset: 0;
@@ -5976,8 +5976,16 @@ html[data-scene-mode="day"] .glass-card.adm-static:hover {
   will-change: opacity;
 }
 
-.folio-wheel-transition .track-wheel-dialog {
+.track-wheel-overlay .track-wheel-dialog {
   z-index: 20;
+}
+
+.track-wheel-final-stage {
+  position: relative;
+  z-index: 10;
+  isolation: isolate;
+  perspective-origin: 50% 50%;
+  transform-origin: 50% 44%;
 }
 
 .folio-transition-clone {
@@ -6083,7 +6091,7 @@ html.music-overlay-active .music-archive-page *::after { animation-play-state: p
 }
 
 @media (max-width: 760px) {
-  .folio-transition-scrim {
+  .track-wheel-overlay-scrim {
     background: rgba(2, 5, 17, .992);
   }
   .folio-transition-clone,

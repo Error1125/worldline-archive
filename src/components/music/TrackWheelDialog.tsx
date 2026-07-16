@@ -100,6 +100,7 @@ export default function TrackWheelDialog({
   const transitionStateRef = useRef(transitionState);
   transitionStateRef.current = transitionState;
   const openProgress = useMotionValue(0);
+  const [showTransitionScene, setShowTransitionScene] = useState(true);
   const geometry = useMemo(() => getTransitionGeometry(sourceRect), [sourceRect]);
 
   const scrimOpacity = useTransform(openProgress, [0, .08, .58, 1], [0, .08, .96, 1]);
@@ -136,19 +137,32 @@ export default function TrackWheelDialog({
         const controls = animate(openProgress, 1, { duration, ease: [0.4, 0, 0.2, 1] });
         animation.current = controls;
         await controls;
-        if (runId === preparation.current && openProgress.get() >= .999) onOpened();
+        if (runId !== preparation.current) return;
+        openProgress.set(1);
+        animation.current = null;
+        setShowTransitionScene(false);
+        onOpened();
       })();
     } else if (transitionState === "closing") {
-      const currentProgress = Math.max(0, Math.min(1, openProgress.get()));
-      const baseDuration = reducedMotion ? .2 : geometry.mobile ? .56 : .7;
-      const controls = animate(openProgress, 0, {
-        duration: Math.max(.08, baseDuration * Math.max(.2, currentProgress)),
-        ease: [0.4, 0, 0.2, 1],
-      });
-      animation.current = controls;
-      void controls.then(() => {
-        if (runId === preparation.current && openProgress.get() <= .001) onClosed();
-      });
+      void (async () => {
+        const currentProgress = Math.max(0, Math.min(1, openProgress.get()));
+        setShowTransitionScene(true);
+        await nextFrame();
+        await nextFrame();
+        if (runId !== preparation.current) return;
+        const baseDuration = reducedMotion ? .2 : geometry.mobile ? .56 : .7;
+        const controls = animate(openProgress, 0, {
+          duration: Math.max(.08, baseDuration * Math.max(.2, currentProgress)),
+          ease: [0.4, 0, 0.2, 1],
+        });
+        animation.current = controls;
+        await controls;
+        if (runId !== preparation.current) return;
+        openProgress.set(0);
+        animation.current = null;
+        setShowTransitionScene(false);
+        onClosed();
+      })();
     }
 
     return () => {
@@ -227,22 +241,23 @@ export default function TrackWheelDialog({
   const overlay = (
     <motion.div
       ref={overlayRoot}
-      className="track-wheel-backdrop folio-wheel-transition"
+      className="track-wheel-backdrop track-wheel-overlay"
       data-transition-phase={transitionState}
+      data-transition-scene={showTransitionScene}
       style={{ "--folio-open-progress": openProgress } as never}
       onPointerDown={event => {
         const target = event.target as HTMLElement;
         if (!target.closest(".track-wheel-dialog, .folio-transition-clone")) onClose();
       }}
     >
-      <motion.div className="folio-transition-scrim" style={{ opacity: scrimOpacity }} aria-hidden="true" />
-      <motion.div className="folio-transition-clone" style={clonePositionStyle} aria-hidden="true">
-        <AlbumFolioVisual playlist={playlist} className="folio-transition-album" />
-        <motion.span className="folio-transition-preview-pages" style={{ opacity: previewOpacity }}>
-          {Array.from({ length: 3 }, (_, index) => <FolioPreviewPage key={index} index={index} progress={previewSpread} mobile={geometry.mobile} />)}
-        </motion.span>
-        <span className="folio-transition-caption">{playlist.title}</span>
-      </motion.div>
+      <motion.div className="track-wheel-overlay-scrim" style={{ opacity: scrimOpacity }} aria-hidden="true" />
+      {showTransitionScene && <motion.div className="folio-transition-clone" style={clonePositionStyle} aria-hidden="true">
+          <AlbumFolioVisual playlist={playlist} className="folio-transition-album" />
+          <motion.span className="folio-transition-preview-pages" style={{ opacity: previewOpacity }}>
+            {Array.from({ length: 3 }, (_, index) => <FolioPreviewPage key={index} index={index} progress={previewSpread} mobile={geometry.mobile} />)}
+          </motion.span>
+          <span className="folio-transition-caption">{playlist.title}</span>
+        </motion.div>}
 
       <motion.section
         ref={dialog}
@@ -262,7 +277,7 @@ export default function TrackWheelDialog({
           <button ref={closeButton} type="button" onClick={onClose} aria-label="关闭曲目轮盘"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" /></svg></button>
         </motion.header>
 
-        <motion.div className="track-wheel-entry" style={{ opacity: wheelOpacity, scale: wheelScale, scaleY: wheelScaleY, y: wheelY }}>
+        <motion.div className="track-wheel-entry track-wheel-final-stage" style={{ opacity: wheelOpacity, scale: wheelScale, scaleY: wheelScaleY, y: wheelY }}>
           <CrystalTrackWheel
             tracks={playlist.tracks}
             activeIndex={selectedTrackIndex}
