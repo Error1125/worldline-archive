@@ -1,161 +1,66 @@
 import { useSyncExternalStore } from "react";
-import { mockTracks } from "@/lib/apple-music/mock";
-import type { AppleTrack } from "@/lib/apple-music/types";
+import type { MusicArchiveTrack, MusicPlayerState, MusicPlaylist } from "@/lib/apple-music/types";
 
-/**
- * 全局音乐播放状态 store（v3）。
- * - 首页 NowPlayingCard(MusicPlayer) 与非首页 GlobalMusicPlayer 共用同一份状态；
- * - View Transitions 下 JS 上下文常驻，模块单例天然跨页；localStorage 兜底刷新后恢复；
- * - 仍是 mock 播放（不出声），进度按曲目时长匀速推进，结束自动切下一首；
- * - 后续接入 Apple Music / 真实歌单时，替换 playlist 与 tick 数据源即可。
- */
-
-export interface MusicState {
-  /** 当前曲目在 playlist 中的下标 */
-  index: number;
-  playing: boolean;
-  /** 播放进度 0..1 */
-  progress: number;
-  /** 最近一次写入的时间戳（ms），用于按经过时间推进进度 */
-  updatedAt: number;
-}
-
-const KEY = "wl-music-state";
-const DEFAULT_DURATION_MS = 240_000;
-
-/** 播放列表：取 mock 中带封面的曲目 */
-export const playlist: AppleTrack[] = mockTracks.filter((t) => t.artworkUrl);
-
-const FALLBACK_STATE: MusicState = { index: 0, playing: false, progress: 0.35, updatedAt: 0 };
-
-function clampIndex(i: number): number {
-  if (!Number.isFinite(i) || playlist.length === 0) return 0;
-  return ((Math.trunc(i) % playlist.length) + playlist.length) % playlist.length;
-}
-
-function load(): MusicState {
-  if (typeof window === "undefined") return FALLBACK_STATE;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return { ...FALLBACK_STATE, updatedAt: Date.now() };
-    const parsed = JSON.parse(raw) as Partial<MusicState>;
-    return {
-      index: clampIndex(parsed.index ?? 0),
-      // 刷新后不自动续播（浏览器也不允许无手势自动播放的观感），保留进度
-      playing: false,
-      progress: Math.min(0.999, Math.max(0, Number(parsed.progress) || 0)),
-      updatedAt: Date.now(),
-    };
-  } catch {
-    return { ...FALLBACK_STATE, updatedAt: Date.now() };
-  }
-}
-
-let state: MusicState = load();
+const KEY = "wl-music-state-v3";
+const EMPTY: MusicPlayerState = { playing: false, currentTime: 0, duration: 0, progress: 0, muted: false, volume: .8, updatedAt: 0 };
+let playlists: MusicPlaylist[] = [];
+let state: MusicPlayerState = EMPTY;
+let audio: HTMLAudioElement | undefined;
+let restored = false;
+let playlistSignature = "";
 const listeners = new Set<() => void>();
-let timer: number | null = null;
-
-function persist() {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(state));
-  } catch {}
+const notify = () => listeners.forEach((listener) => listener());
+const allTracks = () => playlists.flatMap((playlist) => playlist.tracks);
+const getPlaylistById = (id = state.playlistId) => playlists.find((playlist) => playlist.id === id);
+const findTrack = (trackId = state.trackId) => allTracks().find((track) => track.id === trackId);
+function pagePlaylists() { return typeof window === "undefined" ? [] : (window as Window & { __WL_MUSIC_PLAYLISTS__?: MusicPlaylist[] }).__WL_MUSIC_PLAYLISTS__ ?? []; }
+function persist() { try { localStorage.setItem(KEY, JSON.stringify({ playlistId: state.playlistId, trackId: state.trackId, muted: state.muted, volume: state.volume })); } catch {} }
+function apply(next: Partial<MusicPlayerState>) { state = { ...state, ...next, updatedAt: Date.now() }; persist(); notify(); }
+function defaultPlaylist() { return playlists.find((playlist) => playlist.featured) ?? playlists[0]; }
+function safeInitialState(saved: Partial<MusicPlayerState>): MusicPlayerState {
+  const playlist = playlists.find((item) => item.id === saved.playlistId) ?? defaultPlaylist();
+  const track = playlist?.tracks.find((item) => item.id === saved.trackId) ?? playlist?.tracks.find((item) => item.featured) ?? playlist?.tracks[0];
+  return { ...EMPTY, playlistId: playlist?.id, trackId: track?.id, muted: saved.muted === true, volume: typeof saved.volume === "number" ? saved.volume : .8, updatedAt: Date.now() };
 }
-
-function emit() {
-  listeners.forEach((fn) => fn());
+export function restoreMusicState() {
+  if (restored || typeof window === "undefined") return;
+  restored = true;
+  try { state = safeInitialState(JSON.parse(localStorage.getItem(KEY) || "{}") as Partial<MusicPlayerState>); } catch { state = safeInitialState({}); }
+  notify();
 }
-
-function durationOf(index: number): number {
-  return playlist[index]?.durationMs ?? DEFAULT_DURATION_MS;
+function syncAudioState() { if (!audio) return; apply({ currentTime: audio.currentTime || 0, duration: Number.isFinite(audio.duration) ? audio.duration : 0, progress: audio.duration ? audio.currentTime / audio.duration : 0 }); }
+function clearAudio() { if (!audio) return; audio.pause(); audio.src = ""; audio.load(); audio = undefined; }
+function audioFor(track: MusicArchiveTrack): HTMLAudioElement {
+  if (audio && audio.src === track.previewUrl) return audio;
+  clearAudio(); audio = new Audio(track.previewUrl); audio.preload = "metadata"; audio.muted = state.muted; audio.volume = state.volume ?? .8;
+  audio.addEventListener("loadedmetadata", syncAudioState); audio.addEventListener("timeupdate", syncAudioState);
+  audio.addEventListener("pause", () => apply({ playing: false }));
+  audio.addEventListener("ended", () => nextTrack());
+  audio.addEventListener("error", () => apply({ playing: false, error: "试听音频暂不可用" }));
+  return audio;
 }
-
-/** 把 updatedAt → now 之间的时长结算进 progress */
-function settle(now: number) {
-  if (!state.playing) {
-    state = { ...state, updatedAt: now };
-    return;
-  }
-  const advanced = state.progress + (now - state.updatedAt) / durationOf(state.index);
-  if (advanced >= 1) {
-    // 播完自动切下一首
-    state = { index: clampIndex(state.index + 1), playing: true, progress: 0, updatedAt: now };
-  } else {
-    state = { ...state, progress: advanced, updatedAt: now };
-  }
+export function initializeMusicPlaylists(items: MusicPlaylist[]) {
+  const signature = items.map((playlist) => `${playlist.id}:${playlist.tracks.map((track) => track.id).join(",")}`).join("|");
+  if (signature === playlistSignature) return;
+  playlistSignature = signature; playlists = items; state = safeInitialState(state); notify();
 }
-
-function tick() {
-  settle(Date.now());
-  persist();
-  emit();
+export function getPlaylists() { if (!playlists.length) initializeMusicPlaylists(pagePlaylists()); return playlists; }
+export function getActivePlaylist() { getPlaylists(); return getPlaylistById(); }
+export function getTrack(trackId = state.trackId) { getPlaylists(); return findTrack(trackId); }
+export function selectPlaylist(playlistId: string) { if (playlists.some((playlist) => playlist.id === playlistId)) apply({ playlistId }); }
+export function selectTrack(playlistId: string, trackId: string) { if (getPlaylistById(playlistId)?.tracks.some((track) => track.id === trackId)) { if (state.trackId !== trackId) clearAudio(); apply({ playlistId, trackId, playing: false, currentTime: 0, duration: 0, progress: 0, error: undefined }); } }
+export function playTrack(trackId = state.trackId, playlistId = state.playlistId) {
+  const playlist = getPlaylistById(playlistId); const track = playlist?.tracks.find((item) => item.id === trackId) ?? findTrack(trackId);
+  if (!track?.previewUrl || typeof Audio === "undefined") { clearAudio(); apply({ playlistId, trackId, playing: false, currentTime: 0, duration: 0, progress: 0, error: "试听未配置" }); return false; }
+  const player = audioFor(track); apply({ playlistId, trackId: track.id, playing: true, error: undefined, currentTime: 0, duration: 0, progress: 0 });
+  player.play().catch(() => apply({ playing: false, error: "浏览器阻止了试听播放" })); return true;
 }
-
-function ensureTimer() {
-  if (typeof window === "undefined") return;
-  if (state.playing && timer == null) {
-    timer = window.setInterval(tick, 1000);
-  } else if (!state.playing && timer != null) {
-    window.clearInterval(timer);
-    timer = null;
-  }
-}
-
-// ---- 对外 API ----
-
-export function getState(): MusicState {
-  return state;
-}
-
-export function getServerState(): MusicState {
-  return FALLBACK_STATE;
-}
-
-export function getTrack(index = state.index): AppleTrack | undefined {
-  return playlist[clampIndex(index)];
-}
-
-export function subscribe(fn: () => void): () => void {
-  listeners.add(fn);
-  return () => listeners.delete(fn);
-}
-
-export function setPlaying(playing: boolean) {
-  const now = Date.now();
-  settle(now);
-  state = { ...state, playing, updatedAt: now };
-  persist();
-  ensureTimer();
-  emit();
-}
-
-export function togglePlaying() {
-  setPlaying(!state.playing);
-}
-
-export function nextTrack() {
-  state = {
-    index: clampIndex(state.index + 1),
-    playing: state.playing,
-    progress: 0,
-    updatedAt: Date.now(),
-  };
-  persist();
-  emit();
-}
-
-export function prevTrack() {
-  state = {
-    index: clampIndex(state.index - 1),
-    playing: state.playing,
-    progress: 0,
-    updatedAt: Date.now(),
-  };
-  persist();
-  emit();
-}
-
-/** React hook：订阅全局音乐状态（SSR 安全） */
-export function useMusicState(): MusicState {
-  return useSyncExternalStore(subscribe, getState, getServerState);
-}
+export function togglePlaying() { if (state.playing) { audio?.pause(); return; } playTrack(); }
+export function toggleMuted() { const muted = !state.muted; if (audio) audio.muted = muted; apply({ muted }); }
+export function setVolume(volume: number) { const next = Math.max(0, Math.min(1, volume)); if (audio) audio.volume = next; apply({ volume: next, muted: next === 0 }); }
+export function nextTrack(direction = 1) { const playlist = getPlaylistById(); if (!playlist?.tracks.length) return; const index = playlist.tracks.findIndex((track) => track.id === state.trackId); const next = playlist.tracks[(index + direction + playlist.tracks.length) % playlist.tracks.length]; if (next) playTrack(next.id, playlist.id); }
+export const prevTrack = () => nextTrack(-1);
+export function getState() { return state; }
+export function getServerState() { return EMPTY; }
+export function subscribe(listener: () => void) { listeners.add(listener); return () => listeners.delete(listener); }
+export function useMusicState() { return useSyncExternalStore(subscribe, getState, getServerState); }
