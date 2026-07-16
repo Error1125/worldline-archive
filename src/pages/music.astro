@@ -9,6 +9,8 @@ import { createLocalPlaylists } from "@/lib/music/playlists";
 const playlists = createLocalPlaylists((await getMusic()).map(mapMusicArchiveEntry));
 ---
 <SiteLayout title="音乐空间" description="以播放列表组织的个人音乐空间。" motionScene="music">
-  <PageHeader eyebrow="MUSIC // PLAYLIST ROOM" title="深夜循环" subtitle="从播放列表开始，而不是从检索开始。" icon="music" class="mb-8" />
-  {playlists.length ? <MusicExperience client:load playlists={playlists} /> : <EmptyState icon="music" />}
+  <div class="music-archive-page">
+    <PageHeader eyebrow="MUSIC // PLAYLIST ROOM" title="深夜循环" subtitle="沿世界线读取此刻的音乐档案。" icon="music" class="music-page-header" />
+    {playlists.length ? <MusicExperience client:load playlists={playlists} /> : <EmptyState icon="music" />}
+  </div>
 </SiteLayout>
