@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { withBase } from "@/lib/paths";
-import { getTrack, nextTrack, playlist, togglePlaying, useMusicState } from "@/lib/music/store";
+import { getActivePlaylist, getTrack, nextTrack, togglePlaying, useMusicState } from "@/lib/music/store";
 
 /**
  * GlobalMusicPlayer —— 非首页全局音乐浮球 / Mini Player（v3）。
@@ -13,11 +13,12 @@ import { getTrack, nextTrack, playlist, togglePlaying, useMusicState } from "@/l
  * - day / night 样式全部走 CSS 变量，自动跟随主题。
  */
 
-function isHomePath(pathname: string): boolean {
+function isPlayerPage(pathname: string): boolean {
   const strip = (s: string) => (s.length > 1 && s.endsWith("/") ? s.slice(0, -1) : s);
   const base = strip(withBase("/")); // "/worldline-archive" 或 ""
   const path = strip(pathname);
-  return path === base || path === "" || path === "/";
+  const music = strip(withBase("/music"));
+  return path === base || path === "" || path === "/" || path === music;
 }
 
 const PlayPauseIcon = ({ playing }: { playing: boolean }) =>
@@ -42,11 +43,11 @@ const NextIcon = () => (
 export default function GlobalMusicPlayer() {
   const state = useMusicState();
   // 初始按「首页」处理，等 pathname 判定后再决定是否渲染，避免首页闪现浮球
-  const [onHome, setOnHome] = useState(true);
+  const [onPlayerPage, setOnPlayerPage] = useState(true);
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    const update = () => setOnHome(isHomePath(window.location.pathname));
+    const update = () => setOnPlayerPage(isPlayerPage(window.location.pathname));
     update();
     // 持久化 island 不会重挂载：监听换页事件重新判定
     document.addEventListener("astro:page-load", update);
@@ -60,8 +61,8 @@ export default function GlobalMusicPlayer() {
     return () => document.removeEventListener("astro:after-swap", collapse);
   }, []);
 
-  const track = getTrack(state.index);
-  if (onHome || !track) return null;
+  const track = getTrack();
+  if (onPlayerPage || !track) return null;
 
   const pct = Math.round(Math.min(1, Math.max(0, state.progress)) * 100);
   const cover = track.artworkUrl ? withBase(track.artworkUrl) : undefined;
@@ -77,8 +78,8 @@ export default function GlobalMusicPlayer() {
       >
         <PlayPauseIcon playing={state.playing} />
       </button>
-      {playlist.length > 1 && (
-        <button type="button" className="gm-btn clickable" onClick={nextTrack} aria-label="下一首">
+      {(getActivePlaylist()?.tracks.length ?? 0) > 1 && (
+        <button type="button" className="gm-btn clickable" onClick={() => nextTrack()} aria-label="下一首">
           <NextIcon />
         </button>
       )}

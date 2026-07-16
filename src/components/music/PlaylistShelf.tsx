@@ -1,0 +1,7 @@
+import { useRef } from "react";
+import type { MusicPlaylist } from "@/lib/apple-music/types";
+import PlaylistPackageCard from "@/components/music/PlaylistPackageCard";
+export default function PlaylistShelf({ playlists, activePlaylistId, onSelect }: { playlists: MusicPlaylist[]; activePlaylistId?: string; onSelect: (id: string, trigger: HTMLButtonElement) => void }) {
+  const shelf = useRef<HTMLDivElement>(null); const drag = useRef({ x: 0, left: 0, moved: false });
+  return <section className="playlist-shelf-section" aria-labelledby="playlist-shelf-title"><div><p className="section-kicker">PLAYLIST SHELF</p><h2 id="playlist-shelf-title">播放列表收藏架</h2></div><div ref={shelf} className="playlist-shelf" onWheel={e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { e.preventDefault(); e.currentTarget.scrollLeft += e.deltaY; } }} onPointerDown={e => { drag.current = { x: e.clientX, left: e.currentTarget.scrollLeft, moved: false }; e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => { if (!e.currentTarget.hasPointerCapture(e.pointerId)) return; const delta = e.clientX - drag.current.x; if (Math.abs(delta) > 7) drag.current.moved = true; e.currentTarget.scrollLeft = drag.current.left - delta; }} onPointerUp={e => e.currentTarget.releasePointerCapture(e.pointerId)}>{playlists.map((playlist) => <PlaylistPackageCard key={playlist.id} playlist={playlist} active={playlist.id === activePlaylistId} onSelect={(trigger) => { if (!drag.current.moved) onSelect(playlist.id, trigger); }} />)}</div></section>;
+}
