@@ -5953,53 +5953,50 @@ html[data-scene-mode="day"] .glass-card.adm-static:hover {
   }
 }
 
-.track-wheel-entry { min-width: 0; transform-origin: 50% 44%; }
+.track-wheel-entry {
+  min-width: 0;
+  pointer-events: none;
+  transform-origin: 50% 44%;
+}
 
 .folio-wheel-transition {
   overflow: hidden;
-  background:
-    radial-gradient(ellipse at 50% 42%, color-mix(in srgb, var(--ia-nebula) 17%, transparent), transparent 50%),
-    rgba(2, 5, 17, .94);
-  transition: background-color .24s ease, opacity .2s ease;
+  background: transparent;
+  isolation: isolate;
 }
 
-.folio-wheel-transition[data-transition-state="lifting"] { background-color: rgba(2, 5, 17, .18); }
-.folio-wheel-transition[data-transition-state="opening"] { background-color: rgba(2, 5, 17, .64); }
+.folio-transition-scrim {
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 42%, color-mix(in srgb, var(--ia-nebula) 15%, transparent), transparent 48%),
+    rgba(2, 5, 17, .975);
+  will-change: opacity;
+}
+
+.folio-wheel-transition .track-wheel-dialog {
+  z-index: 20;
+}
 
 .folio-transition-clone {
   position: fixed;
-  z-index: 240;
-  top: var(--folio-target-y);
-  left: var(--folio-target-x);
-  width: var(--folio-target-size);
-  height: var(--folio-target-size);
-  pointer-events: auto;
+  z-index: 30;
+  pointer-events: none;
   perspective: 1100px;
-  transform: translate3d(var(--folio-flip-x), var(--folio-flip-y), 0) scale(var(--folio-flip-scale));
   transform-origin: center;
   transform-style: preserve-3d;
-  transition: transform .42s cubic-bezier(.22,1,.36,1), opacity .18s ease;
   will-change: transform, opacity;
 }
 
 .folio-transition-clone .folio-transition-album { width: 100%; margin: 0; }
-.folio-transition-clone[data-transition-state="lifting"] { transform: translate3d(var(--folio-flip-x), calc(var(--folio-flip-y) - 7px), 0) scale(calc(var(--folio-flip-scale) * 1.035)); }
-.folio-transition-clone[data-transition-state="opening"],
-.folio-transition-clone[data-transition-state="collapsing"] { transform: translate3d(0, 0, 0) scale(1); }
-.folio-transition-clone[data-transition-state="expanding"] { opacity: .16; transform: translate3d(0, -18px, 0) scale(.9); }
-.folio-transition-clone[data-transition-state="open"] { visibility: hidden; opacity: 0; transform: translate3d(0, -20px, 0) scale(.86); }
-.folio-transition-clone[data-transition-state="closing"] { transform: translate3d(var(--folio-flip-x), var(--folio-flip-y), 0) scale(var(--folio-flip-scale)); }
 
 .folio-transition-clone .album-folio-cover {
+  transform: perspective(900px) rotateY(var(--folio-cover-rotation)) !important;
   transform-origin: left center;
-  transition: transform .34s cubic-bezier(.22,1,.36,1);
+  transition: none !important;
   will-change: transform;
-}
-
-.folio-transition-clone[data-transition-state="opening"] .album-folio-cover,
-.folio-transition-clone[data-transition-state="expanding"] .album-folio-cover,
-.folio-transition-clone[data-transition-state="collapsing"] .album-folio-cover {
-  transform: perspective(900px) rotateY(-66deg);
 }
 
 .folio-transition-preview-pages {
@@ -6017,32 +6014,21 @@ html[data-scene-mode="day"] .glass-card.adm-static:hover {
   left: 50%;
   width: calc(var(--folio-target-size) * 1.08);
   aspect-ratio: 1.9;
-  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transform-style: preserve-3d;
+}
+
+.folio-transition-preview-pages i b {
+  display: block;
+  width: 100%;
+  height: 100%;
   border: 1px solid rgba(211, 250, 255, .58);
   border-radius: 10px 4px 12px 5px;
   background: linear-gradient(126deg, rgba(207, 250, 255, .2), rgba(74, 144, 205, .15) 48%, rgba(130, 91, 222, .2));
   box-shadow: inset 0 1px rgba(255, 255, 255, .42), inset 0 -8px 14px rgba(4, 11, 38, .26);
-  transform: translate(-50%, -50%) scale(.55) rotateX(var(--preview-rotate, 0deg));
-  transition: transform .32s cubic-bezier(.22,1,.36,1), opacity .18s ease;
-  transition-delay: var(--preview-delay, 0ms);
-}
-
-.folio-transition-preview-pages i:nth-child(1) { --preview-y: -76px; --preview-stack-y: -9px; --preview-rotate: 24deg; --preview-delay: 0ms; }
-.folio-transition-preview-pages i:nth-child(2) { --preview-y: -38px; --preview-stack-y: -5px; --preview-rotate: 12deg; --preview-delay: 42ms; }
-.folio-transition-preview-pages i:nth-child(3) { --preview-y: 0px; --preview-stack-y: 0px; --preview-rotate: 0deg; --preview-delay: 84ms; }
-.folio-transition-preview-pages i:nth-child(4) { --preview-y: 38px; --preview-stack-y: 5px; --preview-rotate: -12deg; --preview-delay: 126ms; }
-.folio-transition-preview-pages i:nth-child(5) { --preview-y: 76px; --preview-stack-y: 9px; --preview-rotate: -24deg; --preview-delay: 168ms; }
-
-.folio-transition-clone[data-transition-state="opening"] .folio-transition-preview-pages i,
-.folio-transition-clone[data-transition-state="closing"] .folio-transition-preview-pages i {
-  opacity: .5;
-  transform: translate(-44%, -50%) translateY(var(--preview-stack-y)) scale(.58) rotateX(var(--preview-rotate));
-}
-
-.folio-transition-clone[data-transition-state="expanding"] .folio-transition-preview-pages i,
-.folio-transition-clone[data-transition-state="collapsing"] .folio-transition-preview-pages i {
-  opacity: .72;
-  transform: translate(-50%, -50%) translateY(var(--preview-y)) scale(.94) rotateX(var(--preview-rotate));
+  transform-style: preserve-3d;
+  will-change: transform;
 }
 
 .folio-transition-caption {
@@ -6059,12 +6045,11 @@ html[data-scene-mode="day"] .glass-card.adm-static:hover {
   white-space: nowrap;
 }
 
-.track-wheel-dialog > header,
-.track-wheel-selected { opacity: 0; transition: opacity .2s ease; }
-.track-wheel-dialog[data-transition-state="expanding"] > header { opacity: .7; }
-.track-wheel-dialog[data-transition-state="open"] > header,
-.track-wheel-dialog[data-transition-state="open"] .track-wheel-selected { opacity: 1; }
-.track-wheel-dialog:not([data-transition-state="open"]) .rotor-crystal-wheel { pointer-events: none; }
+.track-wheel-dialog[data-transition-phase="open"] .track-wheel-entry { pointer-events: auto; }
+.track-wheel-dialog:not([data-transition-phase="open"]) .rotor-crystal-wheel { pointer-events: none; }
+
+.track-wheel-overlay-wheel .rotor-crystal-stage::before,
+.track-wheel-overlay-wheel .rotor-crystal-stage::after { display: none; }
 
 html.music-overlay-active .music-archive-page *,
 html.music-overlay-active .music-archive-page *::before,
@@ -6095,28 +6080,22 @@ html.music-overlay-active .music-archive-page *::after { animation-play-state: p
 @media (prefers-reduced-motion: reduce) {
   .track-wheel-backdrop,
   .track-wheel-dialog { scroll-behavior: auto; }
-  .folio-transition-clone { transition-duration: .16s, .1s; }
-  .folio-transition-clone[data-transition-state="lifting"] { transform: translate3d(var(--folio-flip-x), var(--folio-flip-y), 0) scale(var(--folio-flip-scale)); }
-  .folio-transition-clone[data-transition-state="opening"] .album-folio-cover,
-  .folio-transition-clone[data-transition-state="expanding"] .album-folio-cover,
-  .folio-transition-clone[data-transition-state="collapsing"] .album-folio-cover { transform: perspective(900px) rotateY(-18deg); }
-  .folio-transition-preview-pages i { transition-duration: .12s; }
 }
 
 @media (max-width: 760px) {
-  .folio-transition-clone { transition-duration: .3s, .14s; }
-  .folio-transition-clone .album-folio-cover { transition-duration: .24s, .18s; }
-  .folio-transition-preview-pages i { transition-duration: .24s, .14s; }
-  .folio-transition-preview-pages i:nth-child(n+4) { display: none; }
-  .folio-transition-preview-pages i:nth-child(1) { --preview-y: -46px; --preview-rotate: 16deg; }
-  .folio-transition-preview-pages i:nth-child(2) { --preview-y: 0px; --preview-rotate: 0deg; }
-  .folio-transition-preview-pages i:nth-child(3) { --preview-y: 46px; --preview-rotate: -16deg; }
-}
-
-@media (max-width: 760px) and (prefers-reduced-motion: reduce) {
-  .folio-transition-clone { transition-duration: .16s, .1s; }
-  .folio-transition-clone .album-folio-cover { transition-duration: .12s; }
-  .folio-transition-preview-pages i { transition-duration: .12s; }
+  .folio-transition-scrim {
+    background: rgba(2, 5, 17, .992);
+  }
+  .folio-transition-clone,
+  .folio-transition-clone .album-folio,
+  .folio-transition-clone .album-folio-cover,
+  .folio-transition-clone .album-folio-backplate,
+  .folio-transition-clone .album-folio-page-stack,
+  .folio-transition-preview-pages i b {
+    backdrop-filter: none !important;
+    filter: none !important;
+    box-shadow: inset 0 1px rgba(255, 255, 255, .26), 0 0 0 1px rgba(117, 205, 255, .08) !important;
+  }
 }
 
 /* Music archive — Checkpoint 1: static Crystal Terminal and Album Folios. */
