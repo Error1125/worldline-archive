@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { animate, motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
+import { animate, motion, useMotionValue, useMotionValueEvent, useReducedMotion, useTransform } from "motion/react";
 import type { MotionValue } from "motion/react";
 import { createPortal } from "react-dom";
 import CrystalTrackWheel, { APPROVED_CRYSTAL_WHEEL_CONFIG } from "@/components/music/CrystalTrackWheel";
@@ -11,6 +11,9 @@ import type { MusicPlaylist } from "@/lib/apple-music/types";
 
 export type FolioTransitionState = "opening" | "open" | "closing";
 export type FolioSourceRect = { x: number; y: number; width: number; height: number };
+type TransitionScene = "folio" | "wheel";
+
+const VEIL_SCENE_SWAP_PROGRESS = .62;
 
 const fmt = (ms?: number) => ms
   ? `${Math.floor(ms / 60000)}:${Math.floor((ms % 60000) / 1000).toString().padStart(2, "0")}`
@@ -27,10 +30,10 @@ const focusableSelector = [
 
 const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
 
-async function prepareTransitionResources(root: HTMLElement) {
-  await document.fonts.ready;
-  const images = [...root.querySelectorAll<HTMLImageElement>("img")];
-  await Promise.all(images.map(async image => {
+async function prepareTransitionResources(root: HTMLElement | null) {
+  void document.fonts.ready;
+  const images = root ? [...root.querySelectorAll<HTMLImageElement>("img")] : [];
+  void Promise.all(images.map(async image => {
     if (typeof image.decode === "function") {
       await image.decode().catch(() => undefined);
       return;
@@ -95,31 +98,54 @@ export default function TrackWheelDialog({
   const overlayRoot = useRef<HTMLDivElement>(null);
   const dialog = useRef<HTMLElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
+  const transitionScene = useRef<HTMLDivElement>(null);
   const animation = useRef<ReturnType<typeof animate> | null>(null);
   const preparation = useRef(0);
   const transitionStateRef = useRef(transitionState);
   transitionStateRef.current = transitionState;
-  const openProgress = useMotionValue(0);
+  const transitionProgress = useMotionValue(0);
   const [showTransitionScene, setShowTransitionScene] = useState(true);
+  const [activeScene, setActiveScene] = useState<TransitionScene>("folio");
+  const activeSceneRef = useRef<TransitionScene>("folio");
   const geometry = useMemo(() => getTransitionGeometry(sourceRect), [sourceRect]);
 
-  const scrimOpacity = useTransform(openProgress, [0, .08, .58, 1], [0, .08, .96, 1]);
-  const cloneX = useTransform(openProgress, [0, .08, .58, 1], [geometry.sourceX, geometry.sourceX, 0, 0]);
-  const cloneY = useTransform(openProgress, [0, .08, .22, .58, 1], [geometry.sourceY, geometry.sourceY, geometry.sourceY - 12, 0, -18]);
-  const cloneScale = useTransform(openProgress, [0, .08, .22, .58, 1], [geometry.sourceScale, geometry.sourceScale, geometry.sourceScale * 1.035, 1, .9]);
-  const cloneOpacity = useTransform(openProgress, [0, .72, .9, 1], [1, 1, 0, 0]);
+  const scrimOpacity = useTransform(transitionProgress, [0, .08, .5, 1], [0, .12, 1, 1]);
+  const cloneX = useTransform(transitionProgress, [0, .06, .46, 1], [geometry.sourceX, geometry.sourceX, 0, 0]);
+  const cloneY = useTransform(transitionProgress, [0, .06, .22, .46, 1], [geometry.sourceY, geometry.sourceY, geometry.sourceY - 12, 0, 0]);
+  const cloneScale = useTransform(transitionProgress, [0, .06, .22, .46, 1], [geometry.sourceScale, geometry.sourceScale, geometry.sourceScale * 1.035, 1, 1]);
+  const cloneOpacity = useTransform(transitionProgress, [0, .54, .6, VEIL_SCENE_SWAP_PROGRESS, 1], [1, 1, 1, 0, 0]);
   const coverRotateY = useTransform(
-    openProgress,
-    reducedMotion ? [0, .18, .62, 1] : [0, .16, .62, 1],
-    reducedMotion ? ["0deg", "0deg", "-18deg", "-18deg"] : ["0deg", "0deg", "-66deg", "-66deg"],
+    transitionProgress,
+    reducedMotion ? [0, .12, .5, 1] : [0, .14, .5, 1],
+    reducedMotion ? ["0deg", "0deg", "-18deg", "-18deg"] : ["0deg", "0deg", "-64deg", "-64deg"],
   );
-  const previewSpread = useTransform(openProgress, [0, .3, .78, 1], [0, 0, 1, 1]);
-  const previewOpacity = useTransform(openProgress, [0, .28, .38, .74, .9, 1], [0, 0, 1, 1, 0, 0]);
-  const wheelOpacity = useTransform(openProgress, [0, .42, .58, .8, 1], [0, 0, .24, 1, 1]);
-  const wheelScale = useTransform(openProgress, [0, .42, .68, .92, 1], [.82, .82, .92, 1, 1]);
-  const wheelScaleY = useTransform(openProgress, [0, .42, .7, .92, 1], [.28, .28, .74, 1, 1]);
-  const wheelY = useTransform(openProgress, [0, .42, .72, .92, 1], [26, 26, 10, 0, 0]);
-  const controlsOpacity = useTransform(openProgress, [0, .7, 1], [0, 0, 1]);
+  const previewSpread = useTransform(
+    transitionProgress,
+    [0, .26, .58, 1],
+    reducedMotion ? [0, 0, .38, .38] : [0, 0, 1, 1],
+  );
+  const previewOpacity = useTransform(transitionProgress, [0, .24, .32, .56, VEIL_SCENE_SWAP_PROGRESS, 1], [0, 0, 1, 1, 0, 0]);
+  const veilOpacity = useTransform(transitionProgress, [0, .36, .48, .52, .82, .94, 1], [0, 0, .9, 1, 1, .16, 0]);
+  const veilScaleX = useTransform(transitionProgress, [0, .36, .52, .82, 1], [.05, .05, 1.08, 1.18, 1.32]);
+  const veilScaleY = useTransform(transitionProgress, [0, .36, .52, .82, 1], [.08, .08, 1.02, 1.14, 1.28]);
+  const veilRotate = useTransform(transitionProgress, [0, .4, .58, 1], ["-8deg", "-8deg", "0deg", "2deg"]);
+  const wheelOpacity = useTransform(transitionProgress, [0, .6, .66, .74, 1], [0, 0, .35, 1, 1]);
+  const wheelScale = useTransform(transitionProgress, [0, .6, .7, .95, 1], [.94, .94, .965, 1, 1]);
+  const wheelScaleY = useTransform(transitionProgress, [0, .6, .7, .95, 1], [.82, .82, .9, 1, 1]);
+  const wheelY = useTransform(transitionProgress, [0, .6, .72, .95, 1], [14, 14, 8, 0, 0]);
+  const controlsOpacity = useTransform(transitionProgress, [0, .78, 1], [0, 0, 1]);
+
+  const switchScene = (nextScene: TransitionScene) => {
+    if (activeSceneRef.current === nextScene) return;
+    activeSceneRef.current = nextScene;
+    setActiveScene(nextScene);
+  };
+
+  useMotionValueEvent(transitionProgress, "change", latest => {
+    const state = transitionStateRef.current;
+    if (state === "opening" && latest >= VEIL_SCENE_SWAP_PROGRESS) switchScene("wheel");
+    if (state === "closing" && latest <= VEIL_SCENE_SWAP_PROGRESS) switchScene("folio");
+  });
 
   const initialTrackIndex = Math.max(0, playlist.tracks.findIndex(track => track.id === getState().trackId));
   const [selectedTrackIndex, setSelectedTrackIndex] = useState(initialTrackIndex);
@@ -131,34 +157,36 @@ export default function TrackWheelDialog({
 
     if (transitionState === "opening") {
       void (async () => {
-        if (overlayRoot.current) await prepareTransitionResources(overlayRoot.current);
+        await prepareTransitionResources(transitionScene.current);
         if (runId !== preparation.current || transitionState !== "opening") return;
-        const duration = reducedMotion ? .22 : geometry.mobile ? .64 : .82;
-        const controls = animate(openProgress, 1, { duration, ease: [0.4, 0, 0.2, 1] });
+        const duration = reducedMotion ? .18 : geometry.mobile ? .58 : .74;
+        const controls = animate(transitionProgress, 1, { duration, ease: [0.4, 0, 0.2, 1] });
         animation.current = controls;
         await controls;
         if (runId !== preparation.current) return;
-        openProgress.set(1);
+        transitionProgress.set(1);
+        switchScene("wheel");
         animation.current = null;
         setShowTransitionScene(false);
         onOpened();
       })();
     } else if (transitionState === "closing") {
       void (async () => {
-        const currentProgress = Math.max(0, Math.min(1, openProgress.get()));
+        const currentProgress = Math.max(0, Math.min(1, transitionProgress.get()));
         setShowTransitionScene(true);
         await nextFrame();
         await nextFrame();
         if (runId !== preparation.current) return;
-        const baseDuration = reducedMotion ? .2 : geometry.mobile ? .56 : .7;
-        const controls = animate(openProgress, 0, {
+        const baseDuration = reducedMotion ? .18 : geometry.mobile ? .6 : .74;
+        const controls = animate(transitionProgress, 0, {
           duration: Math.max(.08, baseDuration * Math.max(.2, currentProgress)),
           ease: [0.4, 0, 0.2, 1],
         });
         animation.current = controls;
         await controls;
         if (runId !== preparation.current) return;
-        openProgress.set(0);
+        transitionProgress.set(0);
+        switchScene("folio");
         animation.current = null;
         setShowTransitionScene(false);
         onClosed();
@@ -169,7 +197,12 @@ export default function TrackWheelDialog({
       preparation.current += 1;
       animation.current?.stop();
     };
-  }, [geometry.mobile, onClosed, onOpened, openProgress, reducedMotion, transitionState]);
+  }, [geometry.mobile, onClosed, onOpened, reducedMotion, transitionProgress, transitionState]);
+
+  useEffect(() => {
+    document.documentElement.dataset.musicOverlayScene = activeScene;
+    return () => { delete document.documentElement.dataset.musicOverlayScene; };
+  }, [activeScene]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -243,21 +276,25 @@ export default function TrackWheelDialog({
       ref={overlayRoot}
       className="track-wheel-backdrop track-wheel-overlay"
       data-transition-phase={transitionState}
-      data-transition-scene={showTransitionScene}
-      style={{ "--folio-open-progress": openProgress } as never}
+      data-transition-scene={activeScene}
+      data-transition-layer={showTransitionScene}
+      style={{ "--folio-open-progress": transitionProgress } as never}
       onPointerDown={event => {
         const target = event.target as HTMLElement;
         if (!target.closest(".track-wheel-dialog, .folio-transition-clone")) onClose();
       }}
     >
       <motion.div className="track-wheel-overlay-scrim" style={{ opacity: scrimOpacity }} aria-hidden="true" />
-      {showTransitionScene && <motion.div className="folio-transition-clone" style={clonePositionStyle} aria-hidden="true">
+      {showTransitionScene && <div ref={transitionScene} className="folio-transition-scene" aria-hidden="true">
+        <motion.div className="folio-transition-clone" style={clonePositionStyle}>
           <AlbumFolioVisual playlist={playlist} className="folio-transition-album" />
           <motion.span className="folio-transition-preview-pages" style={{ opacity: previewOpacity }}>
             {Array.from({ length: 3 }, (_, index) => <FolioPreviewPage key={index} index={index} progress={previewSpread} mobile={geometry.mobile} />)}
           </motion.span>
           <span className="folio-transition-caption">{playlist.title}</span>
-        </motion.div>}
+        </motion.div>
+        <motion.div className="crystal-veil" style={{ opacity: veilOpacity, scaleX: veilScaleX, scaleY: veilScaleY, rotate: veilRotate }} />
+      </div>}
 
       <motion.section
         ref={dialog}

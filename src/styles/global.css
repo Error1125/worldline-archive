@@ -5988,6 +5988,22 @@ html[data-scene-mode="day"] .glass-card.adm-static:hover {
   transform-origin: 50% 44%;
 }
 
+.track-wheel-overlay[data-transition-scene="folio"] .track-wheel-final-stage {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.track-wheel-overlay[data-transition-scene="wheel"] .folio-transition-clone {
+  visibility: hidden;
+}
+
+.folio-transition-scene {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  pointer-events: none;
+}
+
 .folio-transition-clone {
   position: fixed;
   z-index: 30;
@@ -6053,6 +6069,45 @@ html[data-scene-mode="day"] .glass-card.adm-static:hover {
   white-space: nowrap;
 }
 
+.crystal-veil {
+  position: fixed;
+  z-index: 45;
+  inset: -24vmax;
+  overflow: hidden;
+  pointer-events: none;
+  clip-path: polygon(4% 18%, 50% 0, 96% 18%, 100% 50%, 96% 82%, 50% 100%, 4% 82%, 0 50%);
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(4, 9, 28, .995) 0 22%, rgba(12, 42, 75, .99) 47%, rgba(37, 31, 92, .985) 72%, rgba(4, 8, 24, .99) 100%),
+    linear-gradient(128deg, rgba(72, 221, 234, .95), rgba(40, 54, 128, .98) 46%, rgba(148, 77, 220, .95));
+  transform-origin: 50% 50%;
+  isolation: isolate;
+  will-change: transform, opacity;
+}
+
+.crystal-veil::before,
+.crystal-veil::after {
+  position: absolute;
+  content: "";
+  pointer-events: none;
+}
+
+.crystal-veil::before {
+  inset: 0;
+  background:
+    linear-gradient(104deg, transparent 34%, rgba(219, 254, 255, .62) 45%, rgba(86, 223, 241, .18) 51%, transparent 62%),
+    linear-gradient(156deg, transparent 38%, rgba(129, 103, 255, .32) 49%, transparent 60%);
+  mix-blend-mode: screen;
+  opacity: .74;
+}
+
+.crystal-veil::after {
+  inset: 3.5%;
+  border: 1px solid rgba(211, 250, 255, .7);
+  clip-path: inherit;
+  background: radial-gradient(ellipse at 50% 42%, rgba(197, 253, 255, .18), transparent 40%);
+  box-shadow: inset 0 0 0 1px rgba(127, 216, 255, .12);
+}
+
 .track-wheel-dialog[data-transition-phase="open"] .track-wheel-entry { pointer-events: auto; }
 .track-wheel-dialog:not([data-transition-phase="open"]) .rotor-crystal-wheel { pointer-events: none; }
 
@@ -6062,6 +6117,11 @@ html[data-scene-mode="day"] .glass-card.adm-static:hover {
 html.music-overlay-active .music-archive-page *,
 html.music-overlay-active .music-archive-page *::before,
 html.music-overlay-active .music-archive-page *::after { animation-play-state: paused !important; }
+
+html[data-music-overlay-scene="wheel"] .music-archive-page {
+  visibility: hidden;
+  content-visibility: hidden;
+}
 
 .music-experience[data-overlay-open="true"] {
   pointer-events: none;
@@ -6103,6 +6163,12 @@ html.music-overlay-active .music-archive-page *::after { animation-play-state: p
     backdrop-filter: none !important;
     filter: none !important;
     box-shadow: inset 0 1px rgba(255, 255, 255, .26), 0 0 0 1px rgba(117, 205, 255, .08) !important;
+  }
+
+  .crystal-veil {
+    background:
+      radial-gradient(ellipse at 50% 50%, rgba(3, 7, 24, .998) 0 28%, rgba(10, 39, 70, .995) 54%, rgba(41, 28, 86, .992) 78%, rgba(3, 6, 20, .998) 100%),
+      linear-gradient(128deg, rgba(64, 204, 224, .94), rgba(38, 49, 119, .98) 48%, rgba(129, 69, 203, .94));
   }
 }
 
