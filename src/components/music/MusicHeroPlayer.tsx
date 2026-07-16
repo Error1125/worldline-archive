@@ -9,18 +9,26 @@ export default function MusicHeroPlayer() {
   const duration = state.duration || (track.durationMs ?? 0) / 1000;
   const volume = state.volume ?? .8;
   const volumeIcon = state.muted || volume === 0 ? "volume-muted" : volume < .45 ? "volume-low" : "volume";
-  const artwork = track.artworkUrl ? withBase(track.artworkUrl) : undefined;
+  // artworkUrl is the current mapper's track/entry artwork. There is no
+  // separate album-art field yet, so the playlist cover is the next real source.
+  const artworkSource = track.artworkUrl ? "track" : playlist?.cover ? "playlist" : "generated";
+  const artwork = track.artworkUrl ? withBase(track.artworkUrl) : playlist?.cover ? withBase(playlist.cover) : undefined;
+  const discPlaying = Boolean(state.playing && track.previewUrl);
+  const trackNumber = Math.max(0, playlist?.tracks.findIndex(item => item.id === track.id) ?? 0) + 1;
 
   return <section className="crystal-music-terminal" aria-label="水晶音乐终端">
     <div className="terminal-player-pane">
-      <div className="terminal-folio-visual" data-playing={state.playing} aria-label={`${playlist?.title ?? track.album ?? "当前专辑"}封面`}>
-        <span className="terminal-folio-back" aria-hidden="true" />
-        <span className="terminal-folio-pages" aria-hidden="true"><i /><i /><i /></span>
-        <span className="terminal-folio-cover">
-          {artwork ? <img src={artwork} alt={`${track.title} 封面`} /> : <b aria-hidden="true">WL</b>}
-          <i className="terminal-cover-glare" aria-hidden="true" />
+      <div className="terminal-track-artwork" data-playing={discPlaying} data-art-source={artworkSource} aria-label={`${track.title} 当前歌曲封面`}>
+        <span className="terminal-crystal-disc" aria-hidden="true">
+          <span className="terminal-disc-label">{artwork ? <img src={artwork} alt="" /> : <b>WL</b>}</span>
+          <i className="terminal-disc-hub" />
+          <i className="terminal-disc-sheen" />
         </span>
-        <span className="terminal-folio-spine" aria-hidden="true" />
+        <span key={track.id} className="terminal-crystal-cover">
+          {artwork ? <img src={artwork} alt={`${track.title} 封面`} /> : <b aria-hidden="true">WORLDLINE<br />TRACK {String(trackNumber).padStart(2, "0")}</b>}
+          <i className="terminal-cover-glare" aria-hidden="true" />
+          <i className="terminal-cover-edge" aria-hidden="true" />
+        </span>
       </div>
 
       <div className="terminal-track-block">

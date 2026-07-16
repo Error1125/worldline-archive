@@ -6112,6 +6112,104 @@ html.music-overlay-active .music-archive-page *::after { animation-play-state: p
   box-shadow: 3px 0 8px rgba(0, 0, 0, .24);
 }
 
+.terminal-track-artwork {
+  position: relative;
+  width: 176px;
+  aspect-ratio: 1;
+  justify-self: center;
+  isolation: isolate;
+}
+
+.terminal-crystal-disc,
+.terminal-crystal-cover { position: absolute; display: block; }
+
+.terminal-crystal-disc {
+  z-index: 1;
+  top: 11%;
+  right: 2px;
+  width: 78%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid rgba(204, 250, 255, .55);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0 13%, rgba(197, 248, 255, .18) 13.5% 15%, transparent 15.5% 46%, rgba(195, 248, 255, .18) 47% 48%, transparent 49%),
+    repeating-radial-gradient(circle, rgba(222, 253, 255, .2) 0 1px, rgba(65, 125, 173, .08) 2px 4px),
+    conic-gradient(from 18deg, rgba(197, 116, 255, .5), rgba(107, 232, 255, .5), rgba(232, 253, 255, .2), rgba(147, 108, 255, .48), rgba(197, 116, 255, .5));
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .08), inset 0 0 26px rgba(169, 238, 255, .16), 8px 12px 24px rgba(0, 0, 0, .24);
+  animation: terminal-crystal-disc-spin 18s linear infinite;
+  animation-play-state: paused;
+  transform: translateZ(0);
+}
+
+.terminal-track-artwork[data-playing="true"] .terminal-crystal-disc { animation-play-state: running; }
+
+.terminal-crystal-disc::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(225, 253, 255, .22);
+  border-radius: inherit;
+  background: linear-gradient(118deg, rgba(255, 255, 255, .25), transparent 24% 72%, rgba(116, 220, 255, .16));
+  mix-blend-mode: screen;
+}
+
+.terminal-disc-label {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 32%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid rgba(225, 253, 255, .56);
+  border-radius: 50%;
+  color: rgba(229, 253, 255, .86);
+  background: radial-gradient(circle at 32% 24%, rgba(182, 248, 255, .3), transparent 36%), #161c3d;
+  font: 700 .58rem/1 monospace;
+  transform: translate(-50%, -50%);
+}
+
+.terminal-disc-label img { width: 100%; height: 100%; object-fit: cover; }
+.terminal-disc-hub { position: absolute; z-index: 4; top: 50%; left: 50%; width: 6px; aspect-ratio: 1; border-radius: 50%; background: rgba(235, 254, 255, .92); box-shadow: 0 0 8px rgba(180, 243, 255, .72); transform: translate(-50%, -50%); }
+.terminal-disc-sheen { position: absolute; inset: 9%; border-radius: 50%; border-top: 1px solid rgba(255, 255, 255, .42); border-right: 1px solid rgba(117, 222, 255, .16); }
+
+.terminal-crystal-cover {
+  z-index: 2;
+  inset: 0 auto 0 0;
+  width: 78%;
+  overflow: hidden;
+  border: 1px solid rgba(220, 253, 255, .66);
+  border-radius: 7px 13px 14px 7px;
+  background: linear-gradient(142deg, rgba(178, 243, 255, .25), rgba(35, 45, 98, .9));
+  box-shadow: inset 1px 0 rgba(255, 255, 255, .36), inset -12px 0 24px rgba(1, 8, 35, .28), 8px 12px 26px rgba(0, 0, 0, .3);
+  animation: terminal-track-artwork-in .28s ease-out both;
+}
+
+.terminal-crystal-cover > img,
+.terminal-crystal-cover > b {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  object-fit: cover;
+  color: rgba(225, 252, 255, .8);
+  background:
+    radial-gradient(circle at 24% 18%, rgba(174, 247, 255, .26), transparent 34%),
+    radial-gradient(circle at 78% 78%, rgba(151, 101, 255, .28), transparent 40%),
+    linear-gradient(145deg, #172345, #10152e);
+  font: 700 .62rem/1.55 monospace;
+  letter-spacing: .12em;
+  text-align: center;
+}
+
+.terminal-cover-edge { position: absolute; inset: 3px; border: 1px solid rgba(230, 253, 255, .2); border-radius: 5px 10px 11px 5px; pointer-events: none; box-shadow: inset 0 0 14px rgba(173, 239, 255, .08); }
+
+@keyframes terminal-crystal-disc-spin { to { transform: translateZ(0) rotate(360deg); } }
+@keyframes terminal-track-artwork-in { from { opacity: .35; transform: translateX(-5px) scale(.985); } to { opacity: 1; transform: none; } }
+
 .terminal-track-block {
   min-width: 0;
   align-self: center;
@@ -6590,7 +6688,7 @@ html.music-overlay-active .music-archive-page *::after { animation-play-state: p
 @media (max-width: 1024px) {
   .crystal-music-terminal { grid-template-columns: minmax(0, 1.3fr) minmax(260px, .7fr); }
   .terminal-player-pane { grid-template-columns: 166px minmax(0, 1fr); gap: 1.15rem; }
-  .terminal-folio-visual { width: 158px; }
+  .terminal-track-artwork { width: 158px; }
   .terminal-control-deck { align-items: flex-start; flex-direction: column; }
   .playlist-package-card { flex-basis: calc((100% - 2rem) / 3); min-width: 210px; }
 }
@@ -6628,7 +6726,7 @@ html.music-overlay-active .music-archive-page *::after { animation-play-state: p
     padding: 1rem 1rem .95rem;
   }
 
-  .terminal-folio-visual { width: clamp(170px, 48vw, 186px); }
+  .terminal-track-artwork { width: clamp(170px, 48vw, 186px); }
 
   .terminal-track-block {
     width: 100%;
@@ -6694,4 +6792,6 @@ html.music-overlay-active .music-archive-page *::after { animation-play-state: p
 
 @media (prefers-reduced-motion: reduce) {
   .playlist-shelf { scroll-behavior: auto; }
+  .terminal-crystal-disc { animation: none; }
+  .terminal-crystal-cover { animation: none; }
 }
