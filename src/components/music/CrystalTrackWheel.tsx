@@ -21,7 +21,9 @@ export type CrystalWheelConfig = {
   springMass: number;
 };
 
-export const defaultCrystalWheelConfig: CrystalWheelConfig = {
+export const APPROVED_CRYSTAL_WHEEL_SLOT_COUNT = 16;
+
+export const APPROVED_CRYSTAL_WHEEL_CONFIG: CrystalWheelConfig = {
   bladeWidth: 320,
   bladeHeight: 168,
   bladeThickness: 24,
@@ -39,6 +41,9 @@ export const defaultCrystalWheelConfig: CrystalWheelConfig = {
   springMass: .96,
 };
 
+/** @deprecated Prefer the explicit approved preset for new integrations. */
+export const defaultCrystalWheelConfig = APPROVED_CRYSTAL_WHEEL_CONFIG;
+
 type Props = {
   tracks: CrystalWheelTrack[];
   activeIndex: number;
@@ -47,6 +52,8 @@ type Props = {
   className?: string;
   config?: CrystalWheelConfig;
   telemetry?: { current: CrystalWheelTelemetry };
+  ariaLabel?: string;
+  onTrackActivate?: (index: number) => void;
 };
 
 const TAU = Math.PI * 2;
@@ -156,8 +163,10 @@ export default function CrystalTrackWheel({
   onActiveChange,
   artwork,
   className = "",
-  config = defaultCrystalWheelConfig,
+  config = APPROVED_CRYSTAL_WHEEL_CONFIG,
   telemetry,
+  ariaLabel = "Crystal album wheel",
+  onTrackActivate,
 }: Props) {
   const progress = useMotionValue(activeIndex);
   const reveal = useMotionValue(1);
@@ -267,6 +276,15 @@ export default function CrystalTrackWheel({
     });
   };
 
+  const selectBlade = (index: number) => {
+    const distance = Math.abs(circularDistance(index, progress.get(), tracks.length));
+    if (onTrackActivate && distance < .18) {
+      onTrackActivate(index);
+      return;
+    }
+    moveToIndex(index);
+  };
+
   useEffect(() => {
     const element = wheelElement.current;
     if (!element) return;
@@ -315,7 +333,7 @@ export default function CrystalTrackWheel({
         "--rotor-radius-z": `${config.radiusZ}px`,
       } as never}
       tabIndex={0}
-      aria-label="Crystal album wheel"
+      aria-label={ariaLabel}
       onPointerDown={(event) => {
         event.preventDefault();
         motionRun.current += 1;
@@ -355,26 +373,30 @@ export default function CrystalTrackWheel({
         if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
       }}
       onKeyDown={(event) => {
-        if (event.key === "ArrowUp") {
+        if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
           event.preventDefault();
           moveToIndex(normalize(Math.round(progress.get()) - 1, tracks.length));
         }
-        if (event.key === "ArrowDown") {
+        if (event.key === "ArrowDown" || event.key === "ArrowRight") {
           event.preventDefault();
           moveToIndex(normalize(Math.round(progress.get()) + 1, tracks.length));
+        }
+        if (onTrackActivate && event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          onTrackActivate(normalize(progress.get(), tracks.length));
         }
       }}
     >
       <div className="rotor-crystal-stage">
         {tracks.map((track, index) => (
           <CrystalBlade
-            key={track.id}
+            key={`${track.id}:${index}`}
             track={track}
             index={index}
             count={tracks.length}
             progress={progress}
             reveal={reveal}
-            select={moveToIndex}
+            select={selectBlade}
             config={config}
             artwork={artwork}
           />

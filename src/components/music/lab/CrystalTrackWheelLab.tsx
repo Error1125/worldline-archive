@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import CrystalTrackWheel, { defaultCrystalWheelConfig, type CrystalWheelConfig, type CrystalWheelTelemetry, type CrystalWheelTrack } from "@/components/music/CrystalTrackWheel";
+import CrystalTrackWheel, { APPROVED_CRYSTAL_WHEEL_CONFIG, type CrystalWheelConfig, type CrystalWheelTelemetry, type CrystalWheelTrack } from "@/components/music/CrystalTrackWheel";
 
 const referenceGif = "https://cdn.dribbble.com/userupload/22738075/file/original-de29f7f762823c7e5889714b573ee31f.gif";
 const tracks: CrystalWheelTrack[] = [
@@ -17,7 +17,7 @@ const controls: { key: keyof CrystalWheelConfig; min: number; max: number; step:
 
 export default function CrystalTrackWheelLab({ compareMode = false }: { compareMode?: boolean }) {
   const [active, setActive] = useState(0);
-  const [config, setConfig] = useState(defaultCrystalWheelConfig);
+  const [config, setConfig] = useState(APPROVED_CRYSTAL_WHEEL_CONFIG);
   const telemetry = useRef<CrystalWheelTelemetry>({ rotationProgress: 0, velocity: 0 });
   const progressOutput = useRef<HTMLOutputElement>(null);
   const velocityOutput = useRef<HTMLOutputElement>(null);
@@ -41,7 +41,7 @@ export default function CrystalTrackWheelLab({ compareMode = false }: { compareM
       <div className="lab-compare-frame lab-compare-implementation"><p>IMPLEMENTATION</p>{wheel}</div>
     </div> : wheel}
     <aside className="lab-debug-panel" aria-label="Crystal wheel debug parameters">
-      <div><p className="section-kicker">DEV ONLY · DEBUG PARAMETERS</p><button type="button" onClick={() => setConfig(defaultCrystalWheelConfig)}>Reset</button></div>
+      <div><p className="section-kicker">DEV ONLY · DEBUG PARAMETERS</p><button type="button" onClick={() => setConfig(APPROVED_CRYSTAL_WHEEL_CONFIG)}>Reset</button></div>
       <div className="lab-debug-telemetry"><span>rotationProgress <output ref={progressOutput}>0.000</output></span><span>velocity <output ref={velocityOutput}>0.000</output></span><span>slotAngle <output>{(360 / tracks.length).toFixed(1)}°</output></span></div>
       <div className="lab-debug-controls">{controls.map(({ key, min, max, step }) => <label key={key}><span>{key}<output>{config[key]}</output></span><input type="range" min={min} max={max} step={step} value={config[key]} onChange={event => setConfig(current => ({ ...current, [key]: Number(event.target.value) }))} /></label>)}</div>
     </aside>

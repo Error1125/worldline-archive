@@ -5779,3 +5779,151 @@ html[data-scene-mode="day"] .glass-card.adm-static:hover {
   .rotor-crystal-blade { will-change: auto; }
   .rotor-crystal-glare { mix-blend-mode: normal; }
 }
+
+/* Phase B: the production overlay hosts the exact approved rotor core. */
+.track-wheel-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: clamp(.75rem, 2vw, 1.5rem);
+  background: rgba(2, 5, 17, .86);
+  backdrop-filter: blur(18px) saturate(118%);
+}
+
+.track-wheel-dialog {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto auto;
+  width: min(1160px, 100%);
+  max-height: calc(100dvh - 1.5rem);
+  min-height: min(790px, calc(100dvh - 1.5rem));
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 0;
+  border-radius: clamp(1rem, 2vw, 1.75rem);
+  background:
+    radial-gradient(ellipse at 50% 38%, color-mix(in srgb, var(--ia-nebula) 22%, transparent), transparent 48%),
+    linear-gradient(180deg, rgba(10, 15, 38, .7), rgba(5, 8, 24, .42));
+  box-shadow: 0 34px 110px rgba(0, 0, 0, .58);
+  isolation: isolate;
+}
+
+.track-wheel-dialog > header {
+  position: relative;
+  z-index: 150;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem 0;
+  color: var(--ia-mist);
+}
+
+.track-wheel-dialog > header p {
+  margin: 0 0 .25rem;
+  font: 700 .62rem/1.2 monospace;
+  letter-spacing: .15em;
+}
+
+.track-wheel-dialog > header h2 {
+  margin: 0;
+  color: var(--ia-ink);
+  font-size: clamp(.95rem, 2vw, 1.15rem);
+  letter-spacing: .05em;
+}
+
+.track-wheel-dialog > header button {
+  width: 2.35rem;
+  height: 2.35rem;
+  border: 1px solid var(--ia-line-strong);
+  border-radius: 50%;
+  color: var(--ia-ink);
+  background: color-mix(in srgb, var(--ia-panel-strong) 72%, transparent);
+  font-size: 1.3rem;
+}
+
+.track-wheel-overlay-wheel .rotor-crystal-art > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.track-wheel-selected {
+  position: relative;
+  z-index: 140;
+  display: grid;
+  justify-items: center;
+  gap: .3rem;
+  margin-top: -2.4rem;
+  padding: 0 1.25rem 1.2rem;
+  pointer-events: none;
+  text-align: center;
+}
+
+.track-wheel-selected > span {
+  color: var(--ia-neon);
+  font: 700 .68rem/1 monospace;
+  letter-spacing: .12em;
+}
+
+.track-wheel-selected h3 {
+  margin: .1rem 0 0;
+  color: var(--ia-ink);
+  font-size: clamp(1.15rem, 2.4vw, 1.7rem);
+}
+
+.track-wheel-selected p,
+.track-wheel-selected small,
+.track-wheel-selected em {
+  margin: 0;
+  color: var(--ia-mist);
+}
+
+.track-wheel-selected small { font: .68rem/1.2 monospace; }
+.track-wheel-selected em { font-size: .68rem; font-style: normal; }
+
+.track-wheel-selected .track-wheel-play {
+  display: grid;
+  width: 2.8rem;
+  height: 2.8rem;
+  margin-top: .35rem;
+  padding: 0;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--ia-neon) 68%, transparent);
+  border-radius: 50%;
+  color: var(--ia-panel);
+  background: var(--ia-neon);
+  font-size: .95rem;
+  pointer-events: auto;
+}
+
+.track-wheel-selected .track-wheel-play:disabled {
+  color: var(--ia-mist);
+  background: color-mix(in srgb, var(--ia-panel-strong) 80%, transparent);
+  opacity: .58;
+  cursor: not-allowed;
+}
+
+@media (max-width: 760px) {
+  .track-wheel-backdrop { padding: 0; }
+  .track-wheel-dialog {
+    width: 100%;
+    max-height: 100dvh;
+    min-height: 100dvh;
+    border-radius: 0;
+  }
+  .track-wheel-dialog > header { padding: .8rem .85rem 0; }
+  .track-wheel-selected {
+    margin-top: -2.8rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track-wheel-backdrop,
+  .track-wheel-dialog { scroll-behavior: auto; }
+}

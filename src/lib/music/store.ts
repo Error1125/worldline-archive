@@ -48,10 +48,10 @@ export function getPlaylists() { if (!playlists.length) initializeMusicPlaylists
 export function getActivePlaylist() { getPlaylists(); return getPlaylistById(); }
 export function getTrack(trackId = state.trackId) { getPlaylists(); return findTrack(trackId); }
 export function selectPlaylist(playlistId: string) { if (playlists.some((playlist) => playlist.id === playlistId)) apply({ playlistId }); }
-export function selectTrack(playlistId: string, trackId: string) { if (getPlaylistById(playlistId)?.tracks.some((track) => track.id === trackId)) apply({ playlistId, trackId, currentTime: 0, duration: 0, progress: 0, error: undefined }); }
+export function selectTrack(playlistId: string, trackId: string) { if (getPlaylistById(playlistId)?.tracks.some((track) => track.id === trackId)) { if (state.trackId !== trackId) clearAudio(); apply({ playlistId, trackId, playing: false, currentTime: 0, duration: 0, progress: 0, error: undefined }); } }
 export function playTrack(trackId = state.trackId, playlistId = state.playlistId) {
   const playlist = getPlaylistById(playlistId); const track = playlist?.tracks.find((item) => item.id === trackId) ?? findTrack(trackId);
-  if (!track?.previewUrl || typeof Audio === "undefined") { apply({ playlistId, trackId, playing: false, currentTime: 0, duration: 0, progress: 0, error: "试听未配置" }); return false; }
+  if (!track?.previewUrl || typeof Audio === "undefined") { clearAudio(); apply({ playlistId, trackId, playing: false, currentTime: 0, duration: 0, progress: 0, error: "试听未配置" }); return false; }
   const player = audioFor(track); apply({ playlistId, trackId: track.id, playing: true, error: undefined, currentTime: 0, duration: 0, progress: 0 });
   player.play().catch(() => apply({ playing: false, error: "浏览器阻止了试听播放" })); return true;
 }
