@@ -140,6 +140,7 @@ export default function Starfield() {
 
     let raf = 0;
     let running = true;
+    let musicOverlayPaused = false;
     let t = 0;
     let nextMeteorAt =
       performance.now() +
@@ -195,18 +196,31 @@ export default function Starfield() {
       if (document.hidden) {
         running = false;
         cancelAnimationFrame(raf);
-      } else if (!reduced) {
+      } else if (!reduced && !musicOverlayPaused && !running) {
+        running = true;
+        raf = requestAnimationFrame(frame);
+      }
+    };
+    const onMusicOverlay = (event: Event) => {
+      musicOverlayPaused = Boolean((event as CustomEvent<{ open?: boolean }>).detail?.open);
+      canvas.dataset.animationState = musicOverlayPaused ? "paused-by-music" : "running";
+      if (musicOverlayPaused) {
+        running = false;
+        cancelAnimationFrame(raf);
+      } else if (!reduced && !document.hidden && !running) {
         running = true;
         raf = requestAnimationFrame(frame);
       }
     };
 
     build();
+    canvas.dataset.animationState = reduced ? "reduced" : "running";
     if (reduced) {
       drawStaticOnce();
     } else {
       window.addEventListener("pointermove", onPointerMove, { passive: true });
       document.addEventListener("visibilitychange", onVisibility);
+      window.addEventListener("wl:music-overlay", onMusicOverlay);
       raf = requestAnimationFrame(frame);
     }
     window.addEventListener("resize", onResize);
@@ -216,6 +230,7 @@ export default function Starfield() {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("wl:music-overlay", onMusicOverlay);
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);

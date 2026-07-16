@@ -1,5 +1,5 @@
 import { animate, motion, useMotionValue, useMotionValueEvent, useReducedMotion, useTransform, type MotionValue } from "motion/react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 export type CrystalWheelTrack = { id: string; title: string; artist: string; artworkUrl?: string };
 export type CrystalWheelTelemetry = { rotationProgress: number; velocity: number };
@@ -21,7 +21,8 @@ export type CrystalWheelConfig = {
   springMass: number;
 };
 
-export const APPROVED_CRYSTAL_WHEEL_SLOT_COUNT = 16;
+export const PHYSICAL_SLOT_COUNT = 16;
+export const APPROVED_CRYSTAL_WHEEL_SLOT_COUNT = PHYSICAL_SLOT_COUNT;
 
 export const APPROVED_CRYSTAL_WHEEL_CONFIG: CrystalWheelConfig = {
   bladeWidth: 320,
@@ -56,103 +57,144 @@ type Props = {
   onTrackActivate?: (index: number) => void;
 };
 
+export type CrystalWheelSlotAssignment = {
+  absoluteIndex: number;
+  offset: number;
+  trackIndex: number;
+};
+
+type RenderTier = "full" | "simple" | "outline";
+
 const TAU = Math.PI * 2;
-const circularDistance = (index: number, progress: number, count: number) =>
-  ((index - progress + count / 2) % count + count) % count - count / 2;
-const normalize = (value: number, count: number) => ((Math.round(value) % count) + count) % count;
+const SLOT_ANGLE = TAU / PHYSICAL_SLOT_COUNT;
+export const mod = (value: number, count: number) => ((value % count) + count) % count;
+export const getPhysicalSlotAssignment = (slotId: number, logicalProgress: number, trackCount: number): CrystalWheelSlotAssignment => {
+  const absoluteIndex = slotId + PHYSICAL_SLOT_COUNT * Math.round((logicalProgress - slotId) / PHYSICAL_SLOT_COUNT);
+  return {
+    absoluteIndex,
+    offset: absoluteIndex - logicalProgress,
+    trackIndex: trackCount ? mod(absoluteIndex, trackCount) : 0,
+  };
+};
+const normalizeTrackIndex = (value: number, count: number) => mod(Math.round(value), count);
 const wrapRadians = (value: number) => ((value + Math.PI) % TAU + TAU) % TAU - Math.PI;
+const tierForOffset = (offset: number): RenderTier => {
+  const distance = Math.abs(offset);
+  if (distance <= 2) return "full";
+  if (distance <= 5) return "simple";
+  return "outline";
+};
 
 function CrystalBlade({
-  track,
-  index,
-  count,
+  slotId,
+  tracks,
   progress,
   reveal,
   select,
   config,
   artwork,
 }: {
-  track: CrystalWheelTrack;
-  index: number;
-  count: number;
+  slotId: number;
+  tracks: CrystalWheelTrack[];
   progress: MotionValue<number>;
   reveal: MotionValue<number>;
-  select: (index: number) => void;
+  select: (absoluteIndex: number) => void;
   config: CrystalWheelConfig;
   artwork?: (track: CrystalWheelTrack) => ReactNode;
 }) {
-  // One fixed slot per track. count * slotAngle is always exactly one full turn.
-  const slotAngle = TAU / count;
-  const angle = useTransform(progress, value => (index - value) * slotAngle);
+  const initialAssignment = getPhysicalSlotAssignment(slotId, progress.get(), tracks.length);
+  const [absoluteIndex, setAbsoluteIndex] = useState(initialAssignment.absoluteIndex);
+  const [renderTier, setRenderTier] = useState<RenderTier>(tierForOffset(initialAssignment.offset));
+  const assignmentRef = useRef(initialAssignment.absoluteIndex);
+  const tierRef = useRef(renderTier);
+
+  useEffect(() => {
+    const next = getPhysicalSlotAssignment(slotId, progress.get(), tracks.length);
+    assignmentRef.current = next.absoluteIndex;
+    setAbsoluteIndex(next.absoluteIndex);
+  }, [progress, slotId, tracks]);
+
+  useMotionValueEvent(progress, "change", value => {
+    const next = getPhysicalSlotAssignment(slotId, value, tracks.length);
+    if (next.absoluteIndex !== assignmentRef.current) {
+      // A slot changes logical content only while crossing the rear seam (±8).
+      assignmentRef.current = next.absoluteIndex;
+      setAbsoluteIndex(next.absoluteIndex);
+    }
+    const nextTier = tierForOffset(next.offset);
+    if (nextTier !== tierRef.current) {
+      tierRef.current = nextTier;
+      setRenderTier(nextTier);
+    }
+  });
+
+  const trackIndex = mod(absoluteIndex, tracks.length);
+  const track = tracks[trackIndex];
+  const angle = useTransform(progress, value => (absoluteIndex - value) * SLOT_ANGLE);
   const orbitY = useTransform(angle, value => Math.sin(value) * config.radiusY);
   const orbitZ = useTransform(angle, value => Math.cos(value) * config.radiusZ - config.radiusZ);
   const frontness = useTransform(angle, value => (Math.cos(value) + 1) / 2);
   const faceReveal = useTransform([angle, reveal], ([angleValue, revealValue]) => {
     const currentAngle = Number(angleValue);
     const distanceFromFront = Math.abs(wrapRadians(currentAngle));
-    const openWindow = slotAngle * .42;
-    const frontSlotInfluence = Math.max(0, 1 - distanceFromFront / openWindow);
-    return frontSlotInfluence * Number(revealValue);
+    const openWindow = SLOT_ANGLE * .42;
+    return Math.max(0, 1 - distanceFromFront / openWindow) * Number(revealValue);
   });
-  const bladeRotation = useTransform([angle, faceReveal], ([angleValue, openAmountValue]) => {
-    const currentAngle = Number(angleValue);
-    const openAmount = Number(openAmountValue);
-    // Closed blades point radially away from the axle. The selected blade folds
-    // 90 degrees only after the rotor has settled, revealing its album face.
-    return -currentAngle * (180 / Math.PI) + 90 * (1 - openAmount);
-  });
+  const bladeRotation = useTransform([angle, faceReveal], ([angleValue, openAmountValue]) =>
+    -Number(angleValue) * (180 / Math.PI) + 90 * (1 - Number(openAmountValue)));
   const edgeOn = useTransform(bladeRotation, value => Math.abs(Math.sin(value * Math.PI / 180)));
   const artworkVisibility = useTransform([angle, faceReveal], ([angleValue, faceRevealValue]) => {
     const currentAngle = Number(angleValue);
-    const selectedReveal = Number(faceRevealValue);
     const sideFaceExposure = Math.abs(Math.sin(currentAngle));
     const depthLight = .16 + ((Math.cos(currentAngle) + 1) / 2) * .24;
-    return Math.max(selectedReveal, sideFaceExposure * depthLight);
+    return Math.max(Number(faceRevealValue), sideFaceExposure * depthLight);
   });
-  const artworkFilter = useTransform(faceReveal, value => `brightness(${.62 + value * .38}) saturate(${.62 + value * .38}) blur(${(1 - value)}px)`);
   const highlightX = useTransform(angle, value => `${Math.round(50 + Math.sin(value) * 34)}%`);
   const highlightY = useTransform(angle, value => `${Math.round(18 + (1 - Math.cos(value)) * 18)}%`);
-  const artworkNode = artwork?.(track);
+  const scale = useTransform(frontness, value => 1 - (1 - value) * config.scaleDepth);
+  const opacity = useTransform(frontness, value => config.rearOpacity + value * (1 - config.rearOpacity));
+  const zIndex = useTransform(frontness, value => Math.round(value * 100));
 
   return (
     <motion.button
       type="button"
       className="rotor-crystal-blade"
-      data-track-index={index}
-      data-art-variant={index % 5}
+      data-slot-id={slotId}
+      data-absolute-index={absoluteIndex}
+      data-track-index={trackIndex}
+      data-render-tier={renderTier}
+      data-art-variant={trackIndex % 5}
       onClick={(event) => {
         event.stopPropagation();
-        select(index);
+        select(absoluteIndex);
       }}
       aria-label={`Select ${track.title}`}
       style={{
         y: orbitY,
         z: orbitZ,
         rotateX: bladeRotation,
-        scale: useTransform(frontness, value => 1 - (1 - value) * config.scaleDepth),
-        opacity: useTransform(frontness, value => config.rearOpacity + value * (1 - config.rearOpacity)),
-        filter: useTransform(frontness, value => `brightness(${.58 + value * .54}) saturate(${.72 + value * .42}) blur(${(1 - value) * config.blurDepth}px)`),
-        zIndex: useTransform(frontness, value => Math.round(value * 100)),
+        scale,
+        opacity,
+        zIndex,
         "--highlight-x": highlightX,
         "--highlight-y": highlightY,
         "--edge-strength": edgeOn,
         "--face-reveal": faceReveal,
         "--art-visibility": artworkVisibility,
-        "--art-filter": artworkFilter,
-        "--art-hue": `${(index * 47 + 186) % 360}`,
-        "--art-hue-alt": `${(index * 71 + 298) % 360}`,
+        "--art-hue": `${(trackIndex * 47 + 186) % 360}`,
+        "--art-hue-alt": `${(trackIndex * 71 + 298) % 360}`,
       } as never}
     >
       <span className="rotor-crystal-body" aria-hidden="true" />
-      <span className="rotor-crystal-art" aria-hidden="true">{artworkNode}</span>
+      <span className="rotor-crystal-art" aria-hidden="true">{artwork?.(track)}</span>
       <span className="rotor-crystal-refraction" aria-hidden="true" />
       <span className="rotor-crystal-glare" aria-hidden="true" />
       <span className="rotor-crystal-glow" aria-hidden="true" />
       <span className="rotor-crystal-noise" aria-hidden="true" />
       <span className="rotor-crystal-front-edge" aria-hidden="true" />
       <span className="rotor-crystal-thickness" aria-hidden="true" />
-      <span className="rotor-crystal-spine" aria-hidden="true"><i /><b>{String(index + 1).padStart(2, "0")}</b></span>
-      <span className="rotor-crystal-number">{String(index + 1).padStart(2, "0")}</span>
+      <span className="rotor-crystal-spine" aria-hidden="true"><i /><b>{String(trackIndex + 1).padStart(2, "0")}</b></span>
+      <span className="rotor-crystal-number">{String(trackIndex + 1).padStart(2, "0")}</span>
     </motion.button>
   );
 }
@@ -180,8 +222,9 @@ export default function CrystalTrackWheel({
   const motionRun = useRef(0);
   const wheelElement = useRef<HTMLDivElement>(null);
   const moved = useRef(false);
-  const pressedTrack = useRef<number | undefined>(undefined);
-  const reportedIndex = useRef(activeIndex);
+  const pressedSlot = useRef<number | undefined>(undefined);
+  const reportedIndex = useRef(normalizeTrackIndex(activeIndex, Math.max(1, tracks.length)));
+  const [motionActive, setMotionActive] = useState(false);
   const reducedMotion = useReducedMotion();
 
   useMotionValueEvent(progress, "change", value => {
@@ -190,7 +233,7 @@ export default function CrystalTrackWheel({
       telemetry.current.velocity = progress.getVelocity();
     }
     if (!tracks.length) return;
-    const nextIndex = normalize(value, tracks.length);
+    const nextIndex = normalizeTrackIndex(value, tracks.length);
     if (nextIndex !== reportedIndex.current) {
       reportedIndex.current = nextIndex;
       onActiveChange(nextIndex);
@@ -231,20 +274,22 @@ export default function CrystalTrackWheel({
     });
   };
 
-  const moveToIndex = (index: number, velocity = 0) => {
+  const moveToAbsolute = (absoluteIndex: number, velocity = 0) => {
     const run = ++motionRun.current;
     stopAnimation();
     closeSelectedBlade();
-    const target = progress.get() + circularDistance(index, progress.get(), tracks.length);
+    setMotionActive(true);
     animation.current = animate(
       progress,
-      target,
+      absoluteIndex,
       reducedMotion
         ? { duration: .14, ease: "easeOut" }
         : { type: "spring", stiffness: config.springStiffness, damping: config.springDamping, mass: config.springMass, velocity },
     );
     void animation.current.then(() => {
-      if (run === motionRun.current) openSelectedBlade();
+      if (run !== motionRun.current) return;
+      setMotionActive(false);
+      openSelectedBlade();
     });
   };
 
@@ -252,17 +297,16 @@ export default function CrystalTrackWheel({
     const run = ++motionRun.current;
     stopAnimation();
     closeSelectedBlade();
+    setMotionActive(true);
     if (telemetry) telemetry.current.velocity = velocity;
     const projected = progress.get() + velocity * config.inertiaPower;
     const target = Math.round(projected);
     if (reducedMotion) {
-      moveToIndex(normalize(target, tracks.length));
+      moveToAbsolute(target);
       return;
     }
 
     const frictionScale = Math.max(.82, Math.min(1.18, config.friction / 320));
-    // One uninterrupted physical trajectory: release velocity supplies the
-    // glide while the spring continuously attracts the nearest track slot.
     animation.current = animate(progress, target, {
       type: "spring",
       stiffness: config.springStiffness,
@@ -272,17 +316,19 @@ export default function CrystalTrackWheel({
     });
     void animation.current.then(() => {
       if (telemetry) telemetry.current.velocity = 0;
-      if (run === motionRun.current) openSelectedBlade();
+      if (run !== motionRun.current) return;
+      setMotionActive(false);
+      openSelectedBlade();
     });
   };
 
-  const selectBlade = (index: number) => {
-    const distance = Math.abs(circularDistance(index, progress.get(), tracks.length));
+  const selectBlade = (absoluteIndex: number) => {
+    const distance = Math.abs(absoluteIndex - progress.get());
     if (onTrackActivate && distance < .18) {
-      onTrackActivate(index);
+      onTrackActivate(mod(absoluteIndex, tracks.length));
       return;
     }
-    moveToIndex(index);
+    moveToAbsolute(absoluteIndex);
   };
 
   useEffect(() => {
@@ -295,6 +341,7 @@ export default function CrystalTrackWheel({
       motionRun.current += 1;
       stopAnimation();
       closeSelectedBlade();
+      setMotionActive(true);
       const now = performance.now();
       if (!wheelSample.current.time) wheelGestureStart.current = progress.get();
       const deltaProgress = Math.max(-.5, Math.min(.5, event.deltaY / config.pixelsPerItem));
@@ -324,6 +371,8 @@ export default function CrystalTrackWheel({
     <div
       ref={wheelElement}
       className={`crystal-wheel rotor-crystal-wheel ${className}`}
+      data-motion-active={motionActive}
+      data-physical-slot-count={PHYSICAL_SLOT_COUNT}
       style={{
         perspective: config.perspective,
         "--blade-width": `${config.bladeWidth}px`,
@@ -339,9 +388,10 @@ export default function CrystalTrackWheel({
         motionRun.current += 1;
         stopAnimation();
         closeSelectedBlade();
+        setMotionActive(true);
         moved.current = false;
         const blade = (event.target as Element).closest(".rotor-crystal-blade");
-        pressedTrack.current = blade ? Number(blade.getAttribute("data-track-index")) : undefined;
+        pressedSlot.current = blade ? Number(blade.getAttribute("data-absolute-index")) : undefined;
         samples.current = [{ position: event.clientY, progress: progress.get(), time: performance.now() }];
         event.currentTarget.setPointerCapture(event.pointerId);
       }}
@@ -361,39 +411,40 @@ export default function CrystalTrackWheel({
         if (moved.current && first && last) {
           const velocity = ((last.progress - first.progress) / Math.max(1, last.time - first.time)) * 1000;
           settle(velocity);
-        } else if (!Number.isInteger(pressedTrack.current)) {
+        } else if (!Number.isInteger(pressedSlot.current)) {
+          setMotionActive(false);
           openSelectedBlade();
         }
-        pressedTrack.current = undefined;
+        pressedSlot.current = undefined;
         event.currentTarget.releasePointerCapture(event.pointerId);
       }}
       onPointerCancel={(event) => {
-        pressedTrack.current = undefined;
+        pressedSlot.current = undefined;
+        setMotionActive(false);
         openSelectedBlade();
         if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
       }}
       onKeyDown={(event) => {
         if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
           event.preventDefault();
-          moveToIndex(normalize(Math.round(progress.get()) - 1, tracks.length));
+          moveToAbsolute(Math.round(progress.get()) - 1);
         }
         if (event.key === "ArrowDown" || event.key === "ArrowRight") {
           event.preventDefault();
-          moveToIndex(normalize(Math.round(progress.get()) + 1, tracks.length));
+          moveToAbsolute(Math.round(progress.get()) + 1);
         }
         if (onTrackActivate && event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
           event.preventDefault();
-          onTrackActivate(normalize(progress.get(), tracks.length));
+          onTrackActivate(normalizeTrackIndex(progress.get(), tracks.length));
         }
       }}
     >
       <div className="rotor-crystal-stage">
-        {tracks.map((track, index) => (
+        {Array.from({ length: PHYSICAL_SLOT_COUNT }, (_, slotId) => (
           <CrystalBlade
-            key={`${track.id}:${index}`}
-            track={track}
-            index={index}
-            count={tracks.length}
+            key={slotId}
+            slotId={slotId}
+            tracks={tracks}
             progress={progress}
             reveal={reveal}
             select={selectBlade}
@@ -403,8 +454,8 @@ export default function CrystalTrackWheel({
         ))}
       </div>
       <div className="rotor-crystal-controls">
-        <button type="button" onClick={() => moveToIndex(normalize(Math.round(progress.get()) - 1, tracks.length))} aria-label="Previous track">↑</button>
-        <button type="button" onClick={() => moveToIndex(normalize(Math.round(progress.get()) + 1, tracks.length))} aria-label="Next track">↓</button>
+        <button type="button" onClick={() => moveToAbsolute(Math.round(progress.get()) - 1)} aria-label="Previous track">↑</button>
+        <button type="button" onClick={() => moveToAbsolute(Math.round(progress.get()) + 1)} aria-label="Next track">↓</button>
       </div>
     </div>
   );

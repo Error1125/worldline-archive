@@ -1,13 +1,12 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { createPortal } from "react-dom";
 import CrystalTrackWheel, {
   APPROVED_CRYSTAL_WHEEL_CONFIG,
-  APPROVED_CRYSTAL_WHEEL_SLOT_COUNT,
 } from "@/components/music/CrystalTrackWheel";
 import { withBase } from "@/lib/paths";
 import { getState, playTrack, selectTrack } from "@/lib/music/store";
-import type { MusicArchiveTrack, MusicPlaylist } from "@/lib/apple-music/types";
+import type { MusicPlaylist } from "@/lib/apple-music/types";
 
 const fmt = (ms?: number) => ms
   ? `${Math.floor(ms / 60000)}:${Math.floor((ms % 60000) / 1000).toString().padStart(2, "0")}`
@@ -22,26 +21,14 @@ const focusableSelector = [
   "[tabindex]:not([tabindex='-1'])",
 ].join(",");
 
-function createApprovedSlots(tracks: MusicArchiveTrack[]) {
-  if (!tracks.length) return [];
-  return Array.from(
-    { length: APPROVED_CRYSTAL_WHEEL_SLOT_COUNT },
-    (_, index) => tracks[index % tracks.length],
-  );
-}
-
 export default function TrackWheelDialog({ playlist, onClose }: { playlist: MusicPlaylist; onClose: () => void }) {
   const titleId = useId();
   const reducedMotion = useReducedMotion();
   const dialog = useRef<HTMLElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
-  const wheelTracks = useMemo(() => createApprovedSlots(playlist.tracks), [playlist.tracks]);
   const initialTrackIndex = Math.max(0, playlist.tracks.findIndex(track => track.id === getState().trackId));
-  const [activeSlot, setActiveSlot] = useState(initialTrackIndex);
-  const selectedTrack = wheelTracks[activeSlot] ?? playlist.tracks[0];
-  const selectedTrackIndex = selectedTrack
-    ? Math.max(0, playlist.tracks.findIndex(track => track.id === selectedTrack.id))
-    : 0;
+  const [selectedTrackIndex, setSelectedTrackIndex] = useState(initialTrackIndex);
+  const selectedTrack = playlist.tracks[selectedTrackIndex] ?? playlist.tracks[0];
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -85,8 +72,8 @@ export default function TrackWheelDialog({ playlist, onClose }: { playlist: Musi
 
   if (!selectedTrack) return null;
 
-  const activateSlot = (slotIndex: number) => {
-    const track = wheelTracks[slotIndex];
+  const activateTrack = (trackIndex: number) => {
+    const track = playlist.tracks[trackIndex];
     if (!track) return;
     selectTrack(playlist.id, track.id);
     if (track.previewUrl) playTrack(track.id, playlist.id);
@@ -123,10 +110,10 @@ export default function TrackWheelDialog({ playlist, onClose }: { playlist: Musi
         </header>
 
         <CrystalTrackWheel
-          tracks={wheelTracks}
-          activeIndex={activeSlot}
-          onActiveChange={setActiveSlot}
-          onTrackActivate={activateSlot}
+          tracks={playlist.tracks}
+          activeIndex={selectedTrackIndex}
+          onActiveChange={setSelectedTrackIndex}
+          onTrackActivate={activateTrack}
           artwork={track => track.artworkUrl ? <img src={withBase(track.artworkUrl)} alt="" /> : null}
           ariaLabel={`${playlist.title} 曲目水晶轮盘`}
           className="track-wheel-overlay-wheel"
@@ -142,7 +129,7 @@ export default function TrackWheelDialog({ playlist, onClose }: { playlist: Musi
             className="track-wheel-play"
             type="button"
             disabled={!selectedTrack.previewUrl}
-            onClick={() => activateSlot(activeSlot)}
+            onClick={() => activateTrack(selectedTrackIndex)}
             aria-label={selectedTrack.previewUrl ? `播放 ${selectedTrack.title}` : `${selectedTrack.title} 暂不可试听`}
             title={selectedTrack.previewUrl ? `播放 ${selectedTrack.title}` : "当前曲目没有试听音频"}
           >
